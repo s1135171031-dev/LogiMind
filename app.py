@@ -174,7 +174,7 @@ def main():
             st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=350)
             st.write("全加器考慮了低位的進位，是執行多位元加法的基礎。")
         else:
-            st.image("https://zh.wikipedia.org/wiki/File:Half_Adder.svg", width=350)
+            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Half_Adder.svg/500px-Half_Adder.svg.png", width=250)
             st.write("半加器不考慮低位的進位，是執行最基礎單位元加法以及構成全加器的基礎。")
 
     # --- 4. 智慧考評 ---
@@ -213,5 +213,6 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title=f"LogiMind - {st.session_state.name}", layout="wide")
     main()
+
 
 
