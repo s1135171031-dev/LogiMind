@@ -99,7 +99,7 @@ def main():
 
     # --- 1. 願景大廳：超長文字介紹 ---
     if page == "🏠 願景大廳":
-        st.title("歡迎來到 LogiMind：數位邏輯之城指揮部")
+        st.title("歡迎來到 LogiMind：數位邏輯之城指揮部 ")
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Operating_system_placement.svg/240px-Operating_system_placement.svg.png", width=120)
         
         st.header("📜 第一章：數位邏輯的演進與城市的誕生")
@@ -108,7 +108,7 @@ def main():
         這一發現奠定了我們今天所在這座「LogiMind 數位之城」的所有基石。在這裡，複雜的邏輯不再是紙上的公式，而是流動的電子脈衝。
         
         作為這座城市的管理員，您正在操控著人類文明最偉大的發明——數位邏輯。從最簡單的燈泡開關到現代的超級電腦，
-        其核心邏輯依然遵循著您將在基礎邏輯館中學到的那七大閘極。
+        其核心邏輯依然遵循著您將在基礎邏輯館中學到的那七大閘極。當你覺得熟練了，辦去了解進階電路區在做什麼吧!!!
         """)
         
         st.header("🏗️ 第二章：系統架構與學習路徑")
@@ -127,6 +127,10 @@ def main():
         3. **智慧檢定與晉升 (智慧考評中心)**：
            系統內建了 AI 評核機制。您的每一場測驗都會被記錄，當您的積分累積到一定程度，
            系統會自動將難度從初級調整為大師級。這不僅是測試，更是您對這座城市掌控權的證明。
+
+        4. **進階表格與編碼 (格雷碼轉換大樓)**：
+            當你了解了邏輯閘與進階電路後，這裡能幫助你將格雷碼與二進制互相轉換，在邏輯設計中
+            是一個很重要的角色，讓你在操控機械時可以更準確，不會產生誤差。
         """)
         
         st.header("🛠️ 第三章：管理員操作手冊")
@@ -150,7 +154,7 @@ def main():
         }
         st.image(urls[g], width=250)
         
-        st.subheader("📊 靜態真值表 (強制黑字樣式)")
+        st.subheader("📊 靜態真值表")
         if g == "NOT":
             df = pd.DataFrame({"A": [0, 1], "Y": [1, 0]})
         else:
@@ -209,3 +213,4 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title=f"LogiMind - {st.session_state.name}", layout="wide")
     main()
+
