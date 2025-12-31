@@ -149,7 +149,7 @@ def main():
         urls = {
             "AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
             "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
-            "NOT": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Not_gate_ansi.svg",
+            "NOT": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/NOT_ANSI.svg/250px-NOT_ANSI.svg.png",
             "XOR": "https://upload.wikimedia.org/wikipedia/commons/0/01/XOR_ANSI.svg"
         }
         st.image(urls[g], width=250)
@@ -213,6 +213,7 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title=f"LogiMind - {st.session_state.name}", layout="wide")
     main()
+
 
 
 
