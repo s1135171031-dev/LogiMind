@@ -171,14 +171,14 @@ def main():
         st.header("🏗️ 進階電路模組")
         adv = st.selectbox("選擇電路", ["全加器", "半加器", "解碼器"])
         if adv == "全加器":
-            st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=350)
             st.write("全加器考慮了低位的進位，是執行多位元加法的基礎。")
+            st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=350)
         elif adv == "半加器":
-            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Half_Adder.svg/500px-Half_Adder.svg.png", width=250)
             st.write("半加器不考慮低位的進位，是執行最基礎單位元加法以及構成全加器的基礎。")
+            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Half_Adder.svg/500px-Half_Adder.svg.png", width=250)
         elif adv == "解碼器":
-            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/1_bit_Decoder_2-to-4_line_zh_hant.svg/960px-1_bit_Decoder_2-to-4_line_zh_hant.svg.png", width=350)
             st.write("解碼器將編碼過的n位元輸入轉換為2^n個獨立的輸出訊號，是執行位址選擇與指令譯碼的基礎。")
+            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/1_bit_Decoder_2-to-4_line_zh_hant.svg/960px-1_bit_Decoder_2-to-4_line_zh_hant.svg.png", width=350)
 
     # --- 4. 智慧考評 ---
     elif page == "🎓 智慧考評中心":
@@ -216,6 +216,7 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title=f"LogiMind - {st.session_state.name}", layout="wide")
     main()
+
 
 
 
