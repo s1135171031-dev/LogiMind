@@ -97,11 +97,22 @@ def main():
     # --- 頁面 1: 願景大廳 ---
     if page in ["🏠 願景大廳", "🏠 Hall of Vision"]:
         st.title(page)
-        st.markdown(f"### Welcome, Admin {st.session_state.name}")
+        st.headerr(f"### **Welcome**, Admin **{st.session_state.name}**")
         st.write("這是一個整合了網路爬蟲技術與多語系支援的數位邏輯學習系統。")
-        st.info("請先前往『個人化設定』調整您喜好的語言與字體大小。")
-
-    # --- 頁面 2: 基礎邏輯館 ---
+        st.write("""在二十世紀中葉，當人類第一次嘗試將數學運算自動化時，Claude Shannon 發現了布林代數與電子開關之間的驚人連結。
+        這一發現奠定了我們今天所在這座「LogiMind 數位之城」的所有基石。在這裡，複雜的邏輯不再是紙上的公式，而是流動的電子脈衝。
+        作為這座城市的管理員，您正在操控著人類文明最偉大的發明——數位邏輯。從最簡單的燈泡開關到現代的超級電腦，
+        其核心邏輯依然遵循著您將在基礎邏輯館中學到的那七大閘極。當你覺得熟練了，去了解進階電路區在做什麼吧!!!
+        """)
+        st.header("🏗️ 第二章：系統架構與學習路徑")
+        st.write("""
+        首先前往**基礎邏輯館**閱讀邏輯閘的知識，學習邏輯閘的運用與長相
+        再來前往**進階電路區**學習更複雜的邏輯電路與用法
+        最後可以往** 格雷碼轉換大樓**走，裡面有轉換器，讓你學習格雷碼與二進位制德轉換
+        當你結束上述管理區域，請走向最後的**智慧考評中心**裡面有機器人協助你進行晉升考試，越來越高的階級，能解鎖的功能與專區會不一樣
+        期望你達到最高分數!!!
+        """)
+        # --- 頁面 2: 基礎邏輯館 ---
     elif page in ["🔬 基礎邏輯館", "🔬 Logic Gate Lab"]:
         st.header(page)
         g = st.selectbox("Gate Selection", ["AND", "OR", "NOT", "XOR"])
@@ -187,3 +198,4 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title="LogiMind V53", layout="wide")
     main()
+
