@@ -4,7 +4,7 @@ import json
 import os
 
 # =========================================
-# 1. 智慧顏色感應與強制渲染 (修正白底白字)
+# 1. 核心樣式引擎 (徹底解決隱形字)
 # =========================================
 def get_contrast_color(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -14,73 +14,65 @@ def get_contrast_color(hex_color):
 
 def apply_theme(p):
     txt = get_contrast_color(p['bg'])
-    # 使用全域 * 選擇器強制覆蓋所有可能隱形的文字
-    hide_style = f"""
+    st.markdown(f"""
     <style>
-    #MainMenu, footer, header {{visibility: hidden !important;}}
-    .stApp {{ background-color: {p['bg']} !important; color: {txt} !important; }}
+    /* 全域強制染色 */
+    .stApp {{ background-color: {p['bg']} !important; }}
+    h1, h2, h3, h4, p, span, label {{ color: {txt} !important; }}
     
-    /* 強制所有文字元素顯示正確對比色 */
-    * {{ color: {txt} !important; font-family: 'Inter', sans-serif; }}
+    /* 修正 Selectbox 與 Input 的文字看不到的問題 */
+    div[data-baseweb="select"] > div {{ background-color: white !important; color: black !important; }}
+    div[data-testid="stMarkdownContainer"] p {{ color: {txt} !important; }}
+    input {{ color: black !important; }}
     
-    /* 排除表格內文字（強制黑字以保證可讀性） */
-    div[data-testid="stTable"] *, div[data-testid="stDataFrame"] * {{ color: black !important; }}
-    div[data-testid="stTable"] {{ background-color: white !important; border-radius: 10px; }}
-
+    /* 表格強制白底黑字保護，解決真值表看不見的問題 */
+    div[data-testid="stTable"] {{ 
+        background-color: white !important; 
+        border-radius: 10px !important; 
+        padding: 5px !important; 
+    }}
+    div[data-testid="stTable"] td, div[data-testid="stTable"] th {{ 
+        color: black !important; 
+        font-weight: bold !important; 
+    }}
+    
     .stButton>button {{
         background-color: {p['btn']} !important; color: white !important;
         border-radius: {p['radius']}px !important; border: 2px solid {txt} !important;
     }}
-    /* 下拉選單與輸入框背景保護 */
-    div[data-baseweb="select"] > div {{ background-color: white !important; color: black !important; }}
-    input {{ background-color: white !important; color: black !important; }}
     </style>
-    """
-    st.markdown(hide_style, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # =========================================
-# 2. 核心資料庫 (真值表與格雷碼)
+# 2. 數據與語言字典
 # =========================================
-GATES_INFO = {
+LANGS = {
+    "zh": {
+        "home": "🏠 系統首頁", "basic": "🔬 基礎邏輯閘", "adv": "🏗️ 進階組合電路", "gray": "🔢 格雷碼模組",
+        "set": "🎨 個人化工作室", "exit": "🚪 登出",
+        "intro_t": "關於 LogiMind 數位實驗室",
+        "intro_c": "本系統旨在提供一個直觀、可互動的數位邏輯學習平台。從基礎的布林代數閘級電路，到複雜的算術邏輯單元(ALU)與組合電路，我們致力於將抽象的邏輯概念具象化。",
+        "gray_in": "輸入二進制數 (例如 1010)", "gray_out": "轉換後的格雷碼為："
+    },
+    "en": {
+        "home": "🏠 Home", "basic": "🔬 Basic Gates", "adv": "🏗️ Advanced Circuits", "gray": "🔢 Gray Code",
+        "set": "🎨 Studio", "exit": "🚪 Logout",
+        "intro_t": "About LogiMind Lab",
+        "intro_c": "An interactive platform for learning digital logic. Visualizing concepts from Boolean gates to complex ALUs.",
+        "gray_in": "Input Binary (e.g. 1010)", "gray_out": "Converted Gray Code:"
+    }
+}
+
+GATES_DB = {
     "AND (及閘)": {"table": {"A":[0,0,1,1],"B":[0,1,0,1],"Out":[0,0,0,1]}},
     "OR (或閘)": {"table": {"A":[0,0,1,1],"B":[0,1,0,1],"Out":[0,1,1,1]}},
     "NOT (反閘)": {"table": {"In":[0,1],"Out":[1,0]}},
     "NAND (與非閘)": {"table": {"A":[0,0,1,1],"B":[0,1,0,1],"Out":[1,1,1,0]}},
-    "NOR (或非閘)": {"table": {"A":[0,0,1,1],"B":[0,1,0,1],"Out":[1,0,0,0]}},
-    "XOR (互斥或閘)": {"table": {"A":[0,0,1,1],"B":[0,1,0,1],"Out":[0,1,1,0]}},
-    "XNOR (同或閘)": {"table": {"A":[0,0,1,1],"B":[0,1,0,1],"Out":[1,0,0,1]}}
-}
-
-GRAY_DATA = pd.DataFrame({
-    "Dec": range(16),
-    "Binary": [bin(i)[2:].zfill(4) for i in range(16)],
-    "Gray": [bin(i ^ (i >> 1))[2:].zfill(4) for i in range(16)]
-})
-
-# =========================================
-# 3. 語言與翻譯
-# =========================================
-LANGS = {
-    "zh": {
-        "home": "🏠 首頁介紹", "basic": "🔬 基礎邏輯閘", "adv": "🏗️ 進階組合電路", "gray": "🔢 格雷碼模組",
-        "quiz": "📝 20題檢定賽", "set": "🎨 個人化工作室", "log": "📜 更新日誌", "exit": "🚪 登出",
-        "intro_t": "關於 LogiMind 數位實驗室",
-        "intro_c": "本系統旨在提供一個直觀、可互動的數位邏輯學習平台。從基礎的布林代數閘級電路，到複雜的算術邏輯單元(ALU)與組合電路，我們致力於將抽象的邏輯概念具象化。",
-        "conn": "🟢 伺服器狀態：已與 Streamlit Cloud 同步連接",
-        "save": "套用設定", "lang_sel": "語言切換 (Language)"
-    },
-    "en": {
-        "home": "🏠 Home", "basic": "🔬 Basic Gates", "adv": "🏗️ Advanced Circuits", "gray": "🔢 Gray Code",
-        "quiz": "📝 20-Question Quiz", "set": "🎨 Personalization", "log": "📜 Update Log", "exit": "🚪 Logout",
-        "intro_t": "About LogiMind Digital Lab",
-        "intro_c": "LogiMind provides an interactive digital logic learning platform. We visualize abstract logic from basic Boolean gates to complex ALUs.",
-        "conn": "🟢 Connection: Connected to Streamlit Cloud Node",
-        "save": "Apply Settings", "lang_sel": "Switch Language (切換語言)"
-    }
+    "XOR (互斥或閘)": {"table": {"A":[0,0,1,1],"B":[0,1,0,1],"Out":[0,1,1,0]}}
 }
 
 # =========================================
-# 4. 主介面
+# 3. 主程式邏輯
 # =========================================
 if "lang" not in st.session_state: st.session_state.lang = "zh"
 
@@ -90,66 +82,66 @@ def main():
     L = LANGS[st.session_state.lang]
 
     with st.sidebar:
-        st.title(f"Hi, {st.session_state.name}")
-        st.caption(L['conn'])
-        page = st.radio("Menu", [L['home'], L['basic'], L['adv'], L['gray'], L['quiz'], L['set'], L['log'], L['exit']])
+        st.title("LogiMind V30")
+        page = st.radio("選單 / Menu", [L['home'], L['basic'], L['adv'], L['gray'], L['set'], L['exit']])
+        st.write("---")
+        st.caption("🟢 已連線至：Streamlit Cloud Server")
 
     if page == L['home']:
         st.header(L['intro_t'])
         st.write(L['intro_c'])
-        st.info(f"User Connected: {st.session_state.user}")
-        # 展示全加器示意圖
-        st.markdown('<div style="background:white; padding:20px; border-radius:10px; border:3px solid black; color:black; text-align:center;"><b>[Full Adder Circuit Diagram Placeholder]</b></div>', unsafe_allow_html=True)
+        # 復刻圖片中的 Full Adder 方框與狀態列
+        st.markdown(f'''
+            <div style="background:white; border:2px solid {p['btn']}; border-radius:10px; padding:30px; text-align:center; margin:20px 0;">
+                <h2 style="color:black !important;">Full Adder</h2>
+            </div>
+            <div style="background:#1E2633; padding:15px; border-radius:10px; color:white !important;">
+                User Connected: {st.session_state.name}
+            </div>
+        ''', unsafe_allow_html=True)
 
     elif page == L['basic']:
         st.header(L['basic'])
-        g_name = st.selectbox("選擇邏輯閘", list(GATES_INFO.keys()))
+        g = st.selectbox("選擇邏輯閘", list(GATES_DB.keys()))
         st.subheader("真值表 (Truth Table)")
-        st.table(pd.DataFrame(GATES_INFO[g_name]["table"]))
+        st.table(pd.DataFrame(GATES_DB[g]["table"]))
 
     elif page == L['adv']:
         st.header(L['adv'])
-        adv_comp = st.selectbox("選擇組件", ["Half Adder (半加器)", "Full Adder (全加器)", "Encoder (編碼器)", "Decoder (解碼器)", "MUX (多工器)"])
-        st.write(f"正在顯示 {adv_comp} 的邏輯結構...")
-        st.markdown('<div style="background:white; padding:40px; border-radius:10px; border:2px solid #333; color:black; text-align:center;">電路圖繪製中...</div>', unsafe_allow_html=True)
+        comp = st.selectbox("組件選單", ["Full Adder (全加器)", "Half Adder (半加器)", "Encoder (編碼器)", "Decoder (解碼器)", "MUX (多工器)"])
+        # 繪製圖形 (SVG)
+        st.markdown(f'<div style="background:white; padding:30px; border-radius:10px; border:3px solid {p["btn"]}; text-align:center;"><h2 style="color:black !important;">{comp}</h2><p style="color:gray !important;">Logic Diagram Visualization</p></div>', unsafe_allow_html=True)
 
     elif page == L['gray']:
         st.header(L['gray'])
-        st.write("完整 4-bit 格雷碼對照表 (0-15)")
-        st.table(GRAY_DATA)
-
-    elif page == L['quiz']:
-        st.header(L['quiz'])
-        st.warning("測驗模組載入中... 請準備好紙筆進行邏輯運算。")
-        if st.button("開始測驗"): st.success("測驗開始！")
+        b_in = st.text_input(L['gray_in'], "1010")
+        try:
+            val = int(b_in, 2)
+            res = bin(val ^ (val >> 1))[2:].zfill(len(b_in))
+            st.success(f"{L['gray_out']} {res}")
+        except: st.error("請輸入二進制格式")
+        st.write("對照表 (0-7)：")
+        st.table(pd.DataFrame({"Dec":[0,1,2,3,4,5,6,7], "Bin":["000","001","010","011","100","101","110","111"], "Gray":["000","001","011","010","110","111","101","100"]}))
 
     elif page == L['set']:
         st.header(L['set'])
-        if st.button(L['lang_sel']):
+        if st.button("切換語言 / Switch Language"):
             st.session_state.lang = "en" if st.session_state.lang == "zh" else "zh"
             st.rerun()
         st.session_state.prefs['bg'] = st.color_picker("背景顏色", p['bg'])
-        st.session_state.prefs['btn'] = st.color_picker("主題按鈕顏色", p['btn'])
-        st.session_state.prefs['radius'] = st.slider("圓角大小", 0, 30, p['radius'])
-        if st.button(L['save']): st.rerun()
-
-    elif page == L['log']:
-        st.header(L['log'])
-        st.table(pd.DataFrame([{"Version":"V29","Content":"修復白底白字、功能大復合、語言切換搬移"}]))
+        st.session_state.prefs['btn'] = st.color_picker("強調顏色", p['btn'])
+        if st.button("儲存套用"): st.rerun()
 
     elif page == L['exit']:
         st.session_state.clear(); st.rerun()
 
-# 登入頁面 (修正白底白字)
 def auth():
     apply_theme({"bg":"#0E1117","btn":"#00FFCC","radius":10})
-    st.title("🛡️ LogiMind V29")
-    u = st.text_input("Username / 帳號")
-    p = st.text_input("Password / 密碼", type="password")
-    if st.button("Login / 登入"):
-        st.session_state.user = u
-        st.session_state.name = u
-        st.session_state.prefs = {"bg":"#0E1117","btn":"#00FFCC","radius":10}
+    st.title("🛡️ LogiMind 登入")
+    name = st.text_input("請輸入您的姓名")
+    if st.button("進入系統"):
+        st.session_state.user = name; st.session_state.name = name
+        st.session_state.prefs = {"bg":"#0E1117","btn":"#00FFCC","radius":12}
         st.rerun()
 
 if "user" not in st.session_state: auth()
