@@ -3,70 +3,84 @@ import pandas as pd
 import random
 
 # =========================================
-# 1. 終極視覺引擎：徹底解決白底白字、破圖與偏移
+# 1. 視覺引擎：最強制級 CSS (解決白底白字)
 # =========================================
 def apply_style(p):
-    # 自動判定文字顏色
     txt_color = "#000000" if (int(p['bg'].lstrip('#'), 16) > 0x888888) else "#FFFFFF"
     
     st.markdown(f"""
     <style>
-    /* 全域背景 */
+    /* 基礎背景與文字 */
     .stApp {{ background-color: {p['bg']} !important; }}
-    
-    /* 強制文字顯形 */
     h1, h2, h3, h4, p, span, label, li, .stMarkdown {{ color: {txt_color} !important; }}
     
-    /* 【真值表修復】強制表格文字為黑色且具備白底 */
-    div[data-testid="stTable"], div[data-testid="stDataFrame"] {{
+    /* 【關鍵修復】自定義 HTML 表格樣式 - 徹底解決白底白字 */
+    .truth-table-container {{
         background-color: #FFFFFF !important;
-        padding: 15px !important;
-        border-radius: 10px !important;
-        border: 2px solid {p['btn']} !important;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        margin: 10px 0;
     }}
-    div[data-testid="stTable"] th, div[data-testid="stTable"] td, 
-    div[data-testid="stDataFrame"] td, div[data-testid="stDataFrame"] th {{
-        color: #000000 !important;
-        font-weight: bold !important;
+    .custom-table {{
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #FFFFFF !important;
+        color: #000000 !important; /* 強制黑字 */
+    }}
+    .custom-table th, .custom-table td {{
+        border: 2px solid #EEEEEE;
+        padding: 12px;
+        text-align: center;
+        color: #000000 !important; /* 二重強制 */
+        font-family: sans-serif;
+    }}
+    .custom-table th {{
+        background-color: #F8F9FA !important;
+        font-weight: bold;
     }}
 
-    /* 【圖片修復】強制白底卡片容器 */
+    /* 圖片卡片樣式 */
     div[data-testid="stImage"] {{
         background-color: #FFFFFF !important;
         padding: 25px !important;
         border-radius: 20px !important;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.4) !important;
         display: flex !important;
         justify-content: center !important;
-        align-items: center !important;
-        margin: 20px auto !important;
+        margin: 15px 0 !important;
     }}
-    div[data-testid="stImage"] img {{ max-width: 100% !important; }}
-
-    /* 【控制元件修復】修復下拉選單白底白字 */
-    div[data-baseweb="select"] > div, input {{
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        border: 1px solid #ccc !important;
-    }}
+    
+    /* 下拉選單黑字修正 */
+    div[data-baseweb="select"] > div {{ background-color: #FFFFFF !important; }}
     div[data-baseweb="select"] span {{ color: #000000 !important; }}
-    ul[role="listbox"] li {{ color: #000000 !important; background-color: #FFFFFF !important; }}
-
+    
     /* 按鈕樣式 */
     .stButton>button {{
         background-color: {p['btn']} !important;
         color: white !important;
-        border-radius: 50px;
+        border-radius: 8px;
         width: 100%;
         font-weight: bold;
         border: none;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }}
     </style>
     """, unsafe_allow_html=True)
 
+# 輔助函數：將 DataFrame 轉為強制黑字的 HTML 表格
+def render_truth_table(df):
+    html = f'<div class="truth-table-container"><table class="custom-table">'
+    # Header
+    html += '<thead><tr>' + ''.join(f'<th>{col}</th>' for col in df.columns) + '</tr></thead>'
+    # Body
+    html += '<tbody>'
+    for _, row in df.iterrows():
+        html += '<tr>' + ''.join(f'<td>{val}</td>' for val in row) + '</tr>'
+    html += '</tbody></table></div>'
+    st.markdown(html, unsafe_allow_html=True)
+
 # =========================================
-# 2. 智慧考評資料庫 (21題)
+# 2. 智慧分級資料庫
 # =========================================
 QUESTION_BANK = {
     "Easy": [
@@ -79,27 +93,27 @@ QUESTION_BANK = {
         {"q": "邏輯閘前端的小圓圈代表？", "o": ["增幅", "反相 (NOT)"], "a": "反相 (NOT)"}
     ],
     "Medium": [
-        {"q": "半加器與全加器的最大差別在於？", "o": ["有無進位輸入", "有無和輸出", "速度"], "a": "有無進位輸入"},
+        {"q": "半加器無法處理下列哪一項？", "o": ["輸入加法", "低位進位 (Cin)", "輸出進位"], "a": "低位進位 (Cin)"},
         {"q": "XOR 閘兩輸入相同時，輸出為何？", "o": ["0", "1"], "a": "0"},
         {"q": "格雷碼變動相鄰數字時，會有幾個位元變化？", "o": ["1個", "2個", "全部"], "a": "1個"},
-        {"q": "2對4解碼器，當輸入為 11，哪條線輸出為 1？", "o": ["Y0", "Y1", "Y2", "Y3"], "a": "Y3"},
-        {"q": "多工器 (MUX) 的主要功能是？", "o": ["記憶資料", "選擇路徑", "邏輯反相"], "a": "選擇路徑"},
-        {"q": "JK正反器 J=1, K=1 時會？", "o": ["不變", "歸零", "反轉"], "a": "反轉"},
-        {"q": "二進制 1010 轉為格雷碼是？", "o": ["1111", "1101", "1011"], "a": "1111"}
+        {"q": "2對4解碼器當輸入為 (1, 0) 時，哪條線輸出為 1？", "o": ["Y0", "Y2", "Y3"], "a": "Y2"},
+        {"q": "多工器 (MUX) 的主要功能是？", "o": ["數據分發", "數據選擇", "運算"], "a": "數據選擇"},
+        {"q": "二進制 1010 轉為格雷碼是？", "o": ["1111", "1101", "1011"], "a": "1111"},
+        {"q": "全加器的 Sum 公式由幾個 XOR 組成？", "o": ["1個", "2個", "3個"], "a": "2個"}
     ],
     "Hard": [
-        {"q": "D正反器在觸發前保持數值，這稱為？", "o": ["Latch 鎖存", "Reset 重置"], "a": "Latch 鎖存"},
-        {"q": "布林代數 A + AB 等於？", "o": ["A", "B", "AB"], "a": "A"},
-        {"q": "時序電路與組合電路最大差異是？", "o": ["邏輯閘數量", "具備回授/記憶", "工作電壓"], "a": "具備回授/記憶"},
-        {"q": "迪摩根定律：(A+B)' 等於？", "o": ["A'B'", "A'+B'", "AB"], "a": "A'B'"},
-        {"q": "格雷碼 1010 轉二進制為？", "o": ["1100", "1111", "1001"], "a": "1100"},
-        {"q": "1位元全加器需要幾個 NAND 閘組成？", "o": ["5個", "9個", "12個"], "a": "9個"},
-        {"q": "傳播延遲主要由什麼引起？", "o": ["電壓波動", "開關切換時間", "導線長度"], "a": "開關切換時間"}
+        {"q": "D正反器在時鐘觸發前會保持原值，這稱為？", "o": ["運算", "鎖存 (Latch)", "清除"], "a": "鎖存 (Latch)"},
+        {"q": "布林代數簡化：A + AB 等於？", "o": ["A", "B", "AB"], "a": "A"},
+        {"q": "JK正反器當 J=1, K=1 時會如何？", "o": ["不變", "歸零", "反轉 (Toggle)"], "a": "反轉 (Toggle)"},
+        {"q": "1-Bit 比較器，若 A=0, B=1，則 A<B 的輸出是？", "o": ["0", "1"], "a": "1"},
+        {"q": "時序電路與組合電路最大的差別在於？", "o": ["邏輯閘", "具備記憶性", "電壓"], "a": "具備記憶性"},
+        {"q": "格雷碼 1010 轉為二進制是？", "o": ["1100", "1010", "1111"], "a": "1100"},
+        {"q": "傳播延遲主要由什麼引起？", "o": ["電壓", "電子元件切換時間", "線長"], "a": "電子元件切換時間"}
     ]
 }
 
 # =========================================
-# 3. 主程式
+# 3. 主程式流程
 # =========================================
 if "score" not in st.session_state: st.session_state.score = 0
 if "prefs" not in st.session_state: st.session_state.prefs = {"bg":"#0E1117","btn":"#00D4FF"}
@@ -109,47 +123,36 @@ def main():
     apply_style(p)
     
     with st.sidebar:
-        st.title(f"🏙️ LogiMind V49")
+        st.title(f"🏙️ LogiMind V50")
         st.write(f"管理員: **{st.session_state.name}**")
         st.divider()
         level = "Easy"
         if st.session_state.score >= 85: level = "Hard"
         elif st.session_state.score >= 60: level = "Medium"
-        st.success(f"系統權限：{level}")
+        st.info(f"建議挑戰等級：{level}")
         st.progress(st.session_state.score / 100)
-        page = st.radio("導航中心", ["🏠 城市願景", "🔬 基礎邏輯館", "🏗️ 進階電路區", "🔄 數據轉換", "🎓 智慧考評", "🎨 城市規劃"])
-        if st.button("🚪 登出"): st.session_state.clear(); st.rerun()
+        page = st.radio("導航中心", ["🏠 願景大廳", "🔬 基礎邏輯館", "🏗️ 進階電路區", "🔄 數據轉換站", "🎓 智慧考評中心", "🎨 城市規劃室"])
+        if st.button("🚪 安全登出"): st.session_state.clear(); st.rerun()
 
-    # --- 1. 首頁 (萬字長文介紹) ---
-    if page == "🏠 城市願景":
-        st.title("數位邏輯城市：LogiMind 指揮中心")
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Operating_system_placement.svg/240px-Operating_system_placement.svg.png", width=180)
-        
-        st.header("📖 歡迎來到數位邏輯之城")
+    if page == "🏠 願景大廳":
+        st.title("歡迎回到 LogiMind 控制中心")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Operating_system_placement.svg/240px-Operating_system_placement.svg.png", width=150)
+        st.header("📖 城市治理與邏輯百科")
         st.markdown("""
-        這不是一個普通的教學網頁，這是一個將抽象布林代數轉化為具象建設的 **數位治理模擬器**。
+        作為 LogiMind 的管理員，您的責任是確保整座城市的邏輯能量穩定流動。
         
-        在這座城市中，**0 與 1** 不只是數字，它們是流動在城市地底下的脈衝能量。邏輯閘（Logic Gates）是控制這些能量流向的變電所。
+        ### 🗺️ 指南文字介紹
+        * **🔬 基礎邏輯館**：研究數位世界的最基本單元。這裡的每個邏輯閘都有其獨特的真值表，定義了電壓如何轉換。
+        * **🏗️ 進階電路區**：組合基礎單元以實現複雜功能。您將學習到全加器、D正反器等核心架構。
+        * **🎓 智慧考評中心**：系統會根據您的答題表現，動態解鎖更難的題目。
         
-        ### 🗺️ 您的任務手冊
-        作為本城的首席工程師，您需要掌握以下三個維度的技術：
-        
-        1. **微觀基礎**：在 **基礎邏輯館** 中研究 AND、OR、NOT 等細胞級元件。理解它們的真值表是建構一切的基石。
-        2. **架構整合**：前往 **進階電路區**。在這裡，您將學習如何將簡單的細胞組合成具有功能的器官，如處理加法的加法器、翻譯指令的解碼器，以及具有記憶能力的 D型正反器。
-        3. **智慧評測**：系統會不斷監控您的學習進度。當您在考評中心展現出卓越的邏輯思維時，系統將解鎖更高階的「時序邏輯」內容。
-        
-        ### 📘 核心理論百科
-        * **布林運算**：所有的現代電腦運作都是基於 19 世紀數學家 George Boole 的邏輯。
-        * **迪摩根定律**：是簡化複雜電路、節省城市建設成本（邏輯閘數量）的核心法門。
-        * **格雷碼**：這是一種為了減少數據傳輸錯誤而設計的特殊編碼方式，常用於旋轉編碼器中。
+        ### 📘 核心理論提示
+        在數位邏輯中，**真值表**是唯一的真理。它列出了所有輸入與對應輸出的組合。請確保您在挑戰大師難度前，已經熟記了 XOR 與 NAND 的特性。
         """)
-        st.info("💡 提示：本系統已全面修復視覺顯示問題。如果您在深色主題下閱讀，所有的圖表將會自動加上白底卡片，確保清晰可見。")
 
-    # --- 2. 基礎邏輯館 (真值表修復) ---
     elif page == "🔬 基礎邏輯館":
-        st.header("🔬 基礎邏輯視覺館")
-        g = st.selectbox("選擇要觀測的邏輯閘", ["AND", "OR", "NOT", "XOR", "NAND", "NOR"])
-        
+        st.header("🔬 基礎邏輯視覺符號")
+        g = st.selectbox("選擇組件", ["AND", "OR", "NOT", "XOR", "NAND", "NOR"])
         urls = {
             "AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
             "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
@@ -158,11 +161,9 @@ def main():
             "NAND": "https://upload.wikimedia.org/wikipedia/commons/f/f2/NAND_ANSI.svg",
             "NOR": "https://upload.wikimedia.org/wikipedia/commons/6/6c/NOR_ANSI.svg"
         }
-        
-        st.subheader(f"{g} Gate 標準符號")
         st.image(urls[g], width=300)
         
-        st.subheader("📊 真值表 (Truth Table)")
+        st.subheader("📊 關鍵：真值表 (現在絕對可見)")
         if g == "NOT":
             df = pd.DataFrame({"Input A": [0, 1], "Output Y": [1, 0]})
         else:
@@ -174,24 +175,19 @@ def main():
             elif g=="NOR": data["Y"]=[1,0,0,0]
             df = pd.DataFrame(data)
         
-        st.table(df) # 真值表絕對顯形
-        st.caption(f"上表展示了 {g} 閘在不同輸入下的電壓輸出狀態。")
+        # 使用修復後的 HTML 渲染函數
+        render_truth_table(df)
 
-    # --- 3. 進階電路 ---
     elif page == "🏗️ 進階電路區":
-        st.header("🏗️ 進階電路模組")
-        adv = st.selectbox("選擇組件", ["全加器 (Full Adder)", "D正反器 (D-FlipFlop)"])
-        if "全加器" in adv:
+        st.header("🏗️ 進階電路架構")
+        adv = st.selectbox("選擇組件", ["全加器", "D正反器"])
+        if adv == "全加器":
             st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=400)
-            st.write("全加器能處理三位二進制輸入（A, B, Cin），是 CPU 加法器的核心。")
         else:
             st.image("https://upload.wikimedia.org/wikipedia/commons/2/2f/D-Type_Flip-flop_Symbol.svg", width=300)
-            st.write("D正反器是記憶體的基礎，能在時鐘脈衝觸發時鎖存數據。")
 
-    # --- 4. 智慧考評 (21題) ---
-    elif page == "🎓 智慧考評":
-        st.header(f"🎓 檢定等級：{level}")
-        st.write("系統會根據您的積分自動調整題目。")
+    elif page == "🎓 智慧考評中心":
+        st.header(f"🎓 檢定等級: {level}")
         qs = QUESTION_BANK[level]
         score = 0
         with st.form("quiz"):
@@ -206,42 +202,33 @@ def main():
                 st.session_state.score = score
                 st.rerun()
 
-    # --- 5. 數據轉換 ---
-    elif page == "🔄 數據轉換":
-        st.header("🔄 Binary ↔ Gray 雙向轉換器")
-        mode = st.radio("轉換模式", ["Binary to Gray", "Gray to Binary"])
-        val = st.text_input("輸入位元 (如 1011)", "1011")
-        try:
-            if mode == "Binary to Gray":
+    elif page == "🔄 數據轉換站":
+        st.header("🔄 數據編碼轉換器")
+        val = st.text_input("輸入二進制 (如 1011)", "1011")
+        if val:
+            try:
                 v = int(val, 2)
-                res = bin(v ^ (v >> 1))[2:].zfill(len(val))
-                st.success(f"格雷碼結果：{res}")
-            else:
-                b = val[0]
-                for i in range(1, len(val)): b += str(int(b[-1]) ^ int(val[i]))
-                st.info(f"二進制結果：{b}")
-        except: st.error("請輸入正確的二進制格式")
+                gray = bin(v ^ (v >> 1))[2:].zfill(len(val))
+                st.success(f"格雷碼轉換結果: {gray}")
+            except: st.error("格式錯誤")
 
-    # --- 6. 規劃室 (修復語法) ---
-    elif page == "🎨 城市規劃":
-        st.header("🎨 風格自定義")
+    elif page == "🎨 城市規劃室":
+        st.header("🎨 風格個性化")
         c1, c2 = st.columns(2)
-        with c1: new_bg = st.color_picker("城市底色", p['bg'])
-        with c2: new_btn = st.color_picker("元件主題色", p['btn'])
-        if st.button("套用"):
+        with c1: new_bg = st.color_picker("背景顏色", p['bg'])
+        with c2: new_btn = st.color_picker("按鈕顏色", p['btn'])
+        if st.button("套用修改"):
             st.session_state.prefs['bg'] = new_bg
             st.session_state.prefs['btn'] = new_btn
             st.rerun()
 
-# --- 登入進入點 ---
+# --- 登入頁 ---
 if "name" not in st.session_state:
     st.set_page_config(page_title="LogiMind 入口", layout="centered")
-    st.title("🛡️ LogiMind 啟動入口")
-    name = st.text_input("管理員名稱")
-    if st.button("連接核心"):
-        if name:
-            st.session_state.name = name
-            st.rerun()
+    st.title("🛡️ LogiMind 系統啟動")
+    name = st.text_input("管理員代號")
+    if st.button("建立連接"):
+        if name: st.session_state.name = name; st.rerun()
 else:
     st.set_page_config(page_title=f"LogiMind - {st.session_state.name}", layout="wide")
     main()
