@@ -3,40 +3,58 @@ import pandas as pd
 import random
 
 # =========================================
-# 1. 視覺引擎：解決白底白字、圖片破圖容器化
+# 1. 視覺引擎：CSS 深度修正 (解決偏移問題)
 # =========================================
 def apply_theme(p):
+    # 根據背景深淺自動決定文字顏色 (黑/白)
     txt_color = "#000000" if (int(p['bg'].lstrip('#'), 16) > 0x888888) else "#FFFFFF"
+    
     st.markdown(f"""
     <style>
+    /* 全域背景設定 */
     .stApp {{ background-color: {p['bg']} !important; }}
-    h1, h2, h3, h4, p, span, label {{ color: {txt_color} !important; }}
     
-    /* 圖片白底卡片容器：解決深色背景下黑線看不見的問題 */
-    .img-card {{
-        background-color: #FFFFFF !important;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        display: flex;
-        justify-content: center;
-        margin-bottom: 25px;
+    /* 強制所有標準文字與標題顏色，確保可見 */
+    h1, h2, h3, h4, p, span, label, li {{ color: {txt_color} !important; }}
+    
+    /* 【V46 核心修正】圖片容器完美置中 */
+    /* 直接針對 Streamlit 的圖片區塊進行樣式設定，不再需要外包 div */
+    div[data-testid="stImage"] {{
+        background-color: #FFFFFF !important; /* 強制白底 */
+        padding: 25px !important;             /* 增加內部留白 */
+        border-radius: 16px !important;       /* 圓角 */
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15); /* 精緻陰影 */
+        /* 關鍵：使用 Flex 強制內容水平與垂直置中 */
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin-bottom: 20px;
+    }}
+    /* 確保圖片本身沒有額外的邊距干擾對齊 */
+    div[data-testid="stImage"] img {{
+        margin: 0 !important;
+        display: block !important;
     }}
     
-    /* 強制下拉選單與輸入框顯形 */
+    /* 強制下拉選單與輸入框為白底黑字，防止隱形 */
     div[data-baseweb="select"] > div, input {{
         background-color: #FFFFFF !important;
         color: #000000 !important;
+        border: 1px solid #ccc !important;
     }}
     div[data-baseweb="select"] span {{ color: #000000 !important; }}
 
+    /* 按鈕樣式優化 */
     .stButton>button {{
         background-color: {p['btn']} !important;
         color: white !important;
         border-radius: 50px;
         font-weight: bold;
         border: 2px solid {txt_color};
+        padding: 10px 24px;
+        transition: all 0.3s ease;
     }}
+    .stButton>button:hover {{ transform: scale(1.02); }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -59,7 +77,7 @@ QUESTION_BANK = {
         {"q": "格雷碼的優點是相鄰兩數僅有幾個位元變動？", "o": ["1個", "2個", "全部"], "a": "1個"},
         {"q": "XOR 閘在兩輸入相同時輸出為何？", "o": ["0", "1"], "a": "0"},
         {"q": "多工器 (MUX) 的主要功能是？", "o": ["數據分發", "數據選擇", "運算"], "a": "數據選擇"},
-        {"q": "二進制 1010 轉為格雷碼是？", "o": ["1111", "15", "1111", "1101"], "a": "1111"},
+        {"q": "二進制 1010 轉為格雷碼是？", "o": ["1111", "15", "1101"], "a": "1111"},
         {"q": "全加器的 Sum 公式由幾個 XOR 組成？", "o": ["1個", "2個", "3個"], "a": "2個"}
     ],
     "大師 (Hard)": [
@@ -76,6 +94,7 @@ QUESTION_BANK = {
 # =========================================
 # 3. 主程式架構
 # =========================================
+# 初始化 session state
 if "last_score" not in st.session_state: st.session_state.last_score = 0
 if "prefs" not in st.session_state: st.session_state.prefs = {"bg":"#0E1117","btn":"#00FFCC"}
 
@@ -93,18 +112,24 @@ def main():
         st.info(f"當前建議難度：{level}")
         st.divider()
         st.write("🌐 **核心連線狀態**")
-        st.caption(f"Latency: {random.randint(12, 28)}ms | Secure Port: 8080")
+        # 模擬網路數據跳動
+        latency = random.randint(15, 35)
+        st.caption(f"Latency: {latency}ms | Secure Port: 443 | Status: Stable")
         st.progress(100)
         page = st.radio("導航中心", ["🏠 願景大廳", "🔬 基礎邏輯館", "🏗️ 進階電路區", "🔄 數據轉換站", "🎓 智慧考評中心", "🎨 城市規劃室"])
+        if st.button("🚪 安全登出"): 
+            st.session_state.clear()
+            st.rerun()
 
     # --- 1. 首頁 ---
     if page == "🏠 願景大廳":
-        st.header("歡迎回到 LogiMind V45")
-        st.write(f"管理員 **{st.session_state.name}**，系統影像與考評系統已全面修復。")
-        st.write("這是一座適應性智慧城市，您的學習表現將直接影響城市的解鎖內容。")
+        st.header("歡迎回到 LogiMind V46")
+        st.write(f"管理員 **{st.session_state.name}**，視覺系統已升級至完美對齊版本。")
+        st.write("這是一座適應性智慧城市，系統會根據您的考評表現自動調整學習難度。")
+        # 這張圖片會自動套用完美的白底置中樣式
         st.image("https://img.icons8.com/clouds/200/smart-city.png", width=150)
 
-    # --- 2. 基礎邏輯閘 (修復破圖問題) ---
+    # --- 2. 基礎邏輯閘 ---
     elif page == "🔬 基礎邏輯館":
         st.header("🔬 基礎邏輯視覺符號")
         g = st.selectbox("選擇組件", ["AND", "OR", "NOT", "XOR", "NAND", "NOR"])
@@ -116,66 +141,115 @@ def main():
             "NAND": "https://upload.wikimedia.org/wikipedia/commons/f/f2/NAND_ANSI.svg",
             "NOR": "https://upload.wikimedia.org/wikipedia/commons/6/6c/NOR_ANSI.svg"
         }
-        st.markdown('<div class="img-card">', unsafe_allow_html=True)
-        st.image(urls[g], width=300)
-        st.markdown('</div>', unsafe_allow_html=True)
+        # 注意：這裡不再需要手動加 div wrapper 了
+        st.image(urls[g], width=300, caption=f"{g} Gate 標準符號")
+        
         st.write("---")
-        st.subheader("標準真值表")
-        data = {"A":[0,0,1,1],"B":[0,1,0,1],"Y":[random.randint(0,1) for _ in range(4)]} # 範例
-        st.table(pd.DataFrame(data))
+        st.subheader(f"{g} 真值表示例")
+        # 簡單的真值表邏輯範例
+        if g == "NOT":
+             df = pd.DataFrame({"Input":[0,1], "Output":[1,0]})
+        else:
+             df = pd.DataFrame({"A":[0,0,1,1],"B":[0,1,0,1],"Y":["?","?","?","?"]})
+             st.caption("請參考教科書填寫正確輸出結果。")
+        st.table(df)
 
     # --- 3. 進階電路 ---
     elif page == "🏗️ 進階電路區":
         st.header("🏗️ 進階組合與時序邏輯")
         adv = st.selectbox("查看結構", ["半加器", "全加器", "解碼器", "D正反器"])
-        st.markdown('<div class="img-card">', unsafe_allow_html=True)
+        
+        # 這些圖片也都會自動完美置中
         if adv == "全加器":
             st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=400)
+            st.latex(r"Sum = A \oplus B \oplus C_{in}")
         elif adv == "D正反器":
             st.image("https://upload.wikimedia.org/wikipedia/commons/2/2f/D-Type_Flip-flop_Symbol.svg", width=300)
+            st.write("時序邏輯基礎：在時鐘訊號(CLK)上升緣時，將輸入(D)的值存入(Q)。")
         elif adv == "半加器":
             st.image("https://upload.wikimedia.org/wikipedia/commons/d/d9/Half_Adder.svg", width=300)
+            st.latex(r"Sum = A \oplus B, \quad Carry = A \cdot B")
         else:
-            st.image("https://upload.wikimedia.org/wikipedia/commons/d/d0/2-to-4_Decoder.svg", width=300)
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.write(f"這是 {adv} 的標準電路結構圖。")
+            st.image("https://upload.wikimedia.org/wikipedia/commons/d/d0/2-to-4_Decoder.svg", width=350)
+            st.write("將 2 個輸入位元解碼為 4 條獨熱(One-hot)輸出線。")
 
     # --- 4. 智慧考評中心 (21題智慧分級) ---
     elif page == "🎓 智慧考評中心":
         st.header(f"🎓 數位邏輯檢定 - {level}")
-        st.write(f"系統已根據您的歷史程度挑選了 7 題 **{level}** 難度題目。")
+        st.write(f"系統已根據您的程度挑選了 7 題 **{level}** 試題。請謹慎作答。")
         
         current_qs = QUESTION_BANK[level]
         score = 0
+        # 使用 form 避免每次點擊選項就刷新
         with st.form("exam_form"):
             user_ans = []
             for i, q in enumerate(current_qs):
-                user_ans.append(st.radio(f"Q{i+1}: {q['q']}", q['o'], key=f"exam_{i}"))
+                st.write(f"**Q{i+1}. {q['q']}**")
+                user_ans.append(st.radio(f"選擇答案 (Q{i+1})", q['o'], key=f"exam_{level}_{i}", label_visibility="collapsed"))
+                st.divider()
             
-            if st.form_submit_button("提交檢定報告"):
+            submitted = st.form_submit_button("提交檢定報告", type="primary")
+            if submitted:
                 for i, q in enumerate(current_qs):
                     if user_ans[i] == q['a']: score += (100 // len(current_qs))
+                # 將分數存入 session state 以便下次判定難度
                 st.session_state.last_score = score
-                st.write(f"### 檢定得分：{score}")
-                if score >= 90: st.balloons(); st.success("卓越！您已解鎖更高階難度。")
-                st.rerun()
+                st.write(f"### 本次檢定得分：{score} / 100")
+                if score >= 90: 
+                    st.balloons()
+                    st.success("表現卓越！系統難度將提升至下一等級。")
+                elif score >= 60:
+                    st.info("通過檢定。繼續保持！")
+                else:
+                    st.error("未通過。建議回到基礎館複習。")
+                # 稍微延遲後刷新頁面以更新側邊欄狀態
+                # st.rerun() 
 
     # --- 其他功能 ---
     elif page == "🔄 數據轉換站":
-        st.header("🔄 數制互補轉換")
-        st.write("請輸入二進制或格雷碼進行雙向轉換。")
-        st.text_input("輸入區", "1011")
-        st.info("轉換結果：1110 (Gray)")
+        st.header("🔄 數制互補轉換 (Binary ↔ Gray)")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Binary to Gray")
+            b_in = st.text_input("輸入二進制", "1010")
+            try:
+                g_out = bin(int(b_in, 2) ^ (int(b_in, 2) >> 1))[2:].zfill(len(b_in))
+                st.success(f"格雷碼: {g_out}")
+            except: st.error("格式錯誤")
+        with col2:
+            st.subheader("Gray to Binary")
+            g_in = st.text_input("輸入格雷碼", "1111")
+            try:
+                b = g_in[0]
+                for i in range(1, len(g_in)): b += str(int(b[-1]) ^ int(g_in[i]))
+                st.info(f"二進制: {b}")
+            except: st.error("格式錯誤")
 
     elif page == "🎨 城市規劃室":
         st.header("🎨 風格個性化設定")
-        st.session_state.prefs['bg'] = st.color_picker("城市底色", p['bg'])
-        st.session_state.prefs['btn'] = st.color_picker("按鈕主題色", p['btn'])
-        if st.button("套用新風格"): st.rerun()
+        st.write("調整您的專屬控制台風格。")
+        col1, col2 = st.columns(2)
+        with col1:
+            new_bg = st.color_picker("城市底色 (背景)", p['bg'])
+            if new_bg != p['bg']:
+                st.session_state.prefs['bg'] = new_bg
+                st.rerun()
+        with col2:
+            new_btn = st.color_picker("強調色 (按鈕/邊框)", p['btn'])
+            if new_btn != p['btn']:
+                st.session_state.prefs['btn'] = new_btn
+                st.rerun()
 
 # --- 登入介面 ---
 if "name" not in st.session_state:
     st.title("🛡️ LogiMind 啟動入口")
+    st.write("請輸入您的管理員身份以連接至核心系統。")
     n = st.text_input("管理員代號")
-    if st.button("啟動系統"): st.session_state.name = n; st.rerun()
-else: main()
+    if st.button("啟動系統", type="primary"): 
+        if n.strip():
+            st.session_state.name = n
+            st.rerun()
+        else:
+            st.warning("請輸入有效的代號。")
+else:
+    main()
