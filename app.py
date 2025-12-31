@@ -135,9 +135,9 @@ def main():
         
         st.header("🛠️ 第三章：管理員操作手冊")
         st.info("""
-        * **主題自定義**：在城市規劃室中，您可以自由調整背景色與按鈕顏色。系統會自動計算對比度，確保文字清晰。
-        * **動態數據觀察**：所有的真值表均採用強制黑字 HTML 渲染，確保在深色模式下不會發生文字消失的情況。
-        * **實時模擬**：請多利用數據轉換站來練習二進制與格雷碼的切換，這在工業自動化中極其重要。
+        * **主題自定義**：在城市規劃室中，您可以自由調整背景色與按鈕顏色。
+        * **動態數據觀察**：本系統備有網路連接功能，若您感覺邏輯閘顯示詭異，請立即與網路連接。
+        * **實時模擬**：請多利用格雷碼轉換大樓來練習二進制與格雷碼的切換，這在工業自動化中極其重要。
         """)
         st.write("---")
         st.caption("LogiMind V51 - 致力於提供最精準的數位邏輯教育體驗。")
@@ -169,13 +169,13 @@ def main():
     # --- 3. 進階電路區 ---
     elif page == "🏗️ 進階電路區":
         st.header("🏗️ 進階電路模組")
-        adv = st.radio("選擇電路", ["全加器", "D正反器"])
+        adv = st.radio("選擇電路", ["全加器", "半加器"])
         if adv == "全加器":
             st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=350)
             st.write("全加器考慮了低位的進位，是執行多位元加法的基礎。")
         else:
-            st.image("https://upload.wikimedia.org/wikipedia/commons/2/2f/D-Type_Flip-flop_Symbol.svg", width=250)
-            st.write("D正反器在時鐘邊緣鎖存數據，是記憶體的最小單位。")
+            st.image("https://zh.wikipedia.org/wiki/File:Half_Adder.svg", width=350)
+            st.write("半加器不考慮低位的進位，是執行最基礎單位元加法以及構成全加器的基礎。")
 
     # --- 4. 智慧考評 ---
     elif page == "🎓 智慧考評中心":
@@ -213,4 +213,5 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title=f"LogiMind - {st.session_state.name}", layout="wide")
     main()
+
 
