@@ -97,7 +97,7 @@ def main():
     # --- 頁面 1: 願景大廳 ---
     if page in ["🏠 願景大廳", "🏠 Hall of Vision"]:
         st.title(page)
-        st.headerr(f"### **Welcome**, Admin **{st.session_state.name}**")
+        st.header(f"### **Welcome**, Admin **{st.session_state.name}**")
         st.write("這是一個整合了網路爬蟲技術與多語系支援的數位邏輯學習系統。")
         st.write("""在二十世紀中葉，當人類第一次嘗試將數學運算自動化時，Claude Shannon 發現了布林代數與電子開關之間的驚人連結。
         這一發現奠定了我們今天所在這座「LogiMind 數位之城」的所有基石。在這裡，複雜的邏輯不再是紙上的公式，而是流動的電子脈衝。
@@ -198,4 +198,5 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title="LogiMind V53", layout="wide")
     main()
+
 
