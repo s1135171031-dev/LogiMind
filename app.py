@@ -169,7 +169,7 @@ def main():
     # --- 3. 進階電路區 ---
     elif page == "🏗️ 進階電路區":
         st.header("🏗️ 進階電路模組")
-        adv = st.radio("選擇電路", ["全加器", "半加器", "解碼器"])
+        adv = st.selectbox("選擇電路", ["全加器", "半加器", "解碼器"])
         if adv == "全加器":
             st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=350)
             st.write("全加器考慮了低位的進位，是執行多位元加法的基礎。")
@@ -216,6 +216,7 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title=f"LogiMind - {st.session_state.name}", layout="wide")
     main()
+
 
 
 
