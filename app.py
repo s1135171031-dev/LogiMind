@@ -30,32 +30,39 @@ LANG_PACK = {
 }
 
 # =========================================
-# 2. 視覺引擎與全域設定 (含字體調整)
+# 2. 視覺引擎與全域設定 (強化 CSS)
 # =========================================
 def apply_style(p):
+    # 計算亮度來決定文字顏色
     txt_color = "#000000" if (int(p['bg'].lstrip('#'), 16) > 0x888888) else "#FFFFFF"
     st.markdown(f"""
     <style>
     .stApp {{ 
         background-color: {p['bg']} !important; 
-        font-size: {p['fs']}px !important;
     }}
-    /* 強制所有文字大小與顏色 */
-    h1, h2, h3, h4, p, span, label, li, div {{ 
+    /* 強制所有層級文字顯示正確顏色與大小 */
+    .stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp span, .stApp label, .stApp li, .stApp div {{ 
         color: {txt_color} !important; 
         font-size: {p['fs']}px !important;
     }}
     
-    /* 表格樣式：強制黑字白底 */
+    /* 表格專用樣式：強制黑字白底 */
     .table-container {{ background-color: #FFFFFF !important; padding: 15px; border-radius: 10px; margin: 10px 0; }}
-    .logic-table {{ width: 100%; border-collapse: collapse; color: #000000 !important; }}
+    .logic-table {{ width: 100%; border-collapse: collapse; }}
     .logic-table th, .logic-table td {{ 
-        border: 1px solid #DDD; padding: 8px; text-align: center; color: #000000 !important; font-size: 14px !important;
+        border: 1px solid #DDD; padding: 8px; text-align: center; 
+        color: #000000 !important; /* 表格內文字永遠是黑色 */
+        font-size: 14px !important;
     }}
-    .logic-table th {{ background-color: #F2F2F2; }}
+    .logic-table th {{ background-color: #F2F2F2 !important; font-weight: bold; }}
     
-    /* 圖片卡片 */
-    div[data-testid="stImage"] {{ background-color: #FFFFFF !important; padding: 15px; border-radius: 12px; }}
+    /* 圖片外框 */
+    div[data-testid="stImage"] {{ 
+        background-color: #FFFFFF !important; 
+        padding: 15px !important; 
+        border-radius: 12px !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -68,18 +75,18 @@ def render_table(df):
     st.markdown(html, unsafe_allow_html=True)
 
 # =========================================
-# 3. 系統核心資料
+# 3. 系統初始化
 # =========================================
 if "score" not in st.session_state: st.session_state.score = 0
 if "level" not in st.session_state: st.session_state.level = "Easy"
 if "exam_active" not in st.session_state: st.session_state.exam_active = False
 if "prefs" not in st.session_state: 
-    st.session_state.prefs = {"bg":"#0E1117", "btn":"#00D4FF", "fs": 16, "lang": "繁體中文"}
+    st.session_state.prefs = {"bg":"#0E1117", "btn":"#00D4FF", "fs": 18, "lang": "繁體中文"}
 if "net_data" not in st.session_state:
     st.session_state.net_data = "尚未同步雲端數據。"
 
 # =========================================
-# 4. 主程式流程
+# 4. 主程式邏輯
 # =========================================
 def main():
     p = st.session_state.prefs
@@ -91,50 +98,58 @@ def main():
         st.write(f"{L['sidebar_admin']}: **{st.session_state.name}**")
         st.write(f"{L['sidebar_lvl']}: **{st.session_state.level}**")
         st.divider()
-        page = st.radio("MENU", L["menu"], label_visibility="collapsed")
-        if st.button("Logout / 登出"): st.session_state.clear(); st.rerun()
+        # 導航選單
+        page = st.radio("導航中心", L["menu"], label_visibility="collapsed")
+        if st.button("Logout / 登出"): 
+            st.session_state.clear()
+            st.rerun()
 
-    # --- 頁面 1: 願景大廳 ---
-    if page in ["**🏠 願景大廳**", "🏠 Hall of Vision"]:
-        st.title(page)
-        st.title(f"### Welcome, Admin {st.session_state.name}")
+    # --- 頁面 1: 願景大廳 (修正比對字串) ---
+    if page in ["🏠 願景大廳", "🏠 Hall of Vision"]:
+        st.title(f"Welcome, Admin {st.session_state.name}")
         st.write("這是一個整合了網路爬蟲技術與多語系支援的**數位邏輯學習系統**。")
+        
+        st.header("📜 第一章：數位邏輯的演進與城市的誕生")
         st.write("""在二十世紀中葉，當人類第一次嘗試將數學運算自動化時，Claude Shannon 發現了布林代數與電子開關之間的驚人連結。
-        這一發現奠定了我們今天所在這座「LogiMind 數位之城」的所有基石。在這裡，複雜的邏輯不再是紙上的公式，而是流動的電子脈衝。
-        作為這座城市的管理員，您正在操控著人類文明最偉大的發明——數位邏輯。從最簡單的燈泡開關到現代的超級電腦，
-        其核心邏輯依然遵循著您將在基礎邏輯館中學到的那七大閘極。當你覺得熟練了，去了解進階電路區在做什麼吧!!!
-        """)
-        st.title("🏗️ 第二章：系統架構與學習路徑")
-        st.write("""
-        首先前往**基礎邏輯館**閱讀邏輯閘的知識，學習邏輯閘的運用與長相\n
-        再來前往**進階電路區**學習更複雜的邏輯電路與用法\n
-        最後可以往** 格雷碼轉換大樓**走，裡面的轉換器，可以讓你學習格雷碼與二進位制德轉換\n
-        當你結束上述管理區域，請走向最後的**智慧考評中心**裡面有AI機器人協助你進行晉升考試，越來越高的階級，能解鎖的功能與專區會不一樣\n
-        期望你達到最高分數!!!
+        這一發現奠定了我們今天所在這座「LogiMind 數位之城」的所有基石。在這裡，複雜的邏輯不再是紙上的公式，而是流動的電子脈衝。""")
+        
+        st.header("🏗️ 第二章：系統架構與學習路徑")
+        st.info("""
+        1. 首先前往 **基礎邏輯館** 學習邏輯閘的知識與長相。
+        2. 前往 **進階電路區** 學習更複雜的邏輯電路與用法。
+        3. 透過 **格雷碼轉換大樓** 熟練二進位制與格雷碼的轉換。
+        4. 最後前往 **智慧考評中心** 進行晉升考試，解鎖更多功能！
         """)
         st.title("📖管理員手冊")
+
         st.write("""
-        * **基礎邏輯館** 基礎邏輯館能協助你進行基礎邏輯閘的學習與了解
-        * **進階電路區** 進階電路區則是由基礎邏輯組成的複雜電路，務必在學習玩基礎邏輯後再前往
-        * **格雷碼轉換大樓** 格雷碼轉圜大樓幫助你學習格雷碼轉換，更進一步了解
-        * **智慧考評中心** 請再前往此地前完整學習完前面內容再前往，這裡將為您進行升階考試
+        * **基礎邏輯館** 基礎邏輯館能協助你進行基礎邏輯閘的學習與了解。
+        * **進階電路區** 進階電路區則是由基礎邏輯組成的複雜電路，務必在學習玩基礎邏輯後再前往。
+        * **格雷碼轉換大樓** 格雷碼轉圜大樓幫助你學習格雷碼轉換，更進一步了解。
+        * **智慧考評中心** 請再前往此地前完整學習完前面內容再前往，這裡將為您進行升階考試。
         """)
-        # --- 頁面 2: 基礎邏輯館 ---
+
+    # --- 頁面 2: 基礎邏輯館 ---
     elif page in ["🔬 基礎邏輯館", "🔬 Logic Gate Lab"]:
         st.header(page)
         g = st.selectbox("Gate Selection", ["AND", "OR", "NOT", "XOR"])
-        urls = {"AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
-                "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
-                "NOT": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/NOT_ANSI.svg/250px-NOT_ANSI.svg.png",
-                "XOR": "https://upload.wikimedia.org/wikipedia/commons/0/01/XOR_ANSI.svg"}
+        urls = {
+            "AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
+            "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
+            "NOT": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/NOT_ANSI.svg/250px-NOT_ANSI.svg.png",
+            "XOR": "https://upload.wikimedia.org/wikipedia/commons/0/01/XOR_ANSI.svg"
+        }
         st.image(urls[g], width=200)
-        st.write(f"**雲端最新描述:** {st.session_state.net_data}")
+        st.write(f"📡 **{st.session_state.net_data}**")
         
-        # 示範表格
-        df = pd.DataFrame({"A":[0,0,1,1],"B":[0,1,0,1],"Y":[0,0,0,1] if g=="AND" else [0,1,1,1]})
-        render_table(df)
+        data = {"A":[0,0,1,1],"B":[0,1,0,1]}
+        if g=="AND": data["Y"]=[0,0,0,1]
+        elif g=="OR": data["Y"]=[0,1,1,1]
+        elif g=="XOR": data["Y"]=[0,1,1,0]
+        else: data = {"A":[0,1], "Y":[1,0]} # NOT Gate
+        render_table(pd.DataFrame(data))
 
-    # --- 頁面 3: 網路更新中心 (獨立頁面) ---
+    # --- 頁面 3: 網路更新中心 ---
     elif page in ["📡 網路更新中心", "📡 Network Update"]:
         st.header(page)
         st.write("系統正與 IEEE 全球邏輯標準庫保持連線...")
@@ -161,7 +176,7 @@ def main():
         t_data = [{"Dec": i, "Bin": bin(i)[2:].zfill(4), "Gray": bin(i ^ (i>>1))[2:].zfill(4)} for i in range(16)]
         render_table(pd.DataFrame(t_data))
 
-    # --- 頁面 5: 考評中心 (20題) ---
+    # --- 頁面 5: 考評中心 ---
     elif page in ["🎓 智慧考評中心", "🎓 Smart Exam"]:
         st.header(page)
         if not st.session_state.exam_active:
@@ -170,41 +185,41 @@ def main():
                 st.session_state.exam_active = True
                 st.rerun()
         else:
-            # 簡化 20 題邏輯，實際可擴充題庫
-            with st.form("exam"):
-                st.write("模擬 20 題檢定中... (請在正式版中填入題庫)")
-                ans = [st.radio(f"Q{i+1}", ["0", "1"], key=f"q{i}") for i in range(20)]
+            with st.form("exam_form"):
+                st.write("模擬 20 題能力檢定中...")
+                # 這裡可以用迴圈產生 20 題
+                ans_list = [st.radio(f"Q{i+1}", ["0", "1"], horizontal=True) for i in range(20)]
                 if st.form_submit_button("Submit"):
-                    score = random.randint(50, 100)
+                    score = random.randint(60, 100)
                     st.session_state.score = score
-                    st.session_state.level = "Hard" if score > 80 else "Medium"
+                    st.session_state.level = "Hard" if score > 85 else "Medium"
                     st.session_state.exam_active = False
-                    st.success(f"Score: {score}! Level set to {st.session_state.level}")
+                    st.success(f"檢定結束！得分: {score}，系統等級提升至: {st.session_state.level}")
                     st.rerun()
 
     # --- 頁面 6: 個人化設定 ---
     elif page in ["🎨 個人化設定", "🎨 Personalization"]:
         st.header(page)
-        new_lang = st.selectbox("Language / 語系", ["繁體中文", "English"], index=0 if p['lang']=="繁體中文" else 1)
-        new_fs = st.slider("Font Size / 字體大小", 14, 24, p['fs'])
+        new_lang = st.selectbox("Language / 語系", ["繁體中文", "English"], 
+                               index=0 if p['lang']=="繁體中文" else 1)
+        new_fs = st.slider("Font Size / 字體大小", 14, 30, p['fs'])
         new_bg = st.color_picker("Background Color / 背景", p['bg'])
         new_btn = st.color_picker("Theme Color / 主題色", p['btn'])
         
         if st.button(L["save_btn"]):
             st.session_state.prefs = {"bg": new_bg, "btn": new_btn, "fs": new_fs, "lang": new_lang}
-            st.success("Settings Saved!")
+            st.success("設定已儲存！系統重新啟動...")
             st.rerun()
 
-# --- 啟動 ---
+# --- 登入介面 ---
 if "name" not in st.session_state:
     st.set_page_config(page_title="LogiMind Login", layout="centered")
-    st.title("🛡️ Admin Login")
-    name = st.text_input("Enter Code")
-    if st.button("Unlock"):
-        if name: st.session_state.name = name; st.rerun()
+    st.title("🛡️ LogiMind 管理員登入")
+    name = st.text_input("輸入您的管理員代號")
+    if st.button("Unlock / 解鎖系統"):
+        if name:
+            st.session_state.name = name
+            st.rerun()
 else:
     st.set_page_config(page_title="LogiMind V53", layout="wide")
     main()
-
-
-
