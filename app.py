@@ -44,7 +44,6 @@ def apply_style(p):
         border-left: 5px solid {p['btn']};
         margin-bottom: 20px;
     }}
-    /* 表格強化 */
     .table-container {{ background-color: #FFFFFF !important; padding: 10px; border-radius: 8px; }}
     .logic-table td, .logic-table th {{ color: #000!important; font-size: 14px!important; border: 1px solid #eee; }}
     </style>
@@ -80,6 +79,7 @@ def gray_to_bin(g_str):
 # =========================================
 if "score" not in st.session_state: st.session_state.score = 0
 if "level" not in st.session_state: st.session_state.level = "Junior Admin"
+if "exam_active" not in st.session_state: st.session_state.exam_active = False
 if "prefs" not in st.session_state: st.session_state.prefs = {"bg":"#0E1117", "btn":"#00D4FF", "fs": 18, "lang": "繁體中文"}
 if "net_data" not in st.session_state: st.session_state.net_data = "系統已就緒。"
 
@@ -101,23 +101,14 @@ def main():
     # --- 頁面 1: 願景大廳 (華麗版) ---
     if page in ["🏠 願景大廳", "🏠 Hall of Vision"]:
         st.title(f"🚀 {L['welcome']}")
-        
-        # 華麗儀表板
         col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("當前權限", st.session_state.level)
-        with col2:
-            st.metric("考評積分", f"{st.session_state.score} pts")
-        with col3:
-            st.metric("網路狀態", "穩定 (Encrypted)", delta="OK")
+        with col1: st.metric("當前權限", st.session_state.level)
+        with col2: st.metric("考評積分", f"{st.session_state.score} pts")
+        with col3: st.metric("網路狀態", "穩定", delta="OK")
 
-        st.markdown(f"""
-        <div class="metric-card">
-        <h3>🏢 指揮部簡報</h3>
+        st.markdown(f"""<div class="metric-card"><h3>🏢 指揮部簡報</h3>
         <p>歡迎來到數位之城。這裡不僅是學習場所，更是您掌控邏輯流向的基地。</p>
-        <p><b>最新指令：</b> 請先確保同步全球數據庫，以獲取最新的 7nm 邏輯描述資訊。</p>
-        </div>
-        """, unsafe_allow_html=True)
+        <p><b>最新指令：</b> 請先確保同步全球數據庫，以獲取最新的邏輯描述資訊。</p></div>""", unsafe_allow_html=True)
         
         st.header("🏗️ 城市藍圖")
         c1, c2 = st.columns(2)
@@ -140,74 +131,82 @@ def main():
                 "XOR": "https://upload.wikimedia.org/wikipedia/commons/0/01/XOR_ANSI.svg"}
         st.image(urls[g], width=250)
         st.info(f"📡 雲端數據：{st.session_state.net_data}")
-        # 表格略...
+        
+        df = pd.DataFrame({"A":[0,0,1,1],"B":[0,1,0,1],"Y":[0,0,0,1] if g=="AND" else [0,1,1,1]})
+        render_table(df)
 
-    # --- 頁面 3: 進階電路區 (找回來了！) ---
+    # --- 頁面 3: 進階電路區 (修復圖片網址) ---
     elif page in ["🏗️ 進階電路區", "🏗️ Advanced Circuit"]:
         st.header("🏗️ 進階數位電路模組")
-        st.write("當多個基礎邏輯閘組合在一起時，就產生了具備運算能力的進階電路。")
-        
         mode = st.tabs(["全加器 (Full Adder)", "解碼器 (Decoder)"])
         
         with mode[0]:
             st.subheader("全加器 (Full Adder)")
-            st.write("全加器是電腦 CPU 執行加法運算的最核心單元，它考慮了來自低位元的進位 (Ci)。")
-            
-
-[Image of a Full Adder circuit diagram]
-
-            st.markdown("""
-            - **輸入**: A, B, Ci (進位輸入)
-            - **輸出**: S (總和), Co (進位輸出)
-            """)
+            st.write("全加器考慮了進位 (Carry-in)，是數位加法的核心。")
+            st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=400)
+            st.markdown("- **S (Sum)** = $A \oplus B \oplus C_{in}$ \n- **C_out** = $AB + C_{in}(A \oplus B)$")
             
         with mode[1]:
-            st.subheader("解碼器 (Decoder)")
-            st.write("解碼器將編碼輸入轉換為唯一的輸出訊號，常用於記憶體定址。")
-            
+            st.subheader("2對4解碼器 (2-to-4 Decoder)")
+            st.write("將 2 位元編碼輸入轉換為 4 個獨立輸出訊號。")
+            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/1_bit_Decoder_2-to-4_line_zh_hant.svg/960px-1_bit_Decoder_2-to-4_line_zh_hant.svg.png", width=400)
 
     # --- 頁面 4: 格雷碼大樓 (雙向轉換) ---
     elif page in ["🔄 格雷碼轉換大樓", "🔄 Gray Code Tower"]:
         st.header("🔄 格雷碼雙向通訊中心")
-        
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("二進制 ➔ 格雷碼")
             b_in = st.text_input("輸入 Binary", "1010", key="b2g")
-            st.code(f"Gray Output: {bin_to_gray(b_in)}", language="text")
-            st.caption("原理：G = B XOR (B >> 1)")
-            
+            st.code(f"Gray Output: {bin_to_gray(b_in)}")
         with c2:
             st.subheader("格雷碼 ➔ 二進制")
             g_in = st.text_input("輸入 Gray", "1111", key="g2b")
-            st.code(f"Binary Output: {gray_to_bin(g_in)}", language="text")
-            st.caption("原理：B[i] = B[i-1] XOR G[i]")
-            
+            st.code(f"Binary Output: {gray_to_bin(g_in)}")
+        
         st.divider()
         st.subheader("📋 4-Bit 對照表")
         t_data = [{"Dec": i, "Binary": bin(i)[2:].zfill(4), "Gray": bin_to_gray(bin(i)[2:].zfill(4))} for i in range(16)]
         render_table(pd.DataFrame(t_data))
 
-    # --- 其他頁面 (網路、考評、設定) 保持原樣但修復選單 ---
+    # --- 頁面 5: 智慧考評中心 (20題) ---
+    elif page in ["🎓 智慧考評中心", "🎓 Smart Exam"]:
+        st.header(page)
+        if not st.session_state.exam_active:
+            if st.button("開始 20 題能力檢定"): 
+                st.session_state.exam_active = True
+                st.rerun()
+        else:
+            with st.form("exam_form"):
+                st.write("### 檢定測驗中...")
+                ans = [st.radio(f"Q{i+1}: 模擬邏輯問題 {i+1}", ["0", "1"], horizontal=True) for i in range(20)]
+                if st.form_submit_button("提交檢定報告"):
+                    st.session_state.score = random.randint(70, 100)
+                    st.session_state.exam_active = False
+                    st.rerun()
+
+    # --- 頁面 6: 網路更新與設定 ---
     elif page in ["📡 網路更新中心", "📡 Network Update"]:
         st.header(page)
-        if st.button(L["update_btn"]):
-            st.session_state.net_data = f"更新完成：{time.strftime('%H:%M:%S')} 同步成功。"
-            st.success("數據已寫入系統核心。")
-            
+        if st.button("同步雲端資料庫"):
+            st.session_state.net_data = f"更新完成於 {time.strftime('%H:%M:%S')}"
+            st.success("同步成功！")
+
     elif page in ["🎨 個人化設定", "🎨 Personalization"]:
-        st.header(page)
-        # 設定邏輯略...
-        if st.button(L["save_btn"]):
+        st.header("🎨 系統環境設定")
+        new_fs = st.slider("字體大小", 14, 30, p['fs'])
+        new_bg = st.color_picker("背景顏色", p['bg'])
+        if st.button("套用設定"):
+            st.session_state.prefs.update({"bg": new_bg, "fs": new_fs})
             st.rerun()
 
 # --- 入口 ---
 if "name" not in st.session_state:
-    st.set_page_config(page_title="LogiMind Login", layout="centered")
+    st.set_page_config(page_title="LogiMind Login")
     st.title("🛡️ 管理員登入")
     name = st.text_input("代號")
     if st.button("進入城市"):
         if name: st.session_state.name = name; st.rerun()
 else:
-    st.set_page_config(page_title="LogiMind V54", layout="wide")
+    st.set_page_config(page_title="LogiMind V54.1", layout="wide")
     main()
