@@ -4,14 +4,23 @@ import random
 import os
 import base64
 import time
-import numpy as np # 新增 numpy 用於生成圖表數據
+import numpy as np 
 from datetime import datetime
 
 # ==================================================
 # 0. 自動化題庫生成系統 (首次運行自動建立 1000 題)
 # ==================================================
 def init_question_bank():
+    # 如果檔案不存在，或是檔案內容太少(舊版)，都重新生成
+    should_generate = False
     if not os.path.exists("questions.txt"):
+        should_generate = True
+    else:
+        with open("questions.txt", "r", encoding="utf-8") as f:
+            if len(f.readlines()) < 100: # 簡單判斷是否為舊版少題庫
+                should_generate = True
+
+    if should_generate:
         with st.spinner("正在初始化市政題庫 (生成 1000 題)..."):
             with open("questions.txt", "w", encoding="utf-8") as f:
                 # 1. 邏輯閘題目生成
@@ -45,7 +54,6 @@ def init_question_bank():
                 # 複製常識題補滿剩餘
                 for _ in range(300):
                     q = random.choice(base_qs)
-                    # 加上隨機後綴避免 ID 重複
                     parts = q.strip().split("|")
                     parts[0] = f"{parts[0]}-{random.randint(100,999)}" 
                     f.write("|".join(parts) + "\n")
@@ -68,10 +76,20 @@ SVG_ICONS = {
     "XOR": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M15,10 C15,10 30,10 45,10 C65,10 75,30 75,30 C75,30 65,50 45,50 C30,50 15,50 15,50 C20,40 20,20 15,10" fill="none" stroke="currentColor" stroke-width="3"/><path d="M5,10 C10,20 10,40 5,50" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L13,20 M0,40 L13,40 M75,30 L85,30" stroke="currentColor" stroke-width="3"/></svg>'''
 }
 
+# --- 修正點：補足三個顏色以對應 CPU, Net, Sec 三個欄位 ---
 THEMES = {
-    "專業暗色 (Night City)": {"bg": "#212529", "txt": "#E9ECEF", "btn": "#495057", "btn_txt": "#FFFFFF", "card": "#343A40", "chart": ["#00ADB5", "#EEEEEE"]},
-    "舒適亮色 (Day City)": {"bg": "#F8F9FA", "txt": "#343A40", "btn": "#6C757D", "btn_txt": "#FFFFFF", "card": "#FFFFFF", "chart": ["#343A40", "#6C757D"]},
-    "海軍藍 (Port City)": {"bg": "#1A2530", "txt": "#DDE1E5", "btn": "#3E5C76", "btn_txt": "#FFFFFF", "card": "#2C3E50", "chart": ["#66FCF1", "#45A29E"]}
+    "專業暗色 (Night City)": {
+        "bg": "#212529", "txt": "#E9ECEF", "btn": "#495057", "btn_txt": "#FFFFFF", "card": "#343A40", 
+        "chart": ["#00ADB5", "#EEEEEE", "#FF2E63"] # Cyan, White, Red
+    },
+    "舒適亮色 (Day City)": {
+        "bg": "#F8F9FA", "txt": "#343A40", "btn": "#6C757D", "btn_txt": "#FFFFFF", "card": "#FFFFFF", 
+        "chart": ["#343A40", "#6C757D", "#ADB5BD"] # Dark Grey, Mid Grey, Light Grey
+    },
+    "海軍藍 (Port City)": {
+        "bg": "#1A2530", "txt": "#DDE1E5", "btn": "#3E5C76", "btn_txt": "#FFFFFF", "card": "#2C3E50", 
+        "chart": ["#66FCF1", "#45A29E", "#1F2833"] # Neon Cyan, Teal, Dark Blue
+    }
 }
 
 if "state" not in st.session_state:
@@ -105,7 +123,7 @@ def render_svg(svg_code):
 # 輔助：生成動態數據
 def get_chart_data():
     return pd.DataFrame(
-        np.random.randint(10, 90, size=(20, 3)),
+        np.random.randint(10, 90, size=(20, 3)), # 生成 3 列數據
         columns=['CPU Load', 'Net I/O', 'Sec Level']
     )
 
