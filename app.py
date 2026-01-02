@@ -5,9 +5,9 @@ import os
 import time
 
 # ==================================================
-# 1. V130 核心初始化
+# 1. V131 核心初始化
 # ==================================================
-st.set_page_config(page_title="LogiMind V130", layout="wide")
+st.set_page_config(page_title="LogiMind V131", layout="wide")
 
 if "name" not in st.session_state:
     st.session_state.update({
@@ -29,15 +29,17 @@ def has_access(rank):
         return False
 
 def logout():
+    # 清除所有 Session 狀態並重新整理
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.rerun()
 
 # ==================================================
-# 3. 視覺防護引擎 (V130 強化版)
+# 3. 視覺防護引擎 (V131 強化版)
 # ==================================================
 def apply_css():
     p = st.session_state.prefs
+    # 計算背景亮度以自動調整文字顏色
     bg_hex = p['bg'].lstrip('#')
     r, g, b = tuple(int(bg_hex[i:i+2], 16) for i in (0, 2, 4))
     txt_color = "#000000" if (r*0.299 + g*0.587 + b*0.114) > 140 else "#FFFFFF"
@@ -48,7 +50,9 @@ def apply_css():
     h1, h2, h3, h4, p, span, div, label {{ color: {txt_color} !important; font-size: {p['fs']}px !important; }}
     
     /* 登出按鈕專用樣式 */
-    .logout-btn {{ border: 2px solid red; color: red; background: transparent; }}
+    div.stButton > button:first-child {{
+        border-radius: 8px;
+    }}
     
     /* 圖片與表格強制白底黑字 */
     div[data-testid="stImage"] {{ background-color: white !important; padding: 15px; border-radius: 10px; }}
@@ -58,12 +62,12 @@ def apply_css():
     div[data-testid="stDataFrame"] td, .stTable td {{ color: black !important; text-align: center !important; }}
     
     /* 按鈕 */
-    .stButton>button {{ background-color: {p['btn']} !important; color: white !important; border-radius: 8px; width: 100%; }}
+    .stButton>button {{ background-color: {p['btn']} !important; color: white !important; width: 100%; }}
     </style>
     """, unsafe_allow_html=True)
 
 # ==================================================
-# 4. 題庫與邏輯功能庫
+# 4. 題庫讀取
 # ==================================================
 def load_questions():
     q_list = []
@@ -84,34 +88,31 @@ def main():
     is_frank = st.session_state.name.lower() == "frank"
     
     with st.sidebar:
-        st.title("🏙️ LogiMind V130")
+        st.title("🏙️ LogiMind V131")
         st.caption(f"User: {st.session_state.name}")
         if is_frank: st.warning("★ 終端特權模式")
         else: st.info(f"等級: {st.session_state.level}")
         st.divider()
         
-        # V130 全新導航結構：數位邏輯五大支柱
+        # 導航結構
         m_home = "🏠 系統概覽"
-        m_gate = "🔬 1. 基礎邏輯閘 (Gates)"
-        m_math = "🔢 2. 數碼運算 (Math)"
-        m_simp = "🧮 3. 化簡邏輯 (Simplification)"
-        m_comb = "🔀 4. 組合邏輯 (Combinational)" # NEW
-        m_seq  = "🔄 5. 序向邏輯 (Sequential)"    # NEW
-        m_exam = "🎓 智慧考評 (Exam)"
+        m_gate = "🔬 1. 基礎邏輯閘"
+        m_math = "🔢 2. 數碼運算"
+        m_simp = "🧮 3. 化簡邏輯"
+        m_comb = "🔀 4. 組合邏輯"
+        m_seq  = "🔄 5. 序向邏輯"
+        m_exam = "🎓 智慧考評"
         m_set  = "🎨 設定與登出"
         
-        # 權限過濾
+        # 權限過濾菜單
         menu = [m_home, m_gate, m_math, m_exam]
         
-        # 中級解鎖：化簡
         if is_frank or has_access("中級管理員"): menu.append(m_simp)
         else: menu.append("🔒 化簡邏輯 (需中級)")
             
-        # 高級解鎖：組合邏輯
         if is_frank or has_access("高級工程師"): menu.append(m_comb)
         else: menu.append("🔒 組合邏輯 (需高級)")
             
-        # 終端解鎖：序向邏輯
         if is_frank or has_access("終端管理員"): menu.append(m_seq)
         else: menu.append("🔒 序向邏輯 (需終端)")
             
@@ -120,15 +121,15 @@ def main():
 
     # --- 0. 首頁 ---
     if page == m_home:
-        st.header("🏠 LogiMind V130 知識架構")
+        st.header("🏠 LogiMind V131 知識架構")
         st.markdown("""
-        **V130 更新日誌：** 已整合數位邏輯全領域知識。
+        **V131 修正日誌：** 修復語法錯誤，穩定核心功能。
         
         * **第一層：基礎閘** (AND, OR, NOT...)
         * **第二層：數碼系統** (二/八/十/十六進制)
         * **第三層：布林代數與卡諾圖** (邏輯化簡)
-        * **第四層：組合邏輯** (MUX, DeMUX, Encoder, Decoder)
-        * **第五層：序向邏輯** (Flip-Flops, Counters)
+        * **第四層：組合邏輯** (MUX 多工器)
+        * **第五層：序向邏輯** (Flip-Flops 記憶單元)
         """)
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/AND_ANSI.svg/120px-AND_ANSI.svg.png", width=100)
 
@@ -137,7 +138,6 @@ def main():
         st.header("🔬 基礎邏輯閘與真值表")
         g = st.selectbox("選擇元件", ["AND", "OR", "XOR", "NAND", "NOR", "NOT"])
         
-        # 動態生成真值表數據
         data = {"A": [0,0,1,1], "B": [0,1,0,1]}
         if g == "AND": data["Y"] = [0,0,0,1]
         elif g == "OR":  data["Y"] = [0,1,1,1]
@@ -149,7 +149,6 @@ def main():
         c1, c2 = st.columns(2)
         c1.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
         
-        # 圖片映射
         urls = {
             "AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
             "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
@@ -179,13 +178,16 @@ def main():
             n1 = st.text_input("Bin A", "10")
             n2 = st.text_input("Bin B", "01")
             if st.button("A + B"):
-                res = int(n1, 2) + int(n2, 2)
-                st.success(f"結果: {bin(res)[2:]} (Dec: {res})")
+                try:
+                    res = int(n1, 2) + int(n2, 2)
+                    st.success(f"結果: {bin(res)[2:]} (Dec: {res})")
+                except: st.error("請輸入二進制數字")
 
-    # --- 3. 化簡邏輯 (布林 + KMap) ---
+    # --- 3. 化簡邏輯 ---
     elif "化簡" in page:
+        if "🔒" in page: st.error("權限不足"); st.stop()
         st.header("🧮 布林代數與卡諾圖")
-        st.subheader("De Morgan's Laws (笛摩根定律)")
+        st.subheader("De Morgan's Laws")
         st.latex(r"(A + B)' = A' \cdot B'")
         st.latex(r"(AB)' = A' + B'")
         
@@ -204,16 +206,13 @@ def main():
         elif m0 and m2: st.code("B'")
         elif m1 and m3: st.code("B")
         else: st.write("選取更多相鄰項以化簡...")
-        
-        
 
-    # --- 4. 組合邏輯 (V130 NEW) ---
+    # --- 4. 組合邏輯 ---
     elif "組合" in page:
-        st.header("🔀 組合邏輯電路 (Combinational Logic)")
-        st.info("輸出僅取決於當前輸入，無記憶功能。")
-        
-        st.subheader("4-to-1 多工器 (Multiplexer)")
-        st.write("MUX 原理：根據選擇線 (S1, S0) 決定哪個資料輸入 (D) 通過。")
+        if "🔒" in page: st.error("權限不足"); st.stop()
+        st.header("🔀 組合邏輯 (MUX)")
+        st.subheader("4-to-1 Multiplexer")
+        st.write("原理：選擇線 (S1, S0) 決定 D0-D3 誰通過。")
         
         col_ctrl, col_data = st.columns([1, 2])
         with col_ctrl:
@@ -233,20 +232,15 @@ def main():
         st.success(f"選擇線 S1S0 = {s1}{s0} (Index {sel})")
         st.metric("MUX 輸出 (Y)", out)
         
-        
+        # 顯示 MUX 圖片 (使用 URL 替代文字標籤)
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Multiplexer_4-to-1.svg/300px-Multiplexer_4-to-1.svg.png", width=300)
 
-[Image of 4-to-1 multiplexer circuit diagram]
-
-
-    # --- 5. 序向邏輯 (V130 NEW) ---
+    # --- 5. 序向邏輯 ---
     elif "序向" in page:
-        st.header("🔄 序向邏輯電路 (Sequential Logic)")
-        st.info("輸出取決於當前輸入與過去狀態 (記憶功能)。")
+        if "🔒" in page: st.error("權限不足"); st.stop()
+        st.header("🔄 序向邏輯 (Flip-Flop)")
+        st.subheader("JK 觸發器模擬")
         
-        st.subheader("JK 觸發器 (Flip-Flop) 模擬")
-        st.write("狀態表分析：")
-        
-        # 互動輸入
         c1, c2, c3 = st.columns(3)
         j = c1.selectbox("J Input", [0, 1])
         k = c2.selectbox("K Input", [0, 1])
@@ -272,8 +266,6 @@ def main():
             "J": [j], "K": [k], "Q(t)": [q_curr], 
             "Q(t+1) 下一態": [q_next], "模式": [status]
         }))
-        
-        
 
     # --- 6. 考評 ---
     elif page == m_exam:
@@ -297,7 +289,7 @@ def main():
                     st.session_state.used_ids.append(q['id'])
                     st.rerun()
 
-    # --- 7. 設定與登出 (Frank 要求 2) ---
+    # --- 7. 設定與登出 ---
     elif page == m_set:
         st.header("🎨 個人化與帳戶")
         
@@ -320,7 +312,7 @@ def main():
 # ==================================================
 if not st.session_state.name:
     apply_css()
-    st.title("🏙️ LogiMind V130 入口")
+    st.title("🏙️ LogiMind V131 入口")
     n = st.text_input("輸入代碼 (Frank)")
     if st.button("登入"):
         if n: st.session_state.name = n; st.rerun()
