@@ -125,10 +125,10 @@ def main():
     elif page in ["🔬 基礎邏輯館", "🔬 Logic Gate Lab"]:
         st.header(page)
         g = st.selectbox("選擇邏輯閘", ["AND", "OR", "NOT", "XOR"])
-        urls = {"AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
-                "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
-                "NOT": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/NOT_ANSI.svg/250px-NOT_ANSI.svg.png",
-                "XOR": "https://upload.wikimedia.org/wikipedia/commons/0/01/XOR_ANSI.svg"}
+        urls = {"AND": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/AND_ANSI.svg/330px-AND_ANSI.svg.png",
+                "OR": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/OR_ANSI.svg/330px-OR_ANSI.svg.png",
+                "NOT": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/NOT_ANSI.svg/330px-NOT_ANSI.svg.png",
+                "XOR": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/XOR_ANSI.svg/330px-XOR_ANSI.svg.png"}
         st.image(urls[g], width=250)
         st.info(f"📡 雲端數據：{st.session_state.net_data}")
         
@@ -143,7 +143,7 @@ def main():
         with mode[0]:
             st.subheader("全加器 (Full Adder)")
             st.write("全加器考慮了進位 (Carry-in)，是數位加法的核心。")
-            st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=400)
+            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Full-adder_logic_diagram.svg/500px-Full-adder_logic_diagram.svg.png", width=400)
             st.markdown("- **S (Sum)** = $A \oplus B \oplus C_{in}$ \n- **C_out** = $AB + C_{in}(A \oplus B)$")
             
         with mode[1]:
@@ -163,11 +163,6 @@ def main():
             st.subheader("格雷碼 ➔ 二進制")
             g_in = st.text_input("輸入 Gray", "1111", key="g2b")
             st.code(f"Binary Output: {gray_to_bin(g_in)}")
-        
-        st.divider()
-        st.subheader("📋 4-Bit 對照表")
-        t_data = [{"Dec": i, "Binary": bin(i)[2:].zfill(4), "Gray": bin_to_gray(bin(i)[2:].zfill(4))} for i in range(16)]
-        render_table(pd.DataFrame(t_data))
 
     # --- 頁面 5: 智慧考評中心 (20題) ---
     elif page in ["🎓 智慧考評中心", "🎓 Smart Exam"]:
@@ -210,3 +205,4 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title="LogiMind V54.1", layout="wide")
     main()
+
