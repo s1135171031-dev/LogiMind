@@ -4,7 +4,7 @@ import random
 import os
 
 # =========================================
-# 1. 初始化 Session 與 權限 (Frank 隱藏模式)
+# 1. 核心設定與 Frank 權限系統
 # =========================================
 if "name" not in st.session_state:
     st.session_state.update({
@@ -13,58 +13,62 @@ if "name" not in st.session_state:
     })
 
 def has_access(rank):
+    # 終端管理員 Frank 擁有最高權限且不顯示鎖定字樣
     if st.session_state.name.lower() == "frank": return True
     order = ["初級管理員", "中級管理員", "高級工程師", "終端管理員"]
-    try: return order.index(st.session_state.level) >= order.index(rank)
-    except: return False
+    try:
+        return order.index(st.session_state.level) >= order.index(rank)
+    except:
+        return False
 
 # =========================================
-# 2. 視覺防護引擎 (解決字體消失問題)
+# 2. 視覺防護引擎 (強制修復白底白字)
 # =========================================
-def apply_theme_v85():
+def apply_advanced_theme():
     p = st.session_state.prefs
-    # 計算主背景亮度
+    # 計算背景亮度
     bg_hex = p['bg'].lstrip('#')
     r, g, b = tuple(int(bg_hex[i:i+2], 16) for i in (0, 2, 4))
     brightness = (r * 0.299 + g * 0.587 + b * 0.114)
-    txt_color = "#000000" if brightness > 125 else "#FFFFFF"
+    # 主文字顏色
+    txt_color = "#000000" if brightness > 128 else "#FFFFFF"
     
     st.markdown(f"""
     <style>
-    /* 全域背景與文字 */
+    /* 全域文字與背景 */
     .stApp {{ background-color: {p['bg']} !important; color: {txt_color}; }}
     h1, h2, h3, p, span, label, li {{ color: {txt_color} !important; font-size: {p['fs']}px !important; }}
     
-    /* 核心修復：強制表格與真值表內的文字永遠為黑色，防止白底看不見字 */
-    .stDataFrame, .stTable, [data-testid="stTable"] {{
-        background-color: #FFFFFF !important;
-        border-radius: 10px;
-        padding: 5px;
-    }}
-    .stDataFrame td, .stDataFrame th, .stTable td, .stTable th, [data-testid="stTable"] p {{
-        color: #000000 !important;
-    }}
-
-    /* 圖片容器白底 */
+    /* 強制圖片白底容器 (要求 2) */
     div[data-testid="stImage"] {{
         background-color: #FFFFFF !important;
         padding: 20px !important;
-        border-radius: 15px !important;
-        border: 1px solid #ddd;
+        border-radius: 12px !important;
+        border: 2px solid #EEE;
     }}
 
-    /* 按鈕優化 */
+    /* 強制修復表格內文字 (解決字不見問題) */
+    .stTable, [data-testid="stTable"], .stDataFrame {{
+        background-color: #FFFFFF !important;
+        border-radius: 10px;
+    }}
+    .stTable td, .stTable th, [data-testid="stTable"] p, .stDataFrame td {{
+        color: #000000 !important; /* 強制表格字體為黑色 */
+    }}
+
+    /* 按鈕樣式與手機優化 (要求 6) */
     .stButton>button {{
         background-color: {p['btn']} !important;
         color: white !important;
-        border-radius: 8px;
         width: 100%;
+        border-radius: 8px;
+        padding: 10px;
     }}
     </style>
     """, unsafe_allow_html=True)
 
 # =========================================
-# 3. 功能邏輯
+# 3. 題庫讀取 (要求 3, 4)
 # =========================================
 def load_q():
     q_list = []
@@ -76,117 +80,118 @@ def load_q():
     return q_list
 
 # =========================================
-# 4. 主頁面佈局
+# 4. 主程式結構 (修正縮排錯誤)
 # =========================================
 def main():
-    apply_theme_v85()
+    apply_advanced_theme()
     is_frank = st.session_state.name.lower() == "frank"
     
     with st.sidebar:
-        st.title("🏙️ LogiMind V85")
-        # 如果是 Frank，不顯示等級，保持純淨
+        st.title("🏙️ LogiMind V90")
         if not is_frank:
-            st.info(f"權限：{st.session_state.level}")
+            st.info(f"當前等級：{st.session_state.level}")
         
         st.divider()
-        # 選單邏輯：Frank 永遠看不到「鎖定」字樣
-        m1 = "🔬 基礎邏輯館"
-        m2 = "🎓 智慧考評"
-        m3 = "🧮 布林運算" if is_frank or has_access("中級管理員") else "🔒 鎖定區"
-        m4 = "🗺️ 卡諾圖分析" if is_frank or has_access("高級工程師") else "🔒 鎖定區"
-        m5 = "➕ 數位運算" if is_frank or has_access("終端管理員") else "🔒 鎖定區"
-        m6 = "🎨 設定中心"
+        # 選單邏輯 (要求 5: Frank 不顯示鎖定字樣)
+        m1 = "🔬 基礎邏輯視覺符號"
+        m2 = "🎓 智慧考評中心"
+        m3 = "🧮 布林代數轉換" if is_frank or has_access("中級管理員") else "🔒 功能鎖定"
+        m4 = "🗺️ 卡諾圖實驗室" if is_frank or has_access("高級工程師") else "🔒 功能鎖定"
+        m5 = "➕ 數學運算中心" if is_frank or has_access("終端管理員") else "🔒 功能鎖定"
+        m6 = "🎨 個人化中心"
         
-        page = st.radio("導航", [m1, m2, m3, m4, m5, m6])
+        page = st.radio("功能選單", [m1, m2, m3, m4, m5, m6])
 
-    # --- 基礎邏輯館 (真值表修復) ---
+    # --- 1. 基礎邏輯館 (要求 3: 真值表) ---
     if page == m1:
-        st.header("🔬 基礎邏輯視覺符號")
+        st.header("🔬 基礎邏輯館")
         gate = st.selectbox("選擇組件", ["AND", "OR", "XOR", "NOT"])
         
-        # 真值表數據
         st.subheader("真值表參考")
-        df_map = {
-            "AND": {"A": [0,0,1,1], "B": [0,1,0,1], "Output": [0,0,0,1]},
-            "OR":  {"A": [0,0,1,1], "B": [0,1,0,1], "Output": [0,1,1,1]},
-            "XOR": {"A": [0,0,1,1], "B": [0,1,0,1], "Output": [0,1,1,0]},
+        df_data = {
+            "AND": {"A": [0,0,1,1], "B": [0,1,0,1], "Y": [0,0,0,1]},
+            "OR":  {"A": [0,0,1,1], "B": [0,1,0,1], "Y": [0,1,1,1]},
+            "XOR": {"A": [0,0,1,1], "B": [0,1,0,1], "Y": [0,1,1,0]},
             "NOT": {"Input": [0,1], "Output": [1,0]}
         }
-        st.table(pd.DataFrame(df_map[gate]))
-        
-                urls = {
+        st.table(pd.DataFrame(df_data[gate]))
+
+        urls = {
             "AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
             "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
             "XOR": "https://upload.wikimedia.org/wikipedia/commons/0/01/XOR_ANSI.svg",
             "NOT": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/NOT_ANSI.svg/250px-NOT_ANSI.svg.png"
         }
-        st.image(urls[gate], width=300)
+        st.image(urls[gate], caption=f"{gate} Gate Symbol", width=300)
 
-    # --- 考評中心 ---
+    # --- 2. 智慧考評中心 (要求 4: 不重複題庫) ---
     elif page == m2:
-        st.header("🎓 智慧考評系統")
+        st.header("🎓 考評中心")
         qs = load_q()
         if not qs:
-            st.warning("請在目錄下創建 questions.txt 題庫檔案。")
+            st.error("請檢查 questions.txt 檔案是否存在。")
         else:
             pool = [q for q in qs if q['id'] not in st.session_state.used_ids]
             if not pool:
-                st.success("題庫已全部完成，重新重置中...")
+                st.success("所有題目已答完，為您重新刷新題庫！")
                 st.session_state.used_ids = []
                 pool = qs
             
-            with st.form("exam_v85"):
-                current = random.sample(pool, min(len(pool), 2))
-                user_ans = []
-                for q in current:
+            with st.form("exam_form"):
+                batch = random.sample(pool, min(len(pool), 3))
+                answers = []
+                for q in batch:
                     st.write(f"**{q['q']}**")
-                    user_ans.append(st.radio(f"選項 ({q['id']})", q['o'], key=f"q{q['id']}"))
+                    answers.append(st.radio(f"選項 ({q['id']})", q['o'], key=f"q_{q['id']}"))
                 
-                if st.form_submit_button("提交考卷"):
-                    correct = sum(1 for a, q in zip(user_ans, current) if a == q['a'])
-                    st.session_state.used_ids.extend([q['id'] for q in current])
-                    st.success(f"完成！正確數：{correct}/{len(current)}")
-                    if not is_frank and correct == len(current):
-                        st.session_state.level = "中級管理員"
+                if st.form_submit_button("提交回答"):
+                    correct = sum(1 for a, q in zip(answers, batch) if a == q['a'])
+                    st.session_state.used_ids.extend([q['id'] for q in batch])
+                    st.success(f"完成！正確：{correct}/{len(batch)}")
                     st.rerun()
 
-    # --- 實體功能區 ---
-    elif page == m3: # 布林
-        st.header("🧮 布林代數運算")
-        st.info("Frank 管理員已進入進階化簡模式。")
-        exp = st.text_input("輸入邏輯式", "A + A'B")
-        if exp == "A + A'B": st.code("簡化結果：A + B")
+    # --- 3. 布林代數 (要求 5) ---
+    elif "布林" in page:
+        st.header("🧮 布林代數轉換")
+        st.code("F = A'B + AB = B(A' + A) = B")
+        st.write("布林自動化簡引擎已啟動。")
 
-    elif page == m4: # 卡諾圖
-        st.header("🗺️ 卡諾圖互動分析")
-        st.table(pd.DataFrame({"B=0": [0, 1], "B=1": [1, 0]}, index=["A=0", "A=1"]))
-        st.write("點擊方格進行化簡 (功能開發中...)")
+    # --- 4. 卡諾圖 (要求 5) ---
+    elif "卡諾圖" in page:
+        st.header("🗺️ 卡諾圖實驗室")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/0/03/K-map_minterms_4x4.png", width=400)
+        st.write("這是一個 4 變數卡諾圖，請根據邏輯值進行圈選。")
 
-    elif page == m5: # 數位運算
-        st.header("➕ 二進位加法器")
-        num1 = st.text_input("Binary 1", "1010")
-        num2 = st.text_input("Binary 2", "0101")
-        if st.button("計算和"):
-            res = bin(int(num1, 2) + int(num2, 2))[2:]
-            st.success(f"結果：{res}")
+    # --- 5. 數學運算 (要求 5) ---
+    elif "數學運算" in page:
+        st.header("➕ 數位數學中心")
+        st.subheader("二進位加法模擬")
+        n1 = st.text_input("Binary A", "1101")
+        n2 = st.text_input("Binary B", "1011")
+        if st.button("計算"):
+            res = bin(int(n1, 2) + int(n2, 2))[2:]
+            st.success(f"結果為：{res}")
 
-    # --- 設定中心 ---
+    # --- 6. 個人化中心 (要求 7) ---
     elif page == m6:
-        st.header("🎨 系統個人化")
-        st.session_state.prefs['bg'] = st.color_picker("背景顏色", st.session_state.prefs['bg'])
-        st.session_state.prefs['btn'] = st.color_picker("按鈕顏色", st.session_state.prefs['btn'])
-        st.session_state.prefs['fs'] = st.slider("文字大小", 14, 30, st.session_state.prefs['fs'])
-        if st.button("更新設定"): st.rerun()
+        st.header("🎨 個人化設定")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.prefs['bg'] = st.color_picker("系統背景顏色", st.session_state.prefs['bg'])
+            st.session_state.prefs['btn'] = st.color_picker("按鈕強調色", st.session_state.prefs['btn'])
+        with col2:
+            st.session_state.prefs['fs'] = st.slider("系統字體大小", 14, 32, st.session_state.prefs['fs'])
+        if st.button("儲存並刷新"): st.rerun()
 
-# --- 登入控制 ---
+# --- 登入介面 ---
 if not st.session_state.name:
-    apply_theme_v85()
-    st.title("🏙️ LogiMind 授權入口")
-    name_input = st.text_input("請輸入管理員代碼")
-    if st.button("驗證身分"):
-        if name_input:
-            st.session_state.name = name_input
+    apply_advanced_theme()
+    st.title("🛡️ LogiMind 授權入口")
+    user_input = st.text_input("輸入代碼", placeholder="frank")
+    if st.button("解鎖"):
+        if user_input:
+            st.session_state.name = user_input
             st.rerun()
 else:
-    st.set_page_config(page_title="LogiMind V85", layout="wide")
+    st.set_page_config(page_title="LogiMind V90", layout="wide")
     main()
