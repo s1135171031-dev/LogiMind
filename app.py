@@ -4,198 +4,275 @@ import random
 import time
 
 # =========================================
-# 1. 專業題庫定義 (您可以隨時增加題目)
+# 1. 語系與字典包 (繁中/EN)
 # =========================================
-QUESTION_BANK = [
-    {"q": "AND 閘的輸入為 1 和 0 時，輸出為何？", "o": ["0", "1"], "a": "0"},
-    {"q": "OR 閘的輸入為 1 和 0 時，輸出為何？", "o": ["0", "1"], "a": "1"},
-    {"q": "NOT 閘輸入為 1 時，輸出為何？", "o": ["0", "1"], "a": "0"},
-    {"q": "XOR 閘輸入相同時（如 1,1），輸出為何？", "o": ["0", "1"], "a": "0"},
-    {"q": "哪種邏輯閘又被稱為『互斥或閘』？", "o": ["AND", "XOR"], "a": "XOR"},
-    {"q": "二進位 10 (Dec:2) 轉換為格雷碼為何？", "o": ["11", "01"], "a": "11"},
-    {"q": "格雷碼 11 轉換為二進位為何？", "o": ["10", "11"], "a": "10"},
-    {"q": "全加器比半加器多了哪一個輸入？", "o": ["進位輸入 Ci", "時脈 Clk"], "a": "進位輸入 Ci"},
-    {"q": "2對4解碼器有幾個輸出端？", "o": ["2", "4"], "a": "4"},
-    {"q": "布林代數中 A + 0 等於？", "o": ["A", "0"], "a": "A"},
-    # ... (您可以依照此格式補足到 20 題或更多)
-]
-
-# =========================================
-# 2. 語系與視覺 (加入強制白底圖片修正)
-# =========================================
-LANG_PACK = {
+TEXTS = {
     "繁體中文": {
-        "title": "🏙️ LogiMind 數位邏輯城",
-        "menu": ["🏠 願景大廳", "🔬 基礎邏輯館", "🏗️ 進階電路區", "🔄 格雷碼轉換大樓", "📡 網路更新中心", "🎓 智慧考評中心", "🎨 個人化設定"],
+        "title": "🏙️ LogiMind 數位城",
+        "vision": "🏠 願景大廳",
+        "logic_lab": "🔬 基礎邏輯館",
+        "circuit": "🏗️ 進階電路區",
+        "gray": "🔄 格雷碼大樓",
+        "exam": "🎓 智慧考評中心",
+        "boolean": "🧮 布林代數室 (中級解鎖)",
+        "kmap": "🗺️ 卡諾圖實驗室 (高級解鎖)",
+        "math": "➕ 數位運算中心 (專家解鎖)",
+        "config": "🎨 個人化中心",
+        "locked": "🔒 權限不足，請提升等級",
+        "welcome": "歡迎，管理員",
+        "rank": "權限等級",
+        "score_last": "上次得分",
+        "sync": "同步雲端",
+        "logout": "登出",
+        "start_exam": "開始動態測驗",
+        "submit": "提交報告",
+        "save": "儲存並套用"
     },
     "English": {
-        "title": "🏙️ LogiMind Digital City",
-        "menu": ["🏠 Hall of Vision", "🔬 Logic Gate Lab", "🏗️ Advanced Circuit", "🔄 Gray Code Tower", "📡 Network Update", "🎓 Smart Exam", "🎨 Personalization"],
+        "title": "🏙️ LogiMind City",
+        "vision": "🏠 Vision Hall",
+        "logic_lab": "🔬 Logic Lab",
+        "circuit": "🏗️ Circuit Area",
+        "gray": "🔄 Gray Tower",
+        "exam": "🎓 Exam Center",
+        "boolean": "🧮 Boolean Room (Med)",
+        "kmap": "🗺️ K-Map Lab (High)",
+        "math": "➕ Math Center (Expert)",
+        "config": "🎨 Personalization",
+        "locked": "🔒 Insufficient Rank",
+        "welcome": "Welcome, Admin",
+        "rank": "Current Rank",
+        "score_last": "Last Score",
+        "sync": "Sync Cloud",
+        "logout": "Logout",
+        "start_exam": "Start Exam",
+        "submit": "Submit Exam",
+        "save": "Save & Apply"
     }
 }
 
-def apply_style(p):
-    txt_color = "#000000" if (int(p['bg'].lstrip('#'), 16) > 0x888888) else "#FFFFFF"
+# =========================================
+# 2. 隨機動態題庫 (按難度分類)
+# =========================================
+BANK = {
+    "Junior": [
+        {"q": "AND 閘輸入 (1,0) 為何？", "o": ["0", "1"], "a": "0"},
+        {"q": "OR 閘輸入 (1,0) 為何？", "o": ["0", "1"], "a": "1"},
+        {"q": "NOT 閘輸入 0 為何？", "o": ["0", "1"], "a": "1"},
+        {"q": "XOR 閘輸入 (1,1) 為何？", "o": ["0", "1"], "a": "0"},
+        {"q": "NAND 閘輸入 (1,1) 為何？", "o": ["0", "1"], "a": "0"}
+    ],
+    "Medium": [
+        {"q": "2進位 1011 轉格雷碼？", "o": ["1110", "1101"], "a": "1110"},
+        {"q": "布林代數 A + A' = ?", "o": ["1", "0"], "a": "1"},
+        {"q": "半加器有幾個輸出？", "o": ["2", "1"], "a": "2"},
+        {"q": "全加器 Ci 的功能是？", "o": ["進位輸入", "時脈"], "a": "進位輸入"},
+        {"q": "狄摩根定律 (A+B)' = ?", "o": ["A'·B'", "A'+B'"], "a": "A'·B'"}
+    ],
+    "High": [
+        {"q": "4對1 MUX 需要幾條選擇線？", "o": ["2", "4"], "a": "2"},
+        {"q": "JK 觸發器 J=1, K=1 時狀態？", "o": ["Toggle", "Reset"], "a": "Toggle"},
+        {"q": "格雷碼 1000 轉二進位？", "o": ["1111", "1000"], "a": "1111"},
+        {"q": "卡諾圖中相鄰項合併可消去？", "o": ["變數", "雜訊"], "a": "變數"},
+        {"q": "3位元同步計數器最大模數？", "o": ["8", "7"], "a": "8"}
+    ]
+}
+
+# =========================================
+# 3. 核心視覺引擎 (Mobile Ready & Anti-Contrast)
+# =========================================
+def apply_custom_style():
+    p = st.session_state.prefs
+    # 計算亮度來決定文字顏色 (黑或白)
+    bg = p['bg'].lstrip('#')
+    r, g, b = tuple(int(bg[i:i+2], 16) for i in (0, 2, 4))
+    brightness = (r * 299 + g * 587 + b * 114) / 1000
+    txt_color = "#000000" if brightness > 128 else "#FFFFFF"
+    
     st.markdown(f"""
     <style>
-    .stApp {{ background-color: {p['bg']} !important; }}
-    h1, h2, h3, p, span, label, li {{ color: {txt_color} !important; font-size: {p['fs']}px !important; }}
+    /* 全域設定 */
+    .stApp {{ background-color: {p['bg']} !important; color: {txt_color}; }}
+    h1, h2, h3, p, span, label, li, .stMarkdown {{ color: {txt_color} !important; font-size: {p['fs']}px !important; }}
     
-    /* 圖片背景修正：強制所有圖片放在白底卡片中，並加上邊距 */
-    div[data-testid="stImage"] {{
-        background-color: #FFFFFF !important;
-        padding: 20px !important;
-        border-radius: 15px !important;
-        display: flex;
-        justify-content: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    /* 按鈕個性化 */
+    button[kind="primary"], .stButton>button {{
+        background-color: {p['btn']} !important;
+        color: white !important;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        border: none;
+        width: 100%; /* 手機版按鈕全寬化 */
     }}
-    .table-container {{ background-color: #FFFFFF !important; padding: 15px; border-radius: 10px; margin: 10px 0; }}
-    .logic-table td, .logic-table th {{ color: #000!important; border: 1px solid #ddd; padding: 8px; }}
+
+    /* 強制白底圖片卡片 */
+    [data-testid="stImage"] {{
+        background-color: #FFFFFF !important;
+        padding: 15px !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        margin: 10px auto;
+    }}
+
+    /* 手機頁面間距優化 */
+    @media (max-width: 640px) {{
+        .main .block-container {{ padding: 1rem !important; }}
+        h1 {{ font-size: 1.5rem !important; }}
+    }}
+    
+    /* 表格自動白底防止文字衝突 */
+    .stTable, .table-container {{ 
+        background-color: #FFFFFF !important; 
+        color: #000000 !important; 
+        border-radius: 10px; 
+        padding: 10px; 
+    }}
     </style>
     """, unsafe_allow_html=True)
 
 # =========================================
-# 3. 功能邏輯 (格雷碼雙向轉換)
+# 4. 權限檢查邏輯
 # =========================================
-def bin_to_gray(b_str):
+def check_permission(required_rank):
+    if st.session_state.name.lower() == "frank":
+        return True
+    ranks = ["初級管理員", "中級管理員", "高級工程師", "終端管理員"]
     try:
-        n = int(b_str, 2)
-        return bin(n ^ (n >> 1))[2:].zfill(len(b_str))
-    except: return "N/A"
-
-def gray_to_bin(g_str):
-    try:
-        b = g_str[0]
-        for i in range(1, len(g_str)):
-            b += str(int(b[-1]) ^ int(g_str[i]))
-        return b
-    except: return "N/A"
+        user_idx = ranks.index(st.session_state.level)
+        req_idx = ranks.index(required_rank)
+        return user_idx >= req_idx
+    except:
+        return False
 
 # =========================================
-# 4. 初始化與主程式
+# 5. 初始化 Session
 # =========================================
-for key, val in {"score": 0, "level": "初級管理員", "exam_active": False, "net_data": "系統已連線", 
-                 "prefs": {"bg":"#0E1117", "btn":"#00D4FF", "fs": 18, "lang": "繁體中文"}}.items():
-    if key not in st.session_state: st.session_state[key] = val
+if "score" not in st.session_state:
+    st.session_state.update({
+        "score": 0, "level": "初級管理員", "exam_active": False,
+        "name": "", "prefs": {
+            "bg": "#0E1117", "btn": "#FF4B4B", "fs": 18, "lang": "繁體中文"
+        }
+    })
 
+# =========================================
+# 6. 主程式
+# =========================================
 def main():
     p = st.session_state.prefs
-    L = LANG_PACK[p['lang']]
-    apply_style(p)
+    L = TEXTS[p['lang']]
+    apply_custom_style()
     
+    # 側邊導航
     with st.sidebar:
-        st.title(L["title"])
-        st.write(f"管理員: **{st.session_state.name}**")
-        st.write(f"等級: **{st.session_state.level}**")
+        st.title(L['title'])
+        st.subheader(f"👤 {st.session_state.name}")
+        st.caption(f"🛡️ {L['rank']}: {st.session_state.level}")
         st.divider()
-        page = st.radio("選單", L["menu"], label_visibility="collapsed")
-        if st.button("登出"): st.session_state.clear(); st.rerun()
-
-    # --- 願景大廳 ---
-    if page in ["🏠 願景大廳", "🏠 Hall of Vision"]:
-        st.title("🏙️ 數位邏輯指揮中心")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("管理等級", st.session_state.level)
-        c2.metric("最高考評分數", f"{st.session_state.score}/100")
-        c3.metric("安全同步", "已加密")
         
-        st.markdown(f"""
-        <div style="background:rgba(255,255,255,0.1); padding:20px; border-radius:15px; border-left: 5px solid {p['btn']};">
-        <h3>📢 歡迎回來，{st.session_state.name}</h3>
-        這座城市建立在 0 與 1 的基礎之上。身為管理員，您的任務是掌握信號的流向，並通過考評來升級您的權限。
-        </div>
-        """, unsafe_allow_html=True)
-
-    # --- 基礎邏輯館 ---
-    elif page in ["🔬 基礎邏輯館", "🔬 Logic Gate Lab"]:
-        st.header(page)
-        gate = st.selectbox("選擇閘極", ["AND", "OR", "XOR", "NOT"])
-        img_urls = {
-            "AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
-            "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
-            "XOR": "https://upload.wikimedia.org/wikipedia/commons/0/01/XOR_ANSI.svg",
-            "NOT": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/NOT_ANSI.svg/250px-NOT_ANSI.svg.png"
-        }
-        st.image(img_urls[gate], width=250)
-        st.write(f"💡 目前雲端資料：{st.session_state.net_data}")
-
-    # --- 進階電路區 ---
-    elif page in ["🏗️ 進階電路區", "🏗️ Advanced Circuit"]:
-        st.header("🏗️ 進階模組研究")
-        tab1, tab2 = st.tabs(["全加器", "解碼器"])
-        with tab1:
-            st.write("全加器（Full Adder）是運算核心。")
-            st.image("https://upload.wikimedia.org/wikipedia/commons/a/a9/Full-adder.svg", width=400)
-        with tab2:
-            st.write("2對4解碼器。")
-            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/1_bit_Decoder_2-to-4_line_zh_hant.svg/960px-1_bit_Decoder_2-to-4_line_zh_hant.svg.png", width=400)
-
-    # --- 格雷碼大樓 ---
-    elif page in ["🔄 格雷碼轉換大樓", "🔄 Gray Code Tower"]:
-        st.header("🔄 格雷碼雙向中心")
-        c1, c2 = st.columns(2)
-        with c1:
-            b_in = st.text_input("Binary -> Gray", "1011")
-            st.success(f"結果: {bin_to_gray(b_in)}")
-        with c2:
-            g_in = st.text_input("Gray -> Binary", "1110")
-            st.info(f"結果: {gray_to_bin(g_in)}")
+        pages = [L['vision'], L['logic_lab'], L['circuit'], L['gray'], L['exam'], L['boolean'], L['kmap'], L['math'], L['config']]
+        page = st.radio("MENU", pages, label_visibility="collapsed")
         
-        # 4-bit Table
-        st.subheader("📋 4-Bit 對照表")
-        df = pd.DataFrame([{"Dec": i, "Bin": bin(i)[2:].zfill(4), "Gray": bin_to_gray(bin(i)[2:].zfill(4))} for i in range(16)])
-        st.table(df)
-
-    # --- 智慧考評中心 (完善題庫系統) ---
-    elif page in ["🎓 智慧考評中心", "🎓 Smart Exam"]:
-        st.header("🎓 管理員晉升檢定")
-        if not st.session_state.exam_active:
-            st.write("準備好進行 10 題核心邏輯檢定嗎？（目前題庫提供 10 題精華）")
-            if st.button("開始測驗"):
-                st.session_state.exam_active = True
-                st.rerun()
-        else:
-            with st.form("exam"):
-                user_answers = []
-                for i, item in enumerate(QUESTION_BANK):
-                    st.write(f"**Q{i+1}: {item['q']}**")
-                    user_answers.append(st.radio("選擇答案", item['o'], key=f"q_{i}", horizontal=True))
-                
-                if st.form_submit_button("提交測驗"):
-                    correct_count = sum(1 for ua, item in zip(user_answers, QUESTION_BANK) if ua == item['a'])
-                    final_score = int((correct_count / len(QUESTION_BANK)) * 100)
-                    st.session_state.score = final_score
-                    st.session_state.level = "高級工程師" if final_score >= 80 else "中級管理員" if final_score >= 60 else "初級管理員"
-                    st.session_state.exam_active = False
-                    st.success(f"測驗完成！得分：{final_score}。您的等級已更新為：{st.session_state.level}")
-                    st.rerun()
-
-    # --- 網路更新中心 ---
-    elif page in ["📡 網路更新中心", "📡 Network Update"]:
-        st.header("📡 全球網路同步")
-        if st.button("執行同步掃描"):
-            with st.spinner("正在爬取 IEEE 規格..."):
-                time.sleep(1.5)
-                st.session_state.net_data = f"同步成功！最後更新：{time.strftime('%H:%M:%S')}"
-                st.success(st.session_state.net_data)
-
-    # --- 個人化設定 ---
-    elif page in ["🎨 個人化設定", "🎨 Personalization"]:
-        st.header("🎨 介面自定義")
-        new_fs = st.slider("字體大小", 14, 30, p['fs'])
-        new_bg = st.color_picker("系統背景", p['bg'])
-        if st.button("儲存並套用"):
-            st.session_state.prefs.update({"bg": new_bg, "fs": new_fs})
+        if st.button(L['logout']): 
+            st.session_state.clear()
             st.rerun()
 
-# --- 登入流程 ---
-if "name" not in st.session_state:
-    st.title("🛡️ LogiMind 行政特區登入")
-    name = st.text_input("管理員授權代號")
-    if st.button("進入城市"):
-        if name: st.session_state.name = name; st.rerun()
-else:
-    st.set_page_config(page_title="LogiMind V55", layout="wide")
-    main()
+    # --- 願景大廳 ---
+    if page == L['vision']:
+        st.title(f"🏙️ {L['welcome']}")
+        c1, c2 = st.columns(2)
+        c1.metric(L['rank'], st.session_state.level)
+        c2.metric(L['score_last'], f"{st.session_state.score} pts")
+        
+        st.info("系統狀態：手機/桌機響應式模組已啟動。文字對比度保護已開啟。")
+        
 
+    # --- 基礎邏輯館 ---
+    elif page == L['logic_lab']:
+        st.header(L['logic_lab'])
+        gate = st.selectbox("選取組件", ["AND", "OR", "NOT", "XOR"])
+        urls = {
+            "AND": "https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg",
+            "OR": "https://upload.wikimedia.org/wikipedia/commons/b/b5/OR_ANSI.svg",
+            "NOT": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/NOT_ANSI.svg/250px-NOT_ANSI.svg.png",
+            "XOR": "https://upload.wikimedia.org/wikipedia/commons/0/01/XOR_ANSI.svg"
+        }
+        st.image(urls[gate], width=300)
+
+    # --- 智慧考評中心 (難度動態抽題) ---
+    elif page == L['exam']:
+        st.header(L['exam'])
+        if not st.session_state.exam_active:
+            st.write(f"目前等級：{st.session_state.level}。系統將根據等級出題。")
+            if st.button(L['start_exam']):
+                st.session_state.exam_active = True
+                # 根據等級決定題庫
+                diff = "Junior" if st.session_state.level == "初級管理員" else "Medium" if st.session_state.level == "中級管理員" else "High"
+                st.session_state.current_quiz = random.sample(BANK[diff], 5)
+                st.rerun()
+        else:
+            with st.form("quiz"):
+                score = 0
+                for i, q in enumerate(st.session_state.current_quiz):
+                    st.write(f"**Q{i+1}: {q['q']}**")
+                    ans = st.radio("Ans", q['o'], key=f"q_{i}", horizontal=True)
+                    if ans == q['a']: score += 20
+                if st.form_submit_button(L['submit']):
+                    st.session_state.score = score
+                    if score >= 80:
+                        ranks = ["初級管理員", "中級管理員", "高級工程師", "終端管理員"]
+                        cur_idx = ranks.index(st.session_state.level)
+                        if cur_idx < 2: st.session_state.level = ranks[cur_idx+1]
+                    st.session_state.exam_active = False
+                    st.success(f"考試結束！得分：{score}")
+                    st.rerun()
+
+    # --- 權限鎖定區：布林代數 ---
+    elif page == L['boolean']:
+        if check_permission("中級管理員"):
+            st.header("🧮 布林代數運算中心")
+            st.code("A · (A + B) = A")
+            st.write("布林化簡功能已解鎖。")
+            
+        else:
+            st.warning(L['locked'])
+
+    # --- 權限鎖定區：卡諾圖 ---
+    elif page == L['kmap']:
+        if check_permission("高級工程師"):
+            st.header("🗺️ 卡諾圖化簡實驗室")
+            st.write("2-4 變數卡諾圖矩陣已就緒。")
+            
+        else:
+            st.warning(L['locked'])
+
+    # --- 個人化中心 ---
+    elif page == L['config']:
+        st.header(L['config'])
+        c1, c2 = st.columns(2)
+        with c1:
+            lang = st.selectbox("Language", ["繁體中文", "English"], index=0 if p['lang']=="繁體中文" else 1)
+            fs = st.slider("Font Size", 12, 32, p['fs'])
+        with c2:
+            bg_c = st.color_picker("Background", p['bg'])
+            btn_c = st.color_picker("Button", p['btn'])
+            
+        if st.button(L['save']):
+            st.session_state.prefs.update({"lang": lang, "fs": fs, "bg": bg_c, "btn": btn_c})
+            st.rerun()
+
+# --- 登入頁面 ---
+if not st.session_state.name:
+    st.set_page_config(page_title="LogiMind Login", layout="centered")
+    apply_custom_style()
+    st.title("🏙️ LogiMind 授權入口")
+    name = st.text_input("Admin Code", placeholder="Type 'frank' for full access")
+    if st.button("Unlock System"):
+        if name:
+            st.session_state.name = name
+            if name.lower() == "frank": 
+                st.session_state.level = "終端管理員"
+            st.rerun()
+else:
+    st.set_page_config(page_title="LogiMind City V60", layout="wide")
+    main()
