@@ -106,7 +106,6 @@ def main():
         這座城市建立在 0 與 1 的基礎之上。身為管理員，您的任務是掌握信號的流向，並通過考評來升級您的權限。
         </div>
         """, unsafe_allow_html=True)
-        st.image("https://upload.wikimedia.org/wikipedia/commons/6/64/AND_ANSI.svg", width=300)
 
     # --- 基礎邏輯館 ---
     elif page in ["🔬 基礎邏輯館", "🔬 Logic Gate Lab"]:
@@ -199,3 +198,4 @@ if "name" not in st.session_state:
 else:
     st.set_page_config(page_title="LogiMind V55", layout="wide")
     main()
+
