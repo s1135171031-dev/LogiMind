@@ -17,100 +17,45 @@ SVG_ICONS = {
 }
 
 # ==================================================
-# 2. 系統設定 (低飽和度主題庫)
+# 2. 系統設定
 # ==================================================
-st.set_page_config(page_title="LogiMind V134", layout="wide")
+st.set_page_config(page_title="LogiMind V135", layout="wide")
 
 THEMES = {
-    "專業暗色 (Pro Dark)": {
-        "bg": "#212529",       # 深灰
-        "txt": "#E9ECEF",      # 米白
-        "btn": "#495057",      # 板岩灰
-        "btn_txt": "#FFFFFF",
-        "card": "#343A40"
-    },
-    "舒適亮色 (Soft Light)": {
-        "bg": "#F8F9FA",       # 灰白
-        "txt": "#343A40",      # 深灰
-        "btn": "#6C757D",      # 溫和灰
-        "btn_txt": "#FFFFFF",
-        "card": "#FFFFFF"
-    },
-    "海軍藍 (Navy Blue)": {
-        "bg": "#1A2530",       # 深藍
-        "txt": "#DDE1E5",      # 淺灰
-        "btn": "#3E5C76",      # 莫蘭迪藍
-        "btn_txt": "#FFFFFF",
-        "card": "#2C3E50"
-    }
+    "專業暗色 (Pro Dark)": {"bg": "#212529", "txt": "#E9ECEF", "btn": "#495057", "btn_txt": "#FFFFFF", "card": "#343A40"},
+    "舒適亮色 (Soft Light)": {"bg": "#F8F9FA", "txt": "#343A40", "btn": "#6C757D", "btn_txt": "#FFFFFF", "card": "#FFFFFF"},
+    "海軍藍 (Navy Blue)": {"bg": "#1A2530", "txt": "#DDE1E5", "btn": "#3E5C76", "btn_txt": "#FFFFFF", "card": "#2C3E50"}
 }
 
 if "state" not in st.session_state:
-    st.session_state.update({
-        "state": True,
-        "name": "",
-        "title": "使用者",
-        "level": "初級管理員",
-        "used_ids": [],
-        "theme_name": "專業暗色 (Pro Dark)"
-    })
+    st.session_state.update({"state": True, "name": "", "title": "使用者", "level": "初級管理員", "used_ids": [], "theme_name": "專業暗色 (Pro Dark)"})
 
 # ==================================================
-# 3. 視覺渲染引擎 (修復白底白字問題)
+# 3. 視覺渲染引擎 (V135: 移除圖片下方文字)
 # ==================================================
 def apply_theme():
     t = THEMES[st.session_state.theme_name]
-    
     st.markdown(f"""
     <style>
     .stApp {{ background-color: {t['bg']} !important; }}
-    h1, h2, h3, h4, p, span, div, label, li, .stMarkdown {{ 
-        color: {t['txt']} !important; 
-        font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
-    }}
-    
-    /* 按鈕優化 */
-    .stButton>button {{
-        background-color: {t['btn']} !important;
-        color: {t['btn_txt']} !important;
-        border: none !important;
-        border-radius: 6px !important;
-        padding: 0.5rem 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }}
-    .stButton>button:hover {{ filter: brightness(110%); }}
-    
-    /* 表格樣式 */
-    div[data-testid="stDataFrame"] {{
-        background-color: {t['card']} !important;
-        border: 1px solid rgba(128,128,128,0.2);
-        padding: 5px;
-        border-radius: 8px;
-    }}
-    
-    /* 側邊欄 */
-    [data-testid="stSidebar"] {{
-        background-color: {t['card']};
-        border-right: 1px solid rgba(128,128,128,0.1);
-    }}
+    h1, h2, h3, h4, p, span, div, label, li, .stMarkdown {{ color: {t['txt']} !important; font-family: 'Segoe UI', sans-serif; }}
+    .stButton>button {{ background-color: {t['btn']} !important; color: {t['btn_txt']} !important; border: none !important; border-radius: 6px !important; padding: 0.5rem 1rem; }}
+    div[data-testid="stDataFrame"] {{ background-color: {t['card']} !important; border: 1px solid rgba(128,128,128,0.2); padding: 5px; border-radius: 8px; }}
+    [data-testid="stSidebar"] {{ background-color: {t['card']}; border-right: 1px solid rgba(128,128,128,0.1); }}
     </style>
     """, unsafe_allow_html=True)
 
-def render_svg(svg_code, caption=""):
+def render_svg(svg_code):
     """
-    V134 核心修復：強制將 SVG 內部的 currentColor 替換為黑色 (#000000)
-    這確保了在白底卡片上，線條永遠清晰可見。
+    V135 修復：移除了 caption 參數與對應的 HTML <p> 標籤。
+    圖片下方不再顯示任何文字。
     """
-    # 暴力替換顏色設定
-    svg_black = svg_code.replace('stroke="currentColor"', 'stroke="#000000"')
-    svg_black = svg_black.replace('fill="currentColor"', 'fill="#000000"')
-    
-    # 轉碼為 Base64
+    svg_black = svg_code.replace('stroke="currentColor"', 'stroke="#000000"').replace('fill="currentColor"', 'fill="#000000"')
     b64 = base64.b64encode(svg_black.encode('utf-8')).decode("utf-8")
     
     html = f'''
     <div style="
-        background-color: #FFFFFF; /* 強制純白背景 */
+        background-color: #FFFFFF;
         border-radius: 8px; 
         padding: 20px; 
         margin-bottom: 10px; 
@@ -118,13 +63,6 @@ def render_svg(svg_code, caption=""):
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     ">
         <img src="data:image/svg+xml;base64,{b64}" width="200"/>
-        
-        <p style="
-            color: #000000 !important; 
-            margin-top: 10px; 
-            font-size: 14px; 
-            font-weight: 600;
-        ">{caption}</p>
     </div>
     '''
     st.markdown(html, unsafe_allow_html=True)
@@ -157,20 +95,12 @@ def main():
     is_frank = st.session_state.name.lower() == "frank"
     
     with st.sidebar:
-        st.title("🏙️ LogiMind V134")
-        st.caption("Visual Fix Edition")
-        
-        st.markdown(f"""
-        <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:15px;">
-            <div>👤 <b>{st.session_state.title}</b></div>
-            <div style="font-size:0.9em; opacity:0.8;">ID: {st.session_state.name}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
+        st.title("🏙️ LogiMind V135")
+        st.caption("Clean Visual Edition")
+        st.markdown(f"""<div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:15px;"><div>👤 <b>{st.session_state.title}</b></div><div style="font-size:0.9em; opacity:0.8;">ID: {st.session_state.name}</div></div>""", unsafe_allow_html=True)
         if is_frank: st.success("權限：ROOT")
         else: st.info(f"權限：{st.session_state.level}")
         st.divider()
-        
         menu = ["🏠 系統概覽", "🔬 基礎邏輯", "🔢 數碼運算", "🎓 智慧考評"]
         if is_frank or has_access("中級管理員"): menu.append("🧮 化簡邏輯")
         else: menu.append("🔒 化簡 (鎖定)")
@@ -179,25 +109,23 @@ def main():
         if is_frank or has_access("終端管理員"): menu.append("🔄 序向邏輯")
         else: menu.append("🔒 序向 (鎖定)")
         menu.append("🎨 個人化")
-        
         page = st.radio("導航", menu)
 
     # --- 頁面內容 ---
     if "系統概覽" in page:
         st.header("🏠 系統概覽")
-        st.write("V134 修復說明：強制圖示線條為黑色，解決深色主題下的圖片隱形問題。")
+        st.write("V135 更新：移除圖片下方所有說明文字，保持介面極簡。")
         c1, c2, c3 = st.columns(3)
-        with c1: render_svg(SVG_ICONS["AND"], "AND Gate")
-        with c2: render_svg(SVG_ICONS["OR"], "OR Gate")
-        with c3: render_svg(SVG_ICONS["NOT"], "NOT Gate")
+        with c1: render_svg(SVG_ICONS["AND"])
+        with c2: render_svg(SVG_ICONS["OR"])
+        with c3: render_svg(SVG_ICONS["NOT"])
 
     elif "基礎邏輯" in page:
         st.header("🔬 基礎邏輯閘")
         gate = st.selectbox("選擇元件", ["AND", "OR", "XOR", "NOT"], index=0)
-        
         c1, c2 = st.columns([1, 1.5])
         with c1:
-            render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]), f"{gate} ANSI Symbol")
+            render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]))
         with c2:
             st.write(f"**{gate} 真值表**")
             d = {"A":[0,0,1,1], "B":[0,1,0,1]}
@@ -213,8 +141,7 @@ def main():
         if val.isdigit():
             v = int(val)
             st.info(f"Binary: {bin(v)[2:]} | Octal: {oct(v)[2:]} | Hex: {hex(v)[2:].upper()}")
-        else:
-            st.error("請輸入有效整數")
+        else: st.error("請輸入有效整數")
 
     elif "化簡" in page:
         if "🔒" in page: st.error("權限不足"); st.stop()
@@ -231,8 +158,7 @@ def main():
         if "🔒" in page: st.error("權限不足"); st.stop()
         st.header("🔀 MUX 多工器")
         col_img, col_ctrl = st.columns([1, 2])
-        with col_img:
-            render_svg(SVG_ICONS["MUX"], "4-to-1 MUX")
+        with col_img: render_svg(SVG_ICONS["MUX"])
         with col_ctrl:
             s = st.selectbox("Select (S1, S0)", ["00", "01", "10", "11"])
             st.metric("Output Line", f"D{int(s, 2)}")
@@ -241,8 +167,7 @@ def main():
         if "🔒" in page: st.error("權限不足"); st.stop()
         st.header("🔄 JK Flip-Flop")
         col_img, col_ctrl = st.columns([1, 2])
-        with col_img:
-            render_svg(SVG_ICONS["FF"], "JK FF")
+        with col_img: render_svg(SVG_ICONS["FF"])
         with col_ctrl:
             j = st.selectbox("J", [0,1]); k = st.selectbox("K", [0,1])
             if j==0 and k==0: st.write("狀態: 保持 (Hold)")
@@ -274,9 +199,7 @@ def main():
         with c1:
             st.subheader("主題選擇")
             sel = st.selectbox("介面風格", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state.theme_name))
-            if sel != st.session_state.theme_name:
-                st.session_state.theme_name = sel
-                st.rerun()
+            if sel != st.session_state.theme_name: st.session_state.theme_name = sel; st.rerun()
             st.subheader("個人資訊")
             st.session_state.title = st.text_input("使用者稱號", st.session_state.title)
         with c2:
@@ -290,7 +213,7 @@ def main():
 # ==================================================
 if not st.session_state.name:
     apply_theme()
-    st.title("🏙️ LogiMind V134")
+    st.title("🏙️ LogiMind V135")
     st.markdown("請輸入您的使用者代碼以登入系統。")
     n = st.text_input("User ID", placeholder="e.g., Frank")
     if st.button("登入"):
