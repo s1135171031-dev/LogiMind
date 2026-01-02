@@ -4,35 +4,99 @@ import random
 import os
 import base64
 import time
+import json
 import numpy as np 
 from datetime import datetime
 
 # ==================================================
-# 0. 系統核心與題庫 (維持不變)
+# 0. 使用者資料庫 (users.json) 管理
 # ==================================================
-def init_question_bank():
-    should_generate = False
-    if not os.path.exists("questions.txt"): should_generate = True
-    elif len(open("questions.txt", "r", encoding="utf-8").readlines()) < 50: should_generate = True
+USER_DB_FILE = "users.json"
 
-    if should_generate:
-        with open("questions.txt", "w", encoding="utf-8") as f:
-            gates = ["AND", "OR", "XOR", "NAND"]
-            for _ in range(300):
-                g = random.choice(gates)
-                a, b = random.randint(0, 1), random.randint(0, 1)
-                ans = a & b if g == "AND" else (a | b if g == "OR" else (a ^ b if g == "XOR" else 1 - (a & b)))
-                f.write(f"LOGIC-{random.randint(1000,9999)}|1|輸入 A={a}, B={b}, {g} 閘輸出為何？|0,1,Z,X|{ans}\n")
-            for _ in range(200):
-                val = random.randint(1, 15)
-                f.write(f"MATH-{random.randint(1000,9999)}|2|十進制 {val} 的二進制？|{bin(val)[2:]},{bin(val+1)[2:]},0000|{bin(val)[2:]}\n")
-            f.write("SYS-001|1|CityOS 核心運算單元？|CPU,GPU,TPU,APU|CPU\n")
+def init_user_db():
+    """檢查 users.json，如果是空的或不存在，就填入預設資料"""
+    should_init = False
+    if not os.path.exists(USER_DB_FILE):
+        should_init = True
+    else:
+        # 如果檔案存在但內容是空的 (size=0)
+        if os.path.getsize(USER_DB_FILE) == 0:
+            should_init = True
+            
+    if should_init:
+        default_data = {
+            "users": {
+                "admin": {
+                    "password": "admin",
+                    "name": "Frank (Commander)",
+                    "email": "frank@cityos.gov",
+                    "level": "最高指揮官",
+                    "avatar_color": "#EA4335",
+                    "history": []
+                },
+                "user": {
+                    "password": "123",
+                    "name": "Site Operator",
+                    "email": "op@cityos.gov",
+                    "level": "區域管理員",
+                    "avatar_color": "#4285F4",
+                    "history": []
+                }
+            }
+        }
+        with open(USER_DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(default_data, f, indent=4, ensure_ascii=False)
+
+def load_users():
+    init_user_db()
+    try:
+        with open(USER_DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {"users": {}}
+
+def save_users(data):
+    with open(USER_DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+def authenticate(u, p):
+    db = load_users()
+    users = db.get("users", {})
+    if u in users and users[u]["password"] == p:
+        return users[u]
+    return None
+
+def register_user(u, p, email):
+    db = load_users()
+    if u in db["users"]:
+        return False, "帳號已存在"
+    
+    db["users"][u] = {
+        "password": p, "name": u, "email": email, "level": "區域管理員",
+        "avatar_color": random.choice(["#4285F4", "#34A853", "#FBBC05"]), "history": []
+    }
+    save_users(db)
+    return True, "註冊成功"
+
+def save_score(username, score_str):
+    """將成績寫回 users.json"""
+    db = load_users()
+    if username in db["users"]:
+        if "history" not in db["users"][username]:
+            db["users"][username]["history"] = []
+        
+        db["users"][username]["history"].append({
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "score": score_str
+        })
+        save_users(db)
+        return db["users"][username] # 回傳更新後的使用者資料
+    return None
 
 # ==================================================
 # 1. 系統設定
 # ==================================================
-st.set_page_config(page_title="CityOS V150", layout="wide", page_icon="🏙️")
-init_question_bank()
+st.set_page_config(page_title="CityOS V175", layout="wide", page_icon="🏙️")
 
 SVG_ICONS = {
     "MUX": '''<svg width="120" height="100" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,10 L90,25 L90,75 L30,90 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="45" y="55" fill="currentColor" font-size="14">MUX</text><path d="M10,25 L30,25 M10,40 L30,40 M10,55 L30,55 M10,70 L30,70 M90,50 L110,50 M60,85 L60,95" stroke="currentColor" stroke-width="2"/></svg>''',
@@ -40,31 +104,20 @@ SVG_ICONS = {
 }
 
 THEMES = {
-    "專業暗色 (Night City)": {
-        "bg": "#212529", "txt": "#E9ECEF", "btn": "#495057", "btn_txt": "#FFFFFF", "card": "#343A40", 
-        "chart": ["#00ADB5", "#EEEEEE", "#FF2E63"]
-    },
-    "舒適亮色 (Day City)": {
-        "bg": "#F8F9FA", "txt": "#343A40", "btn": "#6C757D", "btn_txt": "#FFFFFF", "card": "#FFFFFF", 
-        "chart": ["#343A40", "#6C757D", "#ADB5BD"]
-    }
+    "專業暗色 (Night City)": {"bg": "#212529", "txt": "#E9ECEF", "btn": "#495057", "btn_txt": "#FFFFFF", "card": "#343A40", "chart": ["#00ADB5", "#EEEEEE", "#FF2E63"]},
+    "舒適亮色 (Day City)": {"bg": "#F8F9FA", "txt": "#343A40", "btn": "#6C757D", "btn_txt": "#FFFFFF", "card": "#FFFFFF", "chart": ["#343A40", "#6C757D", "#ADB5BD"]}
 }
 
-# Session State 初始化
-if "state" not in st.session_state:
-    init_df = pd.DataFrame(np.random.randint(40, 60, size=(20, 3)), columns=['CPU', 'NET', 'SEC'])
+if "user_data" not in st.session_state:
+    init_df = pd.DataFrame(np.random.randint(40, 60, size=(30, 3)), columns=['CPU', 'NET', 'SEC'])
     st.session_state.update({
-        "state": True, 
-        "name": "", 
-        "email": "", # 新增 Email 欄位
-        "avatar": "", # 新增頭像欄位
-        "title": "市政執行官", 
-        "level": "區域管理員", 
-        "history": [], 
+        "logged_in": False, 
+        "user_key": "", # 用來記錄目前登入的是哪個帳號 ID (例如 'admin')
+        "user_data": {}, 
         "theme_name": "專業暗色 (Night City)",
+        "monitor_data": init_df, 
         "exam_active": False, 
-        "quiz_batch": [],
-        "monitor_data": init_df
+        "quiz_batch": []
     })
 
 def apply_theme():
@@ -72,19 +125,10 @@ def apply_theme():
     st.markdown(f"""
     <style>
     .stApp {{ background-color: {t['bg']} !important; }}
-    h1, h2, h3, h4, p, span, div, label, li, .stMarkdown, .stExpander {{ color: {t['txt']} !important; font-family: 'Segoe UI', sans-serif; }}
+    h1, h2, h3, h4, p, span, div, label, li, .stMarkdown, .stExpander, .stTabs {{ color: {t['txt']} !important; font-family: 'Segoe UI', sans-serif; }}
     .stButton>button {{ background-color: {t['btn']} !important; color: {t['btn_txt']} !important; border: none !important; border-radius: 6px !important; padding: 0.5rem 1rem; }}
     div[data-testid="stDataFrame"], div[data-testid="stExpander"] {{ background-color: {t['card']} !important; border: 1px solid rgba(128,128,128,0.2); border-radius: 8px; }}
     [data-testid="stSidebar"] {{ background-color: {t['card']}; border-right: 1px solid rgba(128,128,128,0.1); }}
-    /* Google Button Style */
-    .google-btn {{
-        background-color: white !important; 
-        color: #333 !important; 
-        border: 1px solid #ddd !important; 
-        display: flex; align-items: center; justify-content: center;
-        width: 100%;
-        font-weight: 500;
-    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -93,7 +137,8 @@ def render_svg(svg_code):
     b64 = base64.b64encode(svg_black.encode('utf-8')).decode("utf-8")
     st.markdown(f'''<div style="background-color: #FFFFFF; border-radius: 8px; padding: 20px; margin-bottom: 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><img src="data:image/svg+xml;base64,{b64}" width="200"/></div>''', unsafe_allow_html=True)
 
-def load_qs():
+# 讀取題目 (這是從 questions.txt 讀)
+def load_qs_from_txt():
     q = []
     if os.path.exists("questions.txt"):
         try:
@@ -104,225 +149,167 @@ def load_qs():
         except: pass
     return q
 
-# ==================================================
-# 2. 核心邏輯 (含隨機漫步)
-# ==================================================
 def update_data_random_walk():
     last_row = st.session_state.monitor_data.iloc[-1]
-    new_cpu = max(0, min(100, last_row['CPU'] + random.randint(-5, 5)))
-    new_net = max(0, min(100, last_row['NET'] + random.randint(-5, 5)))
-    new_sec = max(0, min(100, last_row['SEC'] + random.randint(-5, 5)))
-    
-    new_row = pd.DataFrame([[new_cpu, new_net, new_sec]], columns=['CPU', 'NET', 'SEC'])
+    new_vals = [max(0, min(100, last_row[col] + random.randint(-5, 5))) for col in ['CPU', 'NET', 'SEC']]
+    new_row = pd.DataFrame([new_vals], columns=['CPU', 'NET', 'SEC'])
     updated_df = pd.concat([st.session_state.monitor_data, new_row], ignore_index=True)
     if len(updated_df) > 30: updated_df = updated_df.iloc[1:]
     st.session_state.monitor_data = updated_df
     return updated_df
 
 # ==================================================
-# 3. 主程式
+# 3. 主應用程式
 # ==================================================
-def main():
+def main_app():
+    user = st.session_state.user_data
     apply_theme()
     t_colors = THEMES[st.session_state.theme_name]["chart"]
 
     with st.sidebar:
-        st.title("🏙️ CityOS V150")
-        st.caption("Central Command Interface")
+        st.title("🏙️ CityOS V175")
+        st.caption("Dual File Architecture")
         
-        # [更新] 側邊欄顯示 Google 風格使用者資訊
+        # 個人卡片 (資料來自 users.json)
         st.markdown(f"""
-        <div style="padding:15px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:15px; border-left: 4px solid #4285F4;">
-            <div style="display:flex; align-items:center;">
-                <div style="width:40px; height:40px; border-radius:50%; background-color:#4285F4; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; margin-right:10px;">
-                    {st.session_state.name[0].upper() if st.session_state.name else "U"}
-                </div>
-                <div>
-                    <div style="font-size:1.0em; font-weight:bold;">{st.session_state.name}</div>
-                    <div style="font-size:0.7em; opacity:0.7;">{st.session_state.email}</div>
-                </div>
-            </div>
-            <div style="font-size:0.8em; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
-                權限: {st.session_state.level}
-            </div>
+        <div style="padding:15px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:15px; border-left: 4px solid {user.get('avatar_color', '#888')};">
+            <div style="font-size:1.0em; font-weight:bold;">{user['name']}</div>
+            <div style="font-size:0.8em; opacity:0.7;">{user['email']}</div>
+            <div style="font-size:0.8em; margin-top:5px;">Lv: {user['level']}</div>
         </div>
         """, unsafe_allow_html=True)
         
-        st.divider()
-        menu = ["🏙️ 城市儀表板", "⚡ 電力設施 (Logic)", "🏦 數據中心 (Math)", "🎓 市政學院 (Quiz)", "🔀 交通調度 (MUX)", "📂 人事檔案"]
+        menu = ["🏙️ 城市儀表板", "⚡ 電力設施", "🏦 數據中心", "🎓 市政學院", "📂 人事檔案"]
         page = st.radio("導航", menu)
 
     if "城市儀表板" in page:
-        st.title("🏙️ 城市中控儀表板")
-        col_main, col_side = st.columns([2, 1])
-        
-        with col_main:
-            st.subheader("📖 市政操作手冊")
-            with st.expander("📌 V1.5.0 更新說明", expanded=True):
-                st.markdown("""
-                * **🔐 身份驗證**：系統已升級至 **Google OAuth** 安全標準。
-                * **📡 監控優化**：隨機漫步算法 (±5) 穩定運行中。
-                """)
-            st.divider()
+        st.title(f"👋 歡迎，{user['name']}")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.subheader("📡 即時監控 (±5 Random Walk)")
+            chart_ph = st.empty()
+            metric_ph = st.empty()
             
-            c1, c2 = st.columns([3, 1])
-            with c1: st.subheader("📡 系統核心監控 (Live Feed)")
-            with c2: 
-                if st.button("⚡ 立即刷新", use_container_width=True):
-                    update_data_random_walk()
-            
-            chart_placeholder = st.empty()
-            metric_placeholder = st.empty()
-            
-            for _ in range(15): # 模擬即時
+            for _ in range(10): # 模擬動態
                 df = update_data_random_walk()
-                chart_placeholder.area_chart(df, color=t_colors, height=280)
+                chart_ph.area_chart(df, color=t_colors, height=280)
                 last = df.iloc[-1]
-                metric_placeholder.markdown(f"""
-                <div style="display:flex; justify-content:space-around; background:rgba(128,128,128,0.1); padding:10px; border-radius:5px;">
-                    <div>CPU: <b style="color:#4285F4">{int(last['CPU'])}%</b></div>
-                    <div>NET: <b style="color:#34A853">{int(last['NET'])} Mbps</b></div>
-                    <div>SEC: <b style="color:#EA4335">{int(last['SEC'])} Lvl</b></div>
+                metric_ph.markdown(f"""
+                <div style="display:flex; justify-content:space-around; background:rgba(255,255,255,0.1); padding:10px; border-radius:5px;">
+                    <div>CPU: <b>{int(last['CPU'])}%</b></div>
+                    <div>NET: <b>{int(last['NET'])} Mbps</b></div>
+                    <div>SEC: <b>{int(last['SEC'])} Lvl</b></div>
                 </div>
                 """, unsafe_allow_html=True)
-                time.sleep(1) 
+                time.sleep(1)
 
-        with col_side:
-            st.subheader("⚠️ 系統狀態")
-            st.success(f"已透過 Google 帳戶驗證：\n{st.session_state.email}")
-            st.subheader("🛠️ 更新日誌")
-            log_data = [
-                {"Ver": "V1.5.0", "Action": "Implement Google Login UI"},
-                {"Ver": "V1.4.2", "Action": "Random Walk (±5)"},
-                {"Ver": "V1.4.1", "Action": "Restore All Modules"},
-            ]
-            st.dataframe(pd.DataFrame(log_data), use_container_width=True, hide_index=True)
+        with col2:
+            st.subheader("📁 資料庫狀態")
+            st.success("✅ Users.json (R/W)")
+            st.info("✅ Questions.txt (R)")
+            
+            # 統計資料
+            qs = load_qs_from_txt()
+            st.metric("題庫總數", len(qs))
+            
+            db = load_users()
+            st.metric("註冊用戶", len(db.get("users", [])))
 
     elif "電力設施" in page:
-        st.header("⚡ 電力設施")
+        st.header("⚡ 邏輯閘")
         gate = st.selectbox("Gate", ["AND", "OR", "XOR"])
-        c1, c2 = st.columns([1, 2])
-        with c1: render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]))
-        with c2: st.info(f"監控 {gate} 閘邏輯狀態正常。")
+        render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]))
 
     elif "數據中心" in page:
-        st.header("🏦 數據中心")
-        val = st.text_input("Dec Input", "255")
+        st.header("🏦 運算中心")
+        val = st.text_input("輸入數值", "127")
         if val.isdigit(): st.metric("Hex", hex(int(val))[2:].upper())
 
-    elif "交通調度" in page:
-        st.header("🔀 交通調度")
-        st.info("MUX 線路穩定。")
-
     elif "市政學院" in page:
-        st.header("🎓 市政管理考評")
+        st.header("🎓 市政考評 (Batch-5)")
+        st.caption("題目讀取自 questions.txt，成績寫入 users.json")
+        
         if not st.session_state.exam_active:
             if st.button("🚀 啟動考核"):
-                qs = load_qs()
-                if len(qs)>=5:
+                qs = load_qs_from_txt()
+                if len(qs) >= 5:
                     st.session_state.quiz_batch = random.sample(qs, 5)
                     st.session_state.exam_active = True
                     st.rerun()
+                else: st.error("題庫檔案 (questions.txt) 不足或遺失！")
         else:
-            with st.form("exam"):
+            with st.form("exam_form"):
                 ans = {}
                 for i, q in enumerate(st.session_state.quiz_batch):
                     st.write(f"**{i+1}. {q['q']}**")
-                    ans[i] = st.radio("", q['o'], key=f"q{i}")
+                    ans[i] = st.radio("Select", q['o'], key=f"q{i}", index=None, label_visibility="collapsed")
                     st.divider()
+                
                 if st.form_submit_button("提交"):
-                    score = sum([1 for i in range(5) if ans[i]==st.session_state.quiz_batch[i]['a']])
-                    if score==5: st.balloons()
-                    st.session_state.exam_active = False
-                    time.sleep(1); st.rerun()
+                    if any(a is None for a in ans.values()):
+                        st.warning("請完成所有題目")
+                    else:
+                        score = sum([1 for i in range(5) if ans[i]==st.session_state.quiz_batch[i]['a']])
+                        
+                        # [重點] 將成績寫入 users.json
+                        new_data = save_score(st.session_state.user_key, f"{score}/5")
+                        if new_data: st.session_state.user_data = new_data
+                        
+                        if score==5: st.balloons()
+                        st.success(f"成績已存檔！得分: {score}")
+                        st.session_state.exam_active = False
+                        time.sleep(1.5); st.rerun()
 
     elif "人事檔案" in page:
-        st.header("📂 人事檔案 (Google Account)")
-        c1, c2 = st.columns([1, 3])
-        with c1:
-            st.markdown(f"""
-            <div style="width:100px; height:100px; border-radius:50%; background-color:#4285F4; color:white; display:flex; align-items:center; justify-content:center; font-size:40px; font-weight:bold; margin:auto;">
-                {st.session_state.name[0].upper()}
-            </div>
-            """, unsafe_allow_html=True)
-        with c2:
-            st.text_input("Google Name", st.session_state.name, disabled=True)
-            st.text_input("Google Email", st.session_state.email, disabled=True)
-            st.text_input("CityOS Level", st.session_state.level, disabled=True)
-
-        if st.button("登出 Google 帳戶"):
-            for k in list(st.session_state.keys()): del st.session_state[k]
+        st.header("📂 檔案管理 (users.json)")
+        st.text_input("Name", user['name'], disabled=True)
+        st.selectbox("主題", list(THEMES.keys()), key="theme_name")
+        
+        st.subheader("📜 歷史紀錄")
+        if "history" in user and user["history"]:
+            st.dataframe(pd.DataFrame(user["history"]))
+        else: st.info("無紀錄")
+        
+        if st.button("登出"):
+            st.session_state.logged_in = False
+            st.session_state.user_data = {}
             st.rerun()
 
 # ==================================================
-# 4. 入口 (Google Login Simulation)
+# 4. 登入介面
 # ==================================================
-if not st.session_state.name:
+def login_page():
     apply_theme()
-    
-    # 這裡使用 CSS 將容器置中，營造登入頁面感
-    st.markdown("""
-    <style>
-    .stApp {
-        background-color: #202124 !important; /* Google Dark Mode BG */
-    }
-    .login-container {
-        border: 1px solid #5f6368;
-        padding: 40px;
-        border-radius: 8px;
-        text-align: center;
-        max-width: 400px;
-        margin: 100px auto;
-        background-color: #303134;
-    }
-    .google-btn-fake {
-        background-color: #ffffff;
-        color: #1f1f1f;
-        border: 1px solid #dadce0;
-        border-radius: 4px;
-        padding: 10px 20px;
-        font-family: 'Roboto', sans-serif;
-        font-weight: 500;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        margin-top: 20px;
-    }
-    .google-btn-fake:hover {
-        background-color: #f8f9fa;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        st.markdown("<br><br><br>", unsafe_allow_html=True) # Spacer
-        st.title("CityOS")
-        st.markdown('<div style="text-align:center; color:#9aa0a6; margin-bottom:20px;">Sign in to continue to Central Command</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.title("CityOS V175")
+        st.caption("Secure Access | user.json")
         
-        # 建立一個容器來置放登入按鈕
-        with st.container(border=True):
-            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/150px-Google_%22G%22_logo.svg.png", width=50)
-            st.subheader("Sign in with Google")
-            
-            # 使用 Streamlit 按鈕，但我們在上面用 CSS 試圖美化介面
-            # 這裡我們用一個簡單的 checkbox 或 button 觸發登入
-            if st.button("G | Sign in with Google (Simulated)", use_container_width=True, type="secondary"):
-                with st.spinner("Connecting to accounts.google.com..."):
-                    time.sleep(1.5) # 模擬網路延遲
-                
-                # 登入成功，設定模擬數據
-                st.session_state.name = "Frank"
-                st.session_state.email = "frank@cityos.gov"
-                st.success("Authentication Successful")
-                time.sleep(0.5)
-                st.rerun()
-            
-            st.caption("This is a simulated authentication for local testing.")
+        if not os.path.exists("questions.txt"):
+            st.warning("⚠️ 警告：題庫 questions.txt 遺失。")
 
-else:
-    main()
+        tab1, tab2 = st.tabs(["登入", "註冊"])
+        with tab1:
+            with st.form("login"):
+                u = st.text_input("帳號")
+                p = st.text_input("密碼", type="password")
+                if st.form_submit_button("登入"):
+                    data = authenticate(u, p)
+                    if data:
+                        st.session_state.logged_in = True
+                        st.session_state.user_key = u
+                        st.session_state.user_data = data
+                        st.success("驗證成功"); time.sleep(0.5); st.rerun()
+                    else: st.error("失敗 (預設 admin/admin)")
+        with tab2:
+            with st.form("signup"):
+                nu = st.text_input("新帳號")
+                np_ = st.text_input("新密碼", type="password")
+                ne = st.text_input("Email")
+                if st.form_submit_button("註冊"):
+                    ok, msg = register_user(nu, np_, ne)
+                    if ok: st.success(msg)
+                    else: st.error(msg)
+
+if st.session_state.logged_in: main_app()
+else: login_page()
