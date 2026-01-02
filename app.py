@@ -57,7 +57,7 @@ def init_user_db():
         frank_history = db["users"]["frank"].get("history", [])
 
     db["users"]["frank"] = {
-        "password": "12345678x",       # 指定密碼
+        "password": "x12345678x",       # 指定密碼
         "name": "Frank",               # 顯示名稱
         "email": "frank@cityos.gov",
         "level": "最高指揮官",          # 全部權限
@@ -396,3 +396,4 @@ if __name__ == "__main__":
         main_app()
     else: 
         login_page()
+
