@@ -5,9 +5,8 @@ import os
 import base64
 
 # ==================================================
-# 1. 內嵌 SVG 圖庫 (已優化線條顏色邏輯)
+# 1. 內嵌 SVG 圖庫
 # ==================================================
-# 注意：這裡的 stroke="currentColor" 會配合容器的文字顏色
 SVG_ICONS = {
     "AND": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 L40,10 C55,10 65,20 65,30 C65,40 55,50 40,50 L10,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L10,20 M0,40 L10,40 M65,30 L80,30" stroke="currentColor" stroke-width="3"/></svg>''',
     "OR": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 C10,10 25,10 40,10 C60,10 70,30 70,30 C70,30 60,50 40,50 C25,50 10,50 10,50 C15,40 15,20 10,10" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L13,20 M0,40 L13,40 M70,30 L80,30" stroke="currentColor" stroke-width="3"/></svg>''',
@@ -20,27 +19,26 @@ SVG_ICONS = {
 # ==================================================
 # 2. 系統設定 (低飽和度主題庫)
 # ==================================================
-st.set_page_config(page_title="LogiMind V133", layout="wide")
+st.set_page_config(page_title="LogiMind V134", layout="wide")
 
-# 修改點：顏色全面調整為低飽和度、舒適色系
 THEMES = {
     "專業暗色 (Pro Dark)": {
-        "bg": "#212529",       # 深灰而非純黑
-        "txt": "#E9ECEF",      # 柔和米白
-        "btn": "#495057",      # 板岩灰按鈕
+        "bg": "#212529",       # 深灰
+        "txt": "#E9ECEF",      # 米白
+        "btn": "#495057",      # 板岩灰
         "btn_txt": "#FFFFFF",
-        "card": "#343A40"      # 內容區塊背景
+        "card": "#343A40"
     },
     "舒適亮色 (Soft Light)": {
-        "bg": "#F8F9FA",       # 柔和灰白
-        "txt": "#343A40",      # 深灰字體
-        "btn": "#6C757D",      # 溫和的灰色按鈕
+        "bg": "#F8F9FA",       # 灰白
+        "txt": "#343A40",      # 深灰
+        "btn": "#6C757D",      # 溫和灰
         "btn_txt": "#FFFFFF",
         "card": "#FFFFFF"
     },
     "海軍藍 (Navy Blue)": {
-        "bg": "#1A2530",       # 低飽和深藍
-        "txt": "#DDE1E5",
+        "bg": "#1A2530",       # 深藍
+        "txt": "#DDE1E5",      # 淺灰
         "btn": "#3E5C76",      # 莫蘭迪藍
         "btn_txt": "#FFFFFF",
         "card": "#2C3E50"
@@ -58,36 +56,31 @@ if "state" not in st.session_state:
     })
 
 # ==================================================
-# 3. 視覺渲染引擎 (重點修正區)
+# 3. 視覺渲染引擎 (修復白底白字問題)
 # ==================================================
 def apply_theme():
     t = THEMES[st.session_state.theme_name]
     
     st.markdown(f"""
     <style>
-    /* 全域背景與文字 */
     .stApp {{ background-color: {t['bg']} !important; }}
     h1, h2, h3, h4, p, span, div, label, li, .stMarkdown {{ 
         color: {t['txt']} !important; 
         font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
     }}
     
-    /* 按鈕美化：去除醜陋邊框，使用圓角與柔和色 */
+    /* 按鈕優化 */
     .stButton>button {{
         background-color: {t['btn']} !important;
         color: {t['btn_txt']} !important;
         border: none !important;
         border-radius: 6px !important;
         padding: 0.5rem 1rem;
-        font-weight: 500;
-        transition: 0.3s;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }}
-    .stButton>button:hover {{
-        filter: brightness(110%);
-    }}
+    .stButton>button:hover {{ filter: brightness(110%); }}
     
-    /* 表格樣式：簡約清晰 */
+    /* 表格樣式 */
     div[data-testid="stDataFrame"] {{
         background-color: {t['card']} !important;
         border: 1px solid rgba(128,128,128,0.2);
@@ -95,7 +88,7 @@ def apply_theme():
         border-radius: 8px;
     }}
     
-    /* 側邊欄樣式微調 */
+    /* 側邊欄 */
     [data-testid="stSidebar"] {{
         background-color: {t['card']};
         border-right: 1px solid rgba(128,128,128,0.1);
@@ -105,29 +98,32 @@ def apply_theme():
 
 def render_svg(svg_code, caption=""):
     """
-    修正點：圖片強制白底。
-    我們建立一個 div 容器，強制背景為白色，並強制內部文字/線條顏色為黑色。
-    這樣無論外部主題是黑是白，圖片永遠清晰。
+    V134 核心修復：強制將 SVG 內部的 currentColor 替換為黑色 (#000000)
+    這確保了在白底卡片上，線條永遠清晰可見。
     """
-    b64 = base64.b64encode(svg_code.encode('utf-8')).decode("utf-8")
+    # 暴力替換顏色設定
+    svg_black = svg_code.replace('stroke="currentColor"', 'stroke="#000000"')
+    svg_black = svg_black.replace('fill="currentColor"', 'fill="#000000"')
+    
+    # 轉碼為 Base64
+    b64 = base64.b64encode(svg_black.encode('utf-8')).decode("utf-8")
     
     html = f'''
     <div style="
-        background-color: white; 
-        border-radius: 10px; 
+        background-color: #FFFFFF; /* 強制純白背景 */
+        border-radius: 8px; 
         padding: 20px; 
         margin-bottom: 10px; 
         text-align: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        color: black; /* 強制 SVG 使用黑色線條 */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     ">
-        <div style="color: black;"> {svg_code}
-        </div>
+        <img src="data:image/svg+xml;base64,{b64}" width="200"/>
+        
         <p style="
-            color: #333 !important; 
+            color: #000000 !important; 
             margin-top: 10px; 
             font-size: 14px; 
-            font-weight: bold;
+            font-weight: 600;
         ">{caption}</p>
     </div>
     '''
@@ -154,17 +150,16 @@ def load_qs():
     return q
 
 # ==================================================
-# 5. 主程式邏輯
+# 5. 主程式
 # ==================================================
 def main():
     apply_theme()
     is_frank = st.session_state.name.lower() == "frank"
     
     with st.sidebar:
-        st.title("🏙️ LogiMind V133")
-        st.caption("Visual Comfort Edition")
+        st.title("🏙️ LogiMind V134")
+        st.caption("Visual Fix Edition")
         
-        # 用戶資訊卡片風格
         st.markdown(f"""
         <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:15px;">
             <div>👤 <b>{st.session_state.title}</b></div>
@@ -174,7 +169,6 @@ def main():
 
         if is_frank: st.success("權限：ROOT")
         else: st.info(f"權限：{st.session_state.level}")
-        
         st.divider()
         
         menu = ["🏠 系統概覽", "🔬 基礎邏輯", "🔢 數碼運算", "🎓 智慧考評"]
@@ -191,7 +185,7 @@ def main():
     # --- 頁面內容 ---
     if "系統概覽" in page:
         st.header("🏠 系統概覽")
-        st.write("歡迎使用 LogiMind V133。本版本針對視覺體驗進行了深度優化。")
+        st.write("V134 修復說明：強制圖示線條為黑色，解決深色主題下的圖片隱形問題。")
         c1, c2, c3 = st.columns(3)
         with c1: render_svg(SVG_ICONS["AND"], "AND Gate")
         with c2: render_svg(SVG_ICONS["OR"], "OR Gate")
@@ -203,7 +197,6 @@ def main():
         
         c1, c2 = st.columns([1, 1.5])
         with c1:
-            # 圖片區塊
             render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]), f"{gate} ANSI Symbol")
         with c2:
             st.write(f"**{gate} 真值表**")
@@ -225,7 +218,7 @@ def main():
 
     elif "化簡" in page:
         if "🔒" in page: st.error("權限不足"); st.stop()
-        st.header("🧮 卡諾圖化簡 (K-Map)")
+        st.header("🧮 卡諾圖化簡")
         c1, c2 = st.columns(2)
         m0 = c1.checkbox("00", False); m1 = c2.checkbox("01", False)
         m2 = c1.checkbox("10", False); m3 = c2.checkbox("11", False)
@@ -277,7 +270,6 @@ def main():
 
     elif "個人化" in page:
         st.header("🎨 外觀設定")
-        
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("主題選擇")
@@ -285,10 +277,8 @@ def main():
             if sel != st.session_state.theme_name:
                 st.session_state.theme_name = sel
                 st.rerun()
-                
             st.subheader("個人資訊")
             st.session_state.title = st.text_input("使用者稱號", st.session_state.title)
-
         with c2:
             st.subheader("系統操作")
             if st.button("登出系統"):
@@ -300,7 +290,7 @@ def main():
 # ==================================================
 if not st.session_state.name:
     apply_theme()
-    st.title("🏙️ LogiMind V133")
+    st.title("🏙️ LogiMind V134")
     st.markdown("請輸入您的使用者代碼以登入系統。")
     n = st.text_input("User ID", placeholder="e.g., Frank")
     if st.button("登入"):
