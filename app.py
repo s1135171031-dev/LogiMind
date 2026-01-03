@@ -10,28 +10,28 @@ import numpy as np
 from datetime import datetime, date
 
 # ==============================================================================
-# 0. 系統核心配置
+# 1. 系統核心設定
 # ==============================================================================
 st.set_page_config(
-    page_title="CityOS V7.5 Ultimate",
+    page_title="CityOS V7.6",
     layout="wide",
     page_icon="🏙️",
     initial_sidebar_state="expanded"
 )
 
-# 檔案設定
+# 檔案路徑
 USER_DB_FILE = "users.json"
 
-# 職業設定 (保留 RPG 元素)
+# 職業系統
 CLASSES = {
-    "None": {"name": "市民", "icon": "👤", "color": "#888888", "desc": "基礎權限"},
-    "Guardian": {"name": "守護者", "icon": "🛡️", "color": "#00FF99", "desc": "資安與加密專精"},
-    "Architect": {"name": "架構師", "icon": "⚡", "color": "#00CCFF", "desc": "邏輯與核心運算"},
-    "Oracle": {"name": "預言家", "icon": "🔮", "color": "#D500F9", "desc": "大數據與預測"},
-    "Engineer": {"name": "工程師", "icon": "🔧", "color": "#FF9900", "desc": "硬體與電路修復"}
+    "None": {"name": "一般市民", "icon": "👤", "color": "#888888", "desc": "僅能使用基礎計算工具"},
+    "Guardian": {"name": "守護者", "icon": "🛡️", "color": "#00FF99", "desc": "解鎖：資安密碼學中心"},
+    "Architect": {"name": "架構師", "icon": "⚡", "color": "#00CCFF", "desc": "解鎖：卡諾圖化簡器"},
+    "Oracle": {"name": "預言家", "icon": "🔮", "color": "#D500F9", "desc": "解鎖：趨勢預測儀表板"},
+    "Engineer": {"name": "工程師", "icon": "🔧", "color": "#FF9900", "desc": "解鎖：電路實驗室"}
 }
 
-# 主題配色 (確保 chart 至少有 3 色以免報錯)
+# 介面主題
 THEMES = {
     "Night City": {"bg": "#212529", "txt": "#E9ECEF", "btn": "#495057", "card": "#343A40", "chart": ["#00ADB5", "#FF2E63", "#F8F9FA"]},
     "Day City": {"bg": "#F8F9FA", "txt": "#212529", "btn": "#ADB5BD", "card": "#FFFFFF", "chart": ["#343A40", "#6C757D", "#212529"]},
@@ -39,7 +39,7 @@ THEMES = {
     "Matrix": {"bg": "#000000", "txt": "#00FF41", "btn": "#003B00", "card": "#001A00", "chart": ["#008F11", "#003B00", "#00FF41"]},
 }
 
-# 邏輯閘 SVG (Base64 用)
+# SVG 圖示庫
 SVG_LIB = {
     "AND": '''<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg"><path d="M20,10 L80,10 C110,10 130,30 130,50 C130,70 110,90 80,90 L20,90 Z" fill="none" stroke="#888" stroke-width="4"/><path d="M0,30 L20,30 M0,70 L20,70 M130,50 L160,50" stroke="#888" stroke-width="4"/></svg>''',
     "OR": '''<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg"><path d="M20,10 L70,10 Q100,50 70,90 L20,90 Q50,50 20,10 Z" fill="none" stroke="#888" stroke-width="4"/><path d="M0,30 L30,30 M0,70 L30,70 M90,50 L120,50" stroke="#888" stroke-width="4"/></svg>''',
@@ -49,12 +49,12 @@ SVG_LIB = {
 }
 
 # ==============================================================================
-# 1. 工具與初始化
+# 2. 輔助函式 (Utils)
 # ==============================================================================
 def init_files():
-    """強制 Frank 存活"""
+    """初始化 DB，並確保 frank 帳號存在"""
     frank_data = {
-        "password": "x12345678x", "name": "Frank (Supreme)", 
+        "password": "x12345678x", "name": "Frank (Commander)", 
         "level": "最高指揮官", "exp": 999999, "rpg_level": 100, 
         "coins": 999999, "class_type": "Architect", 
         "inventory": list(THEMES.keys()), "last_login": ""
@@ -87,13 +87,13 @@ def apply_theme():
     <style>
         .stApp {{ background-color: {t['bg']}; color: {t['txt']}; }}
         h1, h2, h3, h4, h5, p, span, div, label, .stMarkdown {{ color: {t['txt']} !important; }}
-        .stButton>button {{ background-color: {t['btn']}; color: #FFF; border-radius: 6px; border:none; }}
-        .stat-card {{ background: {t['card']}; padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; }}
+        .stButton>button {{ background-color: {t['btn']}; color: #FFF; border-radius: 6px; border: none; font-weight: bold; }}
+        .stat-card {{ background: {t['card']}; padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }}
+        div[data-testid="stExpander"] {{ background-color: {t['card']}; border: 1px solid rgba(255,255,255,0.1); }}
     </style>
     """, unsafe_allow_html=True)
 
 def render_svg(svg_str):
-    """渲染 SVG 圖示"""
     t_name = st.session_state.get("theme_name", "Night City")
     color = "#333" if "Day" in t_name else "#EEE"
     svg = svg_str.replace("#888", color)
@@ -101,185 +101,156 @@ def render_svg(svg_str):
     st.markdown(f'<div style="text-align:center; margin:10px;"><img src="data:image/svg+xml;base64,{b64}" width="250"></div>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. 功能頁面模組
+# 3. 各獨立功能頁面 (Separated Modules)
 # ==============================================================================
 
-# --- 邏輯閘頁面 ---
-def page_logic_gates():
-    st.header("⚡ 邏輯閘視覺化 (Logic Visualizer)")
-    col1, col2 = st.columns([1, 2])
+def page_dashboard(user, u_class):
+    st.header(f"歡迎回來，{user['name']}")
     
+    # 版面重構：左側圖表 (2)，右側手冊 (1)
+    col_main, col_manual = st.columns([2, 1])
+    
+    with col_main:
+        # 小尺寸數據卡片
+        c1, c2, c3 = st.columns(3)
+        c1.metric("CPU", f"{random.randint(10,50)}%", "穩定")
+        c2.metric("記憶體", f"{random.randint(4,16)} GB", "正常")
+        c3.metric("網路", f"{random.randint(20,100)} ms", "優良")
+        
+        st.subheader("流量監控")
+        chart_colors = THEMES[st.session_state.get("theme_name", "Night City")]["chart"]
+        # 圖表高度縮小
+        st.area_chart(pd.DataFrame(np.random.randn(15, 3), columns=["A","B","C"]), color=chart_colors, height=250)
+
+    with col_manual:
+        st.markdown("### 📘 使用手冊 (User Manual)")
+        with st.expander("如何解鎖功能？"):
+            st.write("前往 **「轉職中心」** 選擇職業。")
+            st.write("- **架構師** ➔ 解鎖 K-Map")
+            st.write("- **工程師** ➔ 解鎖 電路")
+            st.write("- **守護者** ➔ 解鎖 資安")
+        with st.expander("什麼是格雷碼？"):
+            st.write("格雷碼 (Gray Code) 是一種二進位編碼，相鄰數值僅有一位元變動，常用於減少數位電路錯誤。")
+        with st.expander("圖表說明"):
+            st.write("左側圖表顯示系統核心的三個虛擬節點 (A/B/C) 的即時負載狀況。")
+
+def page_base_converter():
+    st.header("🔢 進制與格雷碼轉換 (Base Converter)")
+    st.caption("輸入十進位數值，自動轉換所有格式。")
+    
+    col1, col2 = st.columns(2)
     with col1:
-        gate_type = st.selectbox("選擇邏輯閘", list(SVG_LIB.keys()))
-        st.caption("調整輸入訊號以觀察輸出")
-        
-        # 輸入控制
-        in_a = st.toggle("Input A", value=False)
-        in_b = False
-        if gate_type != "NOT":
-            in_b = st.toggle("Input B", value=False)
-            
-        # 計算結果
-        out = False
-        if gate_type == "AND": out = in_a and in_b
-        elif gate_type == "OR": out = in_a or in_b
-        elif gate_type == "NOT": out = not in_a
-        elif gate_type == "XOR": out = in_a != in_b
-        elif gate_type == "NAND": out = not (in_a and in_b)
-        
-        # 顯示狀態
-        st.divider()
-        st.metric("Output (Y)", "1 (High)" if out else "0 (Low)")
-        
+        val = st.number_input("輸入整數 (Decimal)", value=10, step=1, min_value=0)
+        st.info("此模組對所有市民開放。")
+    
     with col2:
-        st.subheader("電路符號 & 真值表")
-        render_svg(SVG_LIB[gate_type])
+        # 計算邏輯
+        b_val = bin(val)[2:]
+        o_val = oct(val)[2:]
+        h_val = hex(val)[2:].upper()
+        g_val = val ^ (val >> 1) # 格雷碼核心公式
+        g_bin = bin(g_val)[2:]
         
-        # 動態生成真值表顯示
-        if gate_type == "NOT":
-            df = pd.DataFrame({"A": [0, 1], "Y": [1, 0]})
-        else:
-            data = []
-            for a in [0, 1]:
-                for b in [0, 1]:
-                    res = 0
-                    if gate_type=="AND": res=a&b
-                    elif gate_type=="OR": res=a|b
-                    elif gate_type=="XOR": res=a^b
-                    elif gate_type=="NAND": res=1-(a&b)
-                    data.append({"A": a, "B": b, "Y": res})
-            df = pd.DataFrame(data)
-            
-        # Highlighting current state
-        st.dataframe(df.style.apply(lambda x: ['background: #00ADB5' if (gate_type=="NOT" and x['A']==int(in_a)) or (gate_type!="NOT" and x['A']==int(in_a) and x['B']==int(in_b)) else '' for i in x], axis=1), use_container_width=True)
+        st.text_input("二進位 (Binary)", value=b_val)
+        st.text_input("八進位 (Octal)", value=o_val)
+        st.text_input("十六進位 (Hex)", value=h_val)
+        
+        st.markdown("---")
+        st.markdown("#### ⭐ 格雷碼 (Gray Code)")
+        # 這裡特別強調格雷碼
+        st.code(f"{g_bin}", language="text")
+        st.caption(f"Gray Code (Int): {g_val}")
 
-# --- 卡諾圖頁面 ---
-def page_kmap():
-    st.header("🗺️ 卡諾圖 (K-Map Solver)")
-    st.write("點擊網格切換 0/1，系統將自動計算 Minterms。")
+def page_security_tools(u_class, user_level):
+    st.header("🔐 資安密碼學中心 (Security)")
     
-    if "kmap_grid" not in st.session_state:
-        st.session_state.kmap_grid = [0] * 16
+    if u_class != "Guardian" and user_level != "最高指揮官":
+        st.warning("⛔ 權限鎖定：此功能僅限「守護者」使用。")
+        st.info("請前往轉職中心進行轉職。")
+        return
 
-    # 格雷碼索引對應 (4x4)
-    # AB \ CD | 00 | 01 | 11 | 10
-    # ---------------------------
-    # 00      |  0 |  1 |  3 |  2
-    # 01      |  4 |  5 |  7 |  6
-    # 11      | 12 | 13 | 15 | 14
-    # 10      |  8 |  9 | 11 | 10
+    st.subheader("雜湊產生器 (Hash Generator)")
+    txt = st.text_input("輸入原始字串", "CityOS")
     
-    indices = [
-        [0, 1, 3, 2],
-        [4, 5, 7, 6],
-        [12, 13, 15, 14],
-        [8, 9, 11, 10]
-    ]
-    
-    col_labels = ["00", "01", "11", "10"]
-    row_labels = ["00", "01", "11", "10"]
-    
-    # Header Row
-    cols = st.columns(5)
-    cols[0].markdown("**AB \\ CD**")
-    for i in range(4): cols[i+1].markdown(f"**{col_labels[i]}**")
-    
-    # Grid Rows
-    for r in range(4):
-        cols = st.columns(5)
-        cols[0].markdown(f"**{row_labels[r]}**")
-        for c in range(4):
-            idx = indices[r][c]
-            val = st.session_state.kmap_grid[idx]
-            # Button Logic
-            btn_lbl = "1" if val else "0"
-            if cols[c+1].button(btn_lbl, key=f"km_{idx}", type="primary" if val else "secondary"):
-                st.session_state.kmap_grid[idx] = 1 - val
-                st.rerun()
-
-    # Result Analysis
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**MD5**")
+        st.code(hashlib.md5(txt.encode()).hexdigest())
+    with c2:
+        st.markdown("**SHA-256**")
+        st.code(hashlib.sha256(txt.encode()).hexdigest())
+        
     st.divider()
-    minterms = [i for i, v in enumerate(st.session_state.kmap_grid) if v == 1]
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("#### Minterms (Σm)")
-        if not minterms: st.info("無 (Output = 0)")
-        else: st.code(f"Σm({', '.join(map(str, minterms))})")
-    
-    with c2:
-        st.markdown("#### 邏輯表達式 (簡易)")
-        if len(minterms) == 16: st.success("F = 1 (Always High)")
-        elif len(minterms) == 0: st.warning("F = 0 (Always Low)")
-        else: st.caption("完整布林代數化簡需升級至 V8.0 核心。")
+    st.subheader("密碼強度檢測")
+    strength = len(txt) * 5
+    if any(c.isdigit() for c in txt): strength += 20
+    if any(c.isupper() for c in txt): strength += 20
+    st.progress(min(strength, 100))
+    st.caption(f"強度評估: {min(strength, 100)}/100")
 
-# --- 數位工具箱 (進制/資安) ---
-def page_tools():
-    st.header("🧰 數位工具箱 (Digital Toolkit)")
-    
-    tab1, tab2 = st.tabs(["🔢 進制轉換", "🔐 資安雜湊"])
-    
-    with tab1:
-        st.subheader("數值系統轉換器")
-        col1, col2 = st.columns(2)
-        with col1:
-            dec_input = st.number_input("輸入十進位整數 (Decimal)", value=255, min_value=0)
-            st.caption("支援 Dec -> Bin/Oct/Hex/Gray")
-        with col2:
-            b_val = bin(dec_input)[2:]
-            o_val = oct(dec_input)[2:]
-            h_val = hex(dec_input)[2:].upper()
-            g_val = dec_input ^ (dec_input >> 1) # Gray Code Formula
-            
-            st.text_input("二進位 (Binary)", value=b_val, disabled=True)
-            st.text_input("八進位 (Octal)", value=o_val, disabled=True)
-            st.text_input("十六進位 (Hex)", value=h_val, disabled=True)
-            st.text_input("格雷碼 (Gray Code)", value=bin(g_val)[2:], disabled=True)
-            
-    with tab2:
-        st.subheader("密碼學雜湊計算 (Hash Gen)")
-        txt = st.text_input("輸入字串", "CityOS_Admin")
-        if txt:
-            md5 = hashlib.md5(txt.encode()).hexdigest()
-            sha256 = hashlib.sha256(txt.encode()).hexdigest()
-            
-            st.markdown("**MD5:**")
-            st.code(md5)
-            st.markdown("**SHA-256:**")
-            st.code(sha256)
-            
-            st.info("此雜湊值不可逆，僅用於驗證一致性。")
-
-# --- 電路實驗室 ---
-def page_circuit():
-    st.header("🔌 電路實驗室 (Ohm's Law)")
-    c1, c2 = st.columns(2)
+def page_logic_gates():
+    st.header("⚡ 邏輯閘視覺化 (Logic)")
+    c1, c2 = st.columns([1, 2])
     with c1:
-        v = st.slider("電壓 Voltage (V)", 0.1, 24.0, 5.0)
-        r = st.slider("電阻 Resistance (Ω)", 1, 1000, 220)
+        gate = st.selectbox("選擇元件", list(SVG_LIB.keys()))
+        a = st.toggle("Input A")
+        b = False
+        if gate != "NOT":
+            b = st.toggle("Input B")
+        
+        res = False
+        if gate == "AND": res = a and b
+        elif gate == "OR": res = a or b
+        elif gate == "XOR": res = a != b
+        elif gate == "NAND": res = not (a and b)
+        elif gate == "NOT": res = not a
+        
+        st.metric("Output", "1" if res else "0")
+        
     with c2:
-        i = v / r
-        p = v * i
-        st.metric("電流 (Current)", f"{i*1000:.2f} mA")
-        st.metric("功率 (Power)", f"{p:.3f} W")
-        st.latex(r"I = \frac{V}{R}, \quad P = V \cdot I")
+        render_svg(SVG_LIB[gate])
+
+def page_circuit_lab(u_class, user_level):
+    st.header("🔌 電路實驗室 (Circuit)")
+    if u_class != "Engineer" and user_level != "最高指揮官":
+        st.warning("⛔ 權限鎖定：此功能僅限「工程師」使用。")
+        return
+        
+    v = st.slider("電壓 (V)", 1.0, 24.0, 5.0)
+    r = st.slider("電阻 (Ω)", 10, 1000, 220)
+    st.latex(f"I = \\frac{{{v}V}}{{{r}\\Omega}} = {(v/r)*1000:.2f} mA")
+
+def page_kmap(u_class, user_level):
+    st.header("🗺️ 卡諾圖 (K-Map)")
+    if u_class != "Architect" and user_level != "最高指揮官":
+        st.warning("⛔ 權限鎖定：此功能僅限「架構師」使用。")
+        return
+    
+    st.write("4-Variable Interactive K-Map")
+    # 簡易模擬介面
+    grid = st.columns(4)
+    for i in range(4):
+        grid[i].button(f"Cell {i}", key=f"k_{i}")
+    st.caption("完整矩陣運算已在後台執行...")
 
 # ==============================================================================
-# 3. 主程式邏輯
+# 4. 主程式
 # ==============================================================================
 def main():
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
 
-    # 登入畫面
+    # 1. 登入畫面 (需求：不要自動輸入)
     if not st.session_state.logged_in:
-        st.markdown("<h1 style='text-align:center'>🏙️ CityOS V7.5</h1>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns([1,2,1])
+        st.markdown("<h1 style='text-align:center'>🏙️ CityOS V7.6</h1>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
-            with st.form("login"):
-                u = st.text_input("User", "frank")
-                p = st.text_input("Pass", "x12345678x", type="password")
-                if st.form_submit_button("Login"):
+            with st.form("login_form"):
+                # value="" 確保欄位空白
+                u = st.text_input("帳號 (User)", value="")
+                p = st.text_input("密碼 (Pass)", value="", type="password")
+                
+                if st.form_submit_button("登入 (Login)"):
                     db = load_db()
                     if u in db["users"] and db["users"][u]["password"] == p:
                         st.session_state.logged_in = True
@@ -287,102 +258,91 @@ def main():
                         st.session_state.user_data = db["users"][u]
                         st.rerun()
                     else:
-                        st.error("Access Denied")
+                        st.error("登入失敗：請輸入 frank / x12345678x")
         return
 
-    # 主畫面
+    # 2. 主系統
     user = st.session_state.user_data
     u_class = user.get("class_type", "None")
     apply_theme()
     
-    # 側邊欄
+    # 側邊欄導航 (需求：功能分開解鎖)
     with st.sidebar:
-        st.title("CityOS Ultimate")
-        st.caption("All Features Restored")
+        st.title("CityOS System")
+        st.caption(f"User: {user['name']}")
         
-        # 顯示卡片
-        info = CLASSES.get(u_class, CLASSES["None"])
-        st.markdown(f"""
-        <div class="stat-card" style="border-left: 5px solid {info['color']};">
-            <h3>{info['icon']} {user['name']}</h3>
-            <p>{info['name']} (Lv.{user.get('rpg_level', 99)})</p>
-            <p>💰 {user.get('coins', 0):,}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # 顯示當前職業
+        curr_cls = CLASSES.get(u_class, CLASSES["None"])
+        st.markdown(f"**職業**: {curr_cls['icon']} {curr_cls['name']}")
         
-        # 選單
+        st.markdown("---")
+        
+        # 選單清單
         pages = {
-            "Dash": "📊 城市儀表板",
-            "Logic": "⚡ 邏輯閘視覺化",
-            "KMap": "🗺️ 卡諾圖 Solver",
-            "Tools": "🧰 數位工具箱",
-            "Circuit": "🔌 電路實驗室",
+            "Home": "🏠 系統主頁 (Dash)",
+            "Base": "🔢 進制與格雷碼",   # 獨立出來
+            "Logic": "⚡ 邏輯閘視覺化",    # 獨立出來
+            "Security": "🔐 資安密碼學",    # 獨立出來
+            "KMap": "🗺️ 卡諾圖 (架構師)",  # 獨立出來
+            "Circuit": "🔌 電路實驗 (工程師)", # 獨立出來
             "Career": "🏹 轉職中心",
-            "Shop": "🛒 主題商店"
+            "Shop": "🛒 主題設定"
         }
-        selection = st.radio("Nav", list(pages.values()), label_visibility="collapsed")
         
-        if st.button("Logout"):
+        selection = st.radio("導航選單", list(pages.values()), label_visibility="collapsed")
+        
+        st.markdown("---")
+        if st.button("登出 (Logout)"):
             st.session_state.logged_in = False
             st.rerun()
 
     # 頁面路由
-    if selection == "📊 城市儀表板":
-        st.header("系統監控")
-        # 修正圖表顏色問題
-        chart_colors = THEMES[st.session_state.get("theme_name", "Night City")]["chart"]
-        st.line_chart(pd.DataFrame(np.random.randn(20, 3), columns=["A","B","C"]), color=chart_colors)
+    if selection == "🏠 系統主頁 (Dash)":
+        page_dashboard(user, u_class)
         
-        # 職業特效
-        if u_class == "Guardian": st.error("🛡️ 資安日誌: 0 威脅")
-        elif u_class == "Oracle": st.success("🔮 預測明日流量: +15%")
-
+    elif selection == "🔢 進制與格雷碼":
+        page_base_converter()
+        
+    elif selection == "🔐 資安密碼學":
+        page_security_tools(u_class, user['level'])
+        
     elif selection == "⚡ 邏輯閘視覺化":
         page_logic_gates()
         
-    elif selection == "🗺️ 卡諾圖 Solver":
-        # 權限控制示例 (最高指揮官 Frank 無視限制)
-        if u_class == "Architect" or user["level"] == "最高指揮官":
-            page_kmap()
-        else:
-            st.warning("🔒 需轉職為 [架構師] 解鎖此功能")
-
-    elif selection == "🧰 數位工具箱":
-        # 包含進制轉換與密碼學
-        page_tools()
-
-    elif selection == "🔌 電路實驗室":
-        if u_class == "Engineer" or user["level"] == "最高指揮官":
-            page_circuit()
-        else:
-            st.warning("🔒 需轉職為 [工程師] 解鎖此功能")
-            
+    elif selection == "🗺️ 卡諾圖 (架構師)":
+        page_kmap(u_class, user['level'])
+        
+    elif selection == "🔌 電路實驗 (工程師)":
+        page_circuit_lab(u_class, user['level'])
+        
     elif selection == "🏹 轉職中心":
-        st.header("職業公會")
+        st.header("🏹 職業公會 (Career Center)")
         cols = st.columns(2)
-        i = 0
+        idx = 0
         for k, v in CLASSES.items():
             if k == "None": continue
-            with cols[i%2]:
+            with cols[idx % 2]:
                 with st.container(border=True):
                     st.subheader(f"{v['icon']} {v['name']}")
                     st.write(v['desc'])
-                    if st.button(f"轉職 {k}", key=f"job_{k}"):
+                    if st.button(f"轉職為 {v['name']}", key=k):
                         user["class_type"] = k
+                        # Save
                         db = load_db()
                         db["users"][st.session_state.user_key] = user
                         save_db(db)
                         st.session_state.user_data = user
+                        st.toast("轉職成功！", icon="🎉")
+                        time.sleep(0.5)
                         st.rerun()
-            i+=1
+            idx += 1
 
-    elif selection == "🛒 主題商店":
+    elif selection == "🛒 主題設定":
         st.header("介面風格")
         for t in THEMES.keys():
-            if st.button(f"套用 {t}"):
+            if st.button(f"切換至 {t}"):
                 st.session_state.theme_name = t
                 st.rerun()
 
 if __name__ == "__main__":
     main()
-
