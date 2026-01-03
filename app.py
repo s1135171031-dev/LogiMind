@@ -185,8 +185,8 @@ def main_app():
         card_class = "commander-card" if is_commander else ""
         badge_html = "<div class='commander-badge'>SUPREME ACCESS</div>" if is_commander else ""
         
-        # [修復點] 這裡原本少了結尾引號，現在已經加上了
-        style_str = f"padding:15px; background:{card_bg}; border-radius:8px; margin-bottom:15px; border-left:4px solid {border_color};
+        # [修復] 這裡補上了結尾的雙引號 "
+        style_str = f"padding:15px; background:{card_bg}; border-radius:8px; margin-bottom:15px; border-left:4px solid {border_color};"
         
         st.markdown(f"""
         <div class="{card_class}" style="{style_str}">
