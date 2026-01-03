@@ -5,6 +5,7 @@ import os
 import base64
 import time
 import json
+import hashlib # 新增雜湊函式庫
 import numpy as np 
 from datetime import datetime
 
@@ -106,7 +107,7 @@ def save_score(username, score_str):
 # ==================================================
 # 1. 系統視覺與工具
 # ==================================================
-st.set_page_config(page_title="CityOS V3.1", layout="wide", page_icon="🏙️")
+st.set_page_config(page_title="CityOS V3.2", layout="wide", page_icon="🏙️")
 
 SVG_ICONS = {
     "MUX": '''<svg width="120" height="100" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,10 L90,25 L90,75 L30,90 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="45" y="55" fill="currentColor" font-size="14">MUX</text><path d="M10,25 L30,25 M10,40 L30,40 M10,55 L30,55 M10,70 L30,70 M90,50 L110,50 M60,85 L60,95" stroke="currentColor" stroke-width="2"/></svg>''',
@@ -193,8 +194,8 @@ def main_app():
     is_commander = (user_lvl == "最高指揮官")
 
     with st.sidebar:
-        st.title("🏙️ CityOS V3.1")
-        st.caption("Advanced Permission System")
+        st.title("🏙️ CityOS V3.2")
+        st.caption("Secured Infrastructure")
         
         # --- 個人卡片 ---
         card_bg = "rgba(255,255,255,0.05)"
@@ -214,17 +215,18 @@ def main_app():
         """, unsafe_allow_html=True)
         # ---------------
         
-        # 動態選單生成 (更新日誌移至倒數第二個)
+        # 動態選單生成
         st.markdown("### 導航選單")
         menu_options = {
             "Dashboard": "🏙️ 城市儀表板",
             "Electricity": "⚡ 電力設施 (Logic)",
             "Boolean": "🧩 布林轉換器 (Lv1+)",
-            "GrayCode": "🏦 格雷碼核心 (Lv2+)", # 標註 Lv2
+            "GrayCode": "🏦 格雷碼核心 (Lv2+)",
             "BaseConv": "🔢 進制轉換 (Lv2+)",
+            "InfoSec": "🛡️ 資訊安全局 (Lv2+)", # NEW
             "KMap": "🗺️ 卡諾圖 (Lv3+)",
             "Academy": "🎓 市政學院",
-            "UpdateLog": "📜 更新日誌", # 移至此處
+            "UpdateLog": "📜 更新日誌",
             "Profile": "📂 人事檔案"
         }
         
@@ -234,20 +236,20 @@ def main_app():
         selection = st.radio("前往", list(menu_options.values()), label_visibility="collapsed")
 
     # -------------------------------------------
-    # 頁面: 城市儀表板 (All) - [新增簡介]
+    # 頁面: 城市儀表板 (All)
     # -------------------------------------------
     if selection == "🏙️ 城市儀表板":
         col_h1, col_h2 = st.columns([3, 1])
         with col_h1: st.title(f"👋 歡迎，{user['name']}")
         with col_h2: st.caption(datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-        # [新增] 150字系統簡介
+        # 系統簡介
         st.markdown("""
         <div class="intro-box">
-            <b>CityOS (Urban Operation System) V3.1</b> 是一套專為現代智慧城市設計的中央控制中樞。
-            本系統整合了底層邏輯運算、多進制數據處理以及高階權限管理模組，旨在透過數位化手段提升城市運作效率。
+            <b>CityOS (Urban Operation System) V3.2</b> 是一套專為現代智慧城市設計的中央控制中樞。
+            整合底層邏輯運算、多進制數據處理以及高階權限管理，並新增了<b>資訊安全局</b>以強化數據加密傳輸監控。
             <br><br>
-            從基礎的電力設施邏輯閘監控，到進階的加密格雷碼演算，乃至於最高層級的核心決策支援，CityOS 採用嚴格的分級授權機制（Level 1 至 Level 3），確保只有經過考核的合格人員能操作關鍵設施。
+            系統採用嚴格的分級授權機制（Level 1 至 Level 3），確保只有經過考核的合格人員能操作關鍵設施。
             透過即時數據儀表板與市政學院的持續考核，我們致力於構建一個安全、高效且可持續發展的運算城市生態系統。
         </div>
         """, unsafe_allow_html=True)
@@ -297,7 +299,7 @@ def main_app():
             
             c1, c2 = st.columns(2)
             with c1:
-                st.subheader("真值表生成器 (2變數)")
+                st.subheader("真值表生成器")
                 op = st.selectbox("運算邏輯", ["A AND B", "A OR B", "A XOR B", "NOT A", "NAND"])
             
             with c2:
@@ -316,10 +318,9 @@ def main_app():
             st.error("🔒 權限不足：需要 [初級管理員] 權限。")
 
     # -------------------------------------------
-    # 頁面: 格雷碼核心 (Lv2+) - [調整權限]
+    # 頁面: 格雷碼核心 (Lv2+)
     # -------------------------------------------
     elif selection == "🏦 格雷碼核心 (Lv2+)":
-        # 現在改為檢查 中級管理員
         if check_access(user_lvl, "中級管理員"):
             st.header("🏦 格雷碼運算單元")
             st.caption("Gray Code Processor")
@@ -336,7 +337,7 @@ def main_app():
             else:
                 st.error("請輸入整數")
         else:
-            st.error("🔒 權限不足：需要 [中級管理員] 權限才能存取格雷碼核心。")
+            st.error("🔒 權限不足：需要 [中級管理員] 權限。")
 
     # -------------------------------------------
     # 頁面: 進制轉換 (Lv2+)
@@ -365,15 +366,62 @@ def main_app():
             st.error("🔒 權限不足：需要 [中級管理員] 權限。")
 
     # -------------------------------------------
+    # 頁面: 資訊安全局 (Lv2+) - NEW
+    # -------------------------------------------
+    elif selection == "🛡️ 資訊安全局 (Lv2+)":
+        if check_access(user_lvl, "中級管理員"):
+            st.header("🛡️ 資訊安全局 (InfoSec Bureau)")
+            st.caption("Cryptography & Hashing Tools")
+            
+            tab_crypt, tab_hash = st.tabs(["🔐 凱薩加密 (Caesar)", "#️⃣ 數位雜湊 (Hashing)"])
+            
+            with tab_crypt:
+                st.subheader("古典加密通訊")
+                c1, c2 = st.columns([2, 1])
+                with c1:
+                    plain_text = st.text_input("輸入明文 (Plain Text)", "HELLO CITY")
+                    shift = st.slider("偏移量 (Shift Key)", 1, 25, 3)
+                with c2:
+                    st.write("")
+                    st.write("")
+                    mode = st.radio("模式", ["加密", "解密"], horizontal=True)
+                
+                result_text = ""
+                if plain_text:
+                    for char in plain_text:
+                        if char.isalpha():
+                            start = 65 if char.isupper() else 97
+                            offset = shift if mode == "加密" else -shift
+                            result_text += chr((ord(char) - start + offset) % 26 + start)
+                        else:
+                            result_text += char
+                
+                st.success(f"運算結果: {result_text}")
+
+            with tab_hash:
+                st.subheader("單向雜湊驗證")
+                st.info("雜湊函數是不可逆的，常用於密碼儲存與檔案驗證。")
+                
+                hash_input = st.text_input("輸入任意字串", "MyPassword123")
+                if hash_input:
+                    # MD5
+                    md5_val = hashlib.md5(hash_input.encode()).hexdigest()
+                    # SHA256
+                    sha_val = hashlib.sha256(hash_input.encode()).hexdigest()
+                    
+                    st.code(f"MD5    : {md5_val}", language="text")
+                    st.code(f"SHA-256: {sha_val}", language="text")
+
+        else:
+            st.error("🔒 權限不足：需要 [中級管理員] 權限。")
+
+    # -------------------------------------------
     # 頁面: 卡諾圖 (Lv3+)
     # -------------------------------------------
     elif selection == "🗺️ 卡諾圖 (Lv3+)":
         if check_access(user_lvl, "高級管理員"):
             st.header("🗺️ 卡諾圖求簡 (3變數)")
-            st.caption("Karnaugh Map Solver (Variables: A, B, C)")
-            
-            # Grid Setup
-            st.write("點擊下方格子設定輸出 (1/0):")
+            st.caption("Karnaugh Map Solver")
             
             c_label, c00, c01, c11, c10 = st.columns([1,1,1,1,1])
             with c_label: st.write("**BC:**")
@@ -398,7 +446,6 @@ def main_app():
             m7 = r1_11.checkbox("m7", key="k7")
             m6 = r1_10.checkbox("m6", key="k6")
 
-            # Logic Calculation
             minterms = []
             if m0: minterms.append(0)
             if m1: minterms.append(1)
@@ -412,10 +459,9 @@ def main_app():
             st.divider()
             if minterms:
                 st.info(f"Σm({', '.join(map(str, minterms))})")
-                st.write("在此版本中，僅顯示最小項總和。化簡引擎已連線。")
+                st.write("Sum of Minterms 計算完成。")
             else:
                 st.write("輸出為 0")
-            
         else:
             st.error("🔒 權限不足：需要 [高級管理員] 權限。")
 
@@ -457,31 +503,22 @@ def main_app():
                         time.sleep(2); st.rerun()
 
     # -------------------------------------------
-    # 頁面: 更新日誌 (All) - [詳細化]
+    # 頁面: 更新日誌 (All)
     # -------------------------------------------
     elif selection == "📜 更新日誌":
-        st.header("📜 CityOS 系統更新日誌 (Changelog)")
+        st.header("📜 CityOS 系統更新日誌")
         st.markdown("""
-        ### Version 3.1 (Current Build)
-        * **權限架構調整**: 「格雷碼核心」安全層級提升至 Level 2 (中級管理員)。
-        * **介面優化**: 側邊導航欄位順序重整，將管理日誌移至人事檔案上方。
-        * **系統簡介**: 於主儀表板新增 CityOS 架構與操作手冊簡介。
-
-        ### Version 3.0 (Major Update)
-        * **權限分級上線**: 實裝 實習生 / 初級 / 中級 / 高級 / 指揮官 五級權限制。
-        * **新功能模組**:
-            * 🧩 **布林轉換器**: 開放給初級管理員，支援真值表自動生成。
-            * 🔢 **進制轉換器**: 開放給中級管理員，支援 Bin/Oct/Dec/Hex 互轉。
-            * 🗺️ **卡諾圖 (K-Map)**: 開放給高級管理員，支援 3 變數最小項計算。
-        * **模組拆分**: 將格雷碼運算與傳統進制轉換分離，提高運算模組獨立性。
-
-        ### Version 2.15
-        * **Bug Fixes**: 修復側邊欄 Style String 語法錯誤 (SyntaxError)。
-        * **UI Patch**: 修正儀表板圖表在暗色模式下的顯示對比度。
+        ### Version 3.2 (Security Update)
+        * **New Feature**: 新增 **[🛡️ 資訊安全局]**，包含凱薩加密 (Caesar Cipher) 與 雜湊計算 (SHA-256)。
+        * **Permission**: 資訊安全局列為 **Level 2 (中級管理員)** 功能。
         
-        ### Version 2.0
-        * **Core**: 導入 User DB (JSON) 儲存系統。
-        * **Feature**: 新增市政學院考核系統與成績紀錄。
+        ### Version 3.1
+        * **Architecture**: 權限架構優化，格雷碼獨立為 Lv2 功能。
+        * **UI**: 更新日誌移至側欄底部，新增儀表板簡介。
+
+        ### Version 3.0
+        * **Core**: 實裝五級權限系統 (Intern ~ Commander)。
+        * **Modules**: 新增布林轉換、進制轉換、卡諾圖。
         """)
 
     # -------------------------------------------
@@ -548,8 +585,8 @@ def login_page():
     apply_theme()
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("CityOS V3.1")
-        st.caption("Advanced Infrastructure Control")
+        st.title("CityOS V3.2")
+        st.caption("Secure Information Systems")
         
         if not os.path.exists("questions.txt"):
             st.error("⚠️ 嚴重錯誤：題庫 questions.txt 遺失。")
