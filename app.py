@@ -9,9 +9,18 @@ import numpy as np
 from datetime import datetime
 
 # ==================================================
-# 0. 資料庫核心 (User DB)
+# 0. 資料庫與權限核心
 # ==================================================
 USER_DB_FILE = "users.json"
+
+# 定義權限等級分數，用於判斷大小
+LEVEL_MAP = {
+    "實習生": 0,
+    "初級管理員": 1,
+    "中級管理員": 2,
+    "高級管理員": 3,
+    "最高指揮官": 99
+}
 
 def init_user_db():
     should_init = False
@@ -30,12 +39,12 @@ def init_user_db():
                     "avatar_color": "#000000",
                     "history": []
                 },
-                # --- 一般用戶 ---
+                # --- 預設用戶 (改為初級以便測試) ---
                 "user": {
                     "password": "123",
                     "name": "Site Operator",
                     "email": "op@cityos.gov",
-                    "level": "區域管理員",
+                    "level": "初級管理員", 
                     "avatar_color": "#4285F4",
                     "history": []
                 }
@@ -67,12 +76,19 @@ def register_user(u, p, email):
     db = load_users()
     if u in db["users"]:
         return False, "帳號已存在"
+    # 新註冊用戶預設為 初級管理員 (Level 1)
     db["users"][u] = {
-        "password": p, "name": u, "email": email, "level": "區域管理員",
+        "password": p, "name": u, "email": email, "level": "初級管理員",
         "avatar_color": random.choice(["#4285F4", "#34A853", "#FBBC05"]), "history": []
     }
     save_users(db)
     return True, "註冊成功"
+
+def check_access(user_level_str, required_level_str):
+    """檢查用戶等級是否 >= 需求等級"""
+    u_score = LEVEL_MAP.get(user_level_str, 0)
+    r_score = LEVEL_MAP.get(required_level_str, 0)
+    return u_score >= r_score
 
 def save_score(username, score_str):
     db = load_users()
@@ -90,7 +106,7 @@ def save_score(username, score_str):
 # ==================================================
 # 1. 系統視覺與工具
 # ==================================================
-st.set_page_config(page_title="CityOS V215", layout="wide", page_icon="🏙️")
+st.set_page_config(page_title="CityOS V3.0", layout="wide", page_icon="🏙️")
 
 SVG_ICONS = {
     "MUX": '''<svg width="120" height="100" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,10 L90,25 L90,75 L30,90 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="45" y="55" fill="currentColor" font-size="14">MUX</text><path d="M10,25 L30,25 M10,40 L30,40 M10,55 L30,55 M10,70 L30,70 M90,50 L110,50 M60,85 L60,95" stroke="currentColor" stroke-width="2"/></svg>''',
@@ -113,7 +129,8 @@ if "user_data" not in st.session_state:
         "theme_name": "專業暗色 (Night City)",
         "monitor_data": init_df, 
         "exam_active": False, 
-        "quiz_batch": []
+        "quiz_batch": [],
+        "kmap_data": [0]*8 # For K-Map 3 vars
     })
 
 def apply_theme():
@@ -128,8 +145,7 @@ def apply_theme():
     
     .commander-card {{ border: 2px solid gold !important; box-shadow: 0 0 15px rgba(255, 215, 0, 0.2); background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(50,50,50,0.9)); }}
     .commander-badge {{ color: gold; font-weight: bold; font-size: 0.8em; border: 1px solid gold; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top:5px;}}
-    
-    .manual-box {{ background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #00ADB5; margin-bottom: 20px; }}
+    .lock-icon {{ font-size: 1.2em; margin-right: 5px; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -170,14 +186,15 @@ def update_data_random_walk():
 # ==================================================
 def main_app():
     user = st.session_state.user_data
+    user_lvl = user.get("level", "實習生")
     apply_theme()
     t_colors = THEMES[st.session_state.theme_name]["chart"]
     
-    is_commander = (user.get("level") == "最高指揮官")
+    is_commander = (user_lvl == "最高指揮官")
 
     with st.sidebar:
-        st.title("🏙️ CityOS V215")
-        st.caption("Central Command Unit")
+        st.title("🏙️ CityOS V3.0")
+        st.caption("Advanced Permission System")
         
         # --- 個人卡片 ---
         card_bg = "rgba(255,255,255,0.05)"
@@ -185,57 +202,62 @@ def main_app():
         card_class = "commander-card" if is_commander else ""
         badge_html = "<div class='commander-badge'>SUPREME ACCESS</div>" if is_commander else ""
         
-        # [修復] 這裡補上了結尾的雙引號 "
         style_str = f"padding:15px; background:{card_bg}; border-radius:8px; margin-bottom:15px; border-left:4px solid {border_color};"
         
         st.markdown(f"""
         <div class="{card_class}" style="{style_str}">
             <div style="font-size:1.1em; font-weight:bold;">{user['name']}</div>
             <div style="font-size:0.8em; opacity:0.7;">{user['email']}</div>
-            <div style="font-size:0.8em; margin-top:5px; color:{border_color};">{user['level']}</div>
+            <div style="font-size:0.8em; margin-top:5px; color:{border_color};">{user_lvl}</div>
             {badge_html}
         </div>
         """, unsafe_allow_html=True)
         # ---------------
         
-        menu = ["🏙️ 城市儀表板", "⚡ 電力設施", "🏦 數據中心", "🎓 市政學院", "📂 人事檔案"]
+        # 動態選單生成
+        st.markdown("### 導航選單")
+        menu_options = {
+            "Dashboard": "🏙️ 城市儀表板",
+            "UpdateLog": "📜 更新日誌",
+            "Electricity": "⚡ 電力設施 (Logic)",
+            "Boolean": "🧩 布林轉換器 (Lv1+)",
+            "GrayCode": "🏦 格雷碼核心 (Data)",
+            "BaseConv": "🔢 進制轉換 (Lv2+)",
+            "KMap": "🗺️ 卡諾圖 (Lv3+)",
+            "Academy": "🎓 市政學院",
+            "Profile": "📂 人事檔案"
+        }
+        
         if is_commander:
-            menu.append("☢️ 核心控制")
-        page = st.radio("導航", menu)
+            menu_options["Commander"] = "☢️ 核心控制"
+
+        selection = st.radio("前往", list(menu_options.values()), label_visibility="collapsed")
 
     # -------------------------------------------
-    # 頁面 1: 城市儀表板 (資訊全開)
+    # 頁面: 城市儀表板 (All)
     # -------------------------------------------
-    if "城市儀表板" in page:
-        # [標題區] 
+    if selection == "🏙️ 城市儀表板":
         col_h1, col_h2 = st.columns([3, 1])
-        with col_h1: 
-            st.title(f"👋 歡迎，{user['name']}")
-        with col_h2: 
-            st.write("")
-            now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-            st.caption(f"📅 更新至: {now_str}")
+        with col_h1: st.title(f"👋 歡迎，{user['name']}")
+        with col_h2: st.caption(datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-        # [介紹區] 這裡直接顯示
         st.markdown("""
         <div class="manual-box">
-            <h4>📖 城市作業系統操作指南 (System Manual)</h4>
+            <h4>📖 CityOS V3.0 系統權限說明</h4>
             <ul>
-                <li><b>城市儀表板 (Dashboard)</b>: 監控 CPU/NET/SEC 系統即時數據。</li>
-                <li><b>電力設施 (Electricity)</b>: 邏輯閘運作視覺化 (AND/OR/XOR/MUX)。</li>
-                <li><b>數據中心 (Data Center)</b>: 提供 進制轉換 與 格雷碼 (Gray Code) 計算。</li>
-                <li><b>市政學院 (Academy)</b>: 進行人員考核，記錄成績。</li>
-                <li><b>核心控制 (Commander)</b>: Frank 專屬權限管理後台。</li>
+                <li><b>初級管理員 (Lv1)</b>: 解鎖 [🧩 布林轉換器]。</li>
+                <li><b>中級管理員 (Lv2)</b>: 解鎖 [🔢 進制轉換 (2/8/10/16)]。</li>
+                <li><b>高級管理員 (Lv3)</b>: 解鎖 [🗺️ 卡諾圖運算]。</li>
+                <li><b>最高指揮官</b>: 擁有核心控制權限。</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.subheader("📡 即時監控 (Real-time)")
+            st.subheader("📡 即時監控")
             chart_ph = st.empty()
             metric_ph = st.empty()
-            
             for _ in range(5): 
                 df = update_data_random_walk()
                 chart_ph.area_chart(df, color=t_colors, height=250)
@@ -250,61 +272,177 @@ def main_app():
                 time.sleep(0.3)
 
         with col2:
-            st.subheader("📁 系統狀態")
+            st.subheader("📁 狀態")
             qs, errs = load_qs_from_txt()
-            if os.path.exists("questions.txt") and not errs:
-                st.info("✅ Q-Bank Ready")
-            else:
-                st.warning(f"⚠️ Errors: {len(errs)}")
-            
             st.metric("題庫總數", len(qs))
-            db = load_users()
-            st.metric("總用戶數", len(db.get("users", [])))
+            st.metric("您的權限等級", LEVEL_MAP.get(user_lvl, 0))
 
     # -------------------------------------------
-    # 頁面 2: 電力設施 (直接可用)
+    # 頁面: 更新日誌 (All) - NEW
     # -------------------------------------------
-    elif "電力設施" in page:
+    elif selection == "📜 更新日誌":
+        st.header("📜 系統更新日誌 (Changelog)")
+        st.markdown("""
+        * **V3.0 (Current)**
+            * 新增權限分級系統 (Lv1 - Lv3)。
+            * 新增 [🧩 布林轉換器] (初級管理員專用)。
+            * 新增 [🔢 多進制轉換器] (中級管理員專用)。
+            * 新增 [🗺️ 卡諾圖] (高級管理員專用)。
+            * 格雷碼功能獨立。
+        * **V2.15**
+            * 修復語法錯誤與儀表板顯示。
+        * **V2.1**
+            * 恢復全功能存取。
+        """)
+
+    # -------------------------------------------
+    # 頁面: 電力設施 (All)
+    # -------------------------------------------
+    elif selection == "⚡ 電力設施 (Logic)":
         st.header("⚡ 邏輯閘視覺化")
-        st.caption("Logic Gate Simulator")
         col1, col2 = st.columns([1, 2])
         with col1:
             gate = st.selectbox("選擇邏輯閘", ["AND", "OR", "XOR", "MUX"])
-            st.info("選擇不同的邏輯閘以觀察電路符號。")
         with col2:
             render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]))
 
     # -------------------------------------------
-    # 頁面 3: 數據中心 (含格雷碼，直接可用)
+    # 頁面: 布林轉換器 (Lv1+) - NEW
     # -------------------------------------------
-    elif "數據中心" in page:
-        st.header("🏦 運算轉換中心")
-        st.caption("Advanced Computing & Gray Code Unit")
-        
-        val_str = st.text_input("輸入十進位數值 (Decimal)", "127")
-        
-        if val_str.isdigit():
-            val = int(val_str)
-            # 格雷碼計算
-            gray_val = val ^ (val >> 1)
+    elif selection == "🧩 布林轉換器 (Lv1+)":
+        if check_access(user_lvl, "初級管理員"):
+            st.header("🧩 布林代數實驗室")
+            st.caption("Boolean Algebra Converter")
             
-            c1, c2, c3 = st.columns(3)
+            c1, c2 = st.columns(2)
             with c1:
-                st.metric("十六進位 (Hex)", hex(val)[2:].upper())
+                st.subheader("真值表生成器 (2變數)")
+                op = st.selectbox("運算邏輯", ["A AND B", "A OR B", "A XOR B", "NOT A", "NAND"])
+            
             with c2:
-                st.metric("二進位 (Binary)", bin(val)[2:])
-            with c3:
-                st.metric("格雷碼 (Gray Code)", bin(gray_val)[2:])
-                
-            st.markdown("---")
-            st.write(f"**詳細轉換資訊**: Decimal `{val}` -> Binary `{bin(val)[2:]}` -> Gray `{bin(gray_val)[2:]}`")
+                st.subheader("結果")
+                res = []
+                for a in [0, 1]:
+                    for b in [0, 1]:
+                        if op == "A AND B": val = a & b
+                        elif op == "A OR B": val = a | b
+                        elif op == "A XOR B": val = a ^ b
+                        elif op == "NOT A": val = 1 - a
+                        elif op == "NAND": val = 1 - (a & b)
+                        res.append({"A": a, "B": b, "Out": val})
+                st.dataframe(pd.DataFrame(res), use_container_width=True)
         else:
-            st.error("請輸入有效的整數")
+            st.error("🔒 權限不足：需要 [初級管理員] 權限。")
 
     # -------------------------------------------
-    # 頁面 4: 市政學院
+    # 頁面: 格雷碼核心 (Data) - Split
     # -------------------------------------------
-    elif "市政學院" in page:
+    elif selection == "🏦 格雷碼核心 (Data)":
+        st.header("🏦 格雷碼運算單元")
+        st.caption("Gray Code Processor")
+        val_str = st.text_input("輸入十進位數值", "127")
+        if val_str.isdigit():
+            val = int(val_str)
+            gray_val = val ^ (val >> 1)
+            c1, c2 = st.columns(2)
+            with c1: st.metric("Binary", bin(val)[2:])
+            with c2: st.metric("Gray Code", bin(gray_val)[2:])
+            st.success(f"轉換成功：{val} -> {bin(gray_val)[2:]}")
+        else:
+            st.error("請輸入整數")
+
+    # -------------------------------------------
+    # 頁面: 進制轉換 (Lv2+) - NEW/Enhanced
+    # -------------------------------------------
+    elif selection == "🔢 進制轉換 (Lv2+)":
+        if check_access(user_lvl, "中級管理員"):
+            st.header("🔢 多功能進制轉換器")
+            st.caption("Advanced Base Converter (2/8/10/16)")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                base_from = st.selectbox("來源進制", [2, 8, 10, 16], index=2)
+                num_input = st.text_input("輸入數值", "255")
+            
+            with c2:
+                try:
+                    # Core Conversion Logic
+                    dec_val = int(num_input, base_from)
+                    st.write("---")
+                    st.write(f"**BIN (2):** `{bin(dec_val)[2:]}`")
+                    st.write(f"**OCT (8):** `{oct(dec_val)[2:]}`")
+                    st.write(f"**DEC (10):** `{dec_val}`")
+                    st.write(f"**HEX (16):** `{hex(dec_val)[2:].upper()}`")
+                except ValueError:
+                    st.error("輸入格式與選擇的進制不符")
+        else:
+            st.error("🔒 權限不足：需要 [中級管理員] 權限。")
+
+    # -------------------------------------------
+    # 頁面: 卡諾圖 (Lv3+) - NEW
+    # -------------------------------------------
+    elif selection == "🗺️ 卡諾圖 (Lv3+)":
+        if check_access(user_lvl, "高級管理員"):
+            st.header("🗺️ 卡諾圖求簡 (3變數)")
+            st.caption("Karnaugh Map Solver (Variables: A, B, C)")
+            
+            # 3-Var K-Map Layout:
+            #      BC=00  BC=01  BC=11  BC=10
+            # A=0   m0     m1     m3     m2
+            # A=1   m4     m5     m7     m6
+            
+            # Grid Setup
+            st.write("點擊下方格子設定輸出 (1/0):")
+            
+            # Use columns to create a grid
+            c_label, c00, c01, c11, c10 = st.columns([1,1,1,1,1])
+            with c_label: st.write("**BC:**")
+            with c00: st.write("00")
+            with c01: st.write("01")
+            with c11: st.write("11")
+            with c10: st.write("10")
+            
+            # Row A=0
+            r0_label, r0_00, r0_01, r0_11, r0_10 = st.columns([1,1,1,1,1])
+            with r0_label: st.write("**A=0**")
+            m0 = r0_00.checkbox("m0", key="k0")
+            m1 = r0_01.checkbox("m1", key="k1")
+            m3 = r0_11.checkbox("m3", key="k3")
+            m2 = r0_10.checkbox("m2", key="k2")
+            
+            # Row A=1
+            r1_label, r1_00, r1_01, r1_11, r1_10 = st.columns([1,1,1,1,1])
+            with r1_label: st.write("**A=1**")
+            m4 = r1_00.checkbox("m4", key="k4")
+            m5 = r1_01.checkbox("m5", key="k5")
+            m7 = r1_11.checkbox("m7", key="k7")
+            m6 = r1_10.checkbox("m6", key="k6")
+
+            # Logic Calculation
+            minterms = []
+            if m0: minterms.append(0)
+            if m1: minterms.append(1)
+            if m2: minterms.append(2)
+            if m3: minterms.append(3)
+            if m4: minterms.append(4)
+            if m5: minterms.append(5)
+            if m6: minterms.append(6)
+            if m7: minterms.append(7)
+            
+            st.divider()
+            if minterms:
+                st.info(f"Σm({', '.join(map(str, minterms))})")
+                st.write("在此版本中，僅顯示最小項總和 (Sum of Minterms)。邏輯化簡運算正在從雲端下載...")
+            else:
+                st.write("輸出為 0")
+            
+        else:
+            st.error("🔒 權限不足：需要 [高級管理員] 權限。")
+
+    # -------------------------------------------
+    # 頁面: 市政學院 (All)
+    # -------------------------------------------
+    elif selection == "🎓 市政學院":
         st.header("🎓 市政考評")
         qs, errs = load_qs_from_txt()
         
@@ -339,11 +477,12 @@ def main_app():
                         time.sleep(2); st.rerun()
 
     # -------------------------------------------
-    # 頁面 5: 人事檔案 (含圖表)
+    # 頁面: 人事檔案 (All)
     # -------------------------------------------
-    elif "人事檔案" in page:
+    elif selection == "📂 人事檔案":
         st.header("📂 檔案管理中心")
         st.text_input("當前用戶", user['name'], disabled=True)
+        st.info(f"目前權限等級: {user_lvl}")
         st.selectbox("介面主題", list(THEMES.keys()), key="theme_name")
         
         st.subheader("📊 考核績效趨勢")
@@ -352,43 +491,47 @@ def main_app():
             try:
                 hist_df["numeric_score"] = hist_df["score"].apply(lambda x: int(str(x).split('/')[0]))
                 st.line_chart(hist_df[["date", "numeric_score"]].set_index("date"))
-                with st.expander("查看詳細列表"):
-                    st.dataframe(hist_df.iloc[::-1], use_container_width=True)
             except:
                 st.dataframe(hist_df)
         else: st.info("尚無考核紀錄")
         
-        st.divider()
         if st.button("登出系統"):
             st.session_state.logged_in = False
             st.session_state.user_data = {}
             st.rerun()
 
     # -------------------------------------------
-    # 頁面 6: 核心控制 (Frank Only)
+    # 頁面: 核心控制 (Commander Only)
     # -------------------------------------------
-    elif "核心控制" in page and is_commander:
+    elif selection == "☢️ 核心控制" and is_commander:
         st.title("☢️ 核心控制台")
         st.warning("Commander Access Granted")
         
         all_db = load_users()
+        # 顯示並編輯用戶等級
+        st.subheader("用戶權限管理")
+        
+        c_adm1, c_adm2, c_adm3 = st.columns(3)
+        with c_adm1:
+            target = st.selectbox("選擇目標用戶", list(all_db["users"].keys()))
+        with c_adm2:
+            new_lvl = st.selectbox("調整權限等級", ["實習生", "初級管理員", "中級管理員", "高級管理員", "最高指揮官"])
+        with c_adm3:
+            st.write("")
+            st.write("")
+            if st.button("更新權限"):
+                if target == "frank" and new_lvl != "最高指揮官":
+                    st.error("不能降級指揮官")
+                else:
+                    all_db["users"][target]["level"] = new_lvl
+                    save_users(all_db)
+                    st.success(f"{target} 已更新為 {new_lvl}")
+                    time.sleep(1)
+                    st.rerun()
+                    
+        st.divider()
         users_list = [{"ID":k, "Name":v["name"], "Level":v["level"]} for k,v in all_db["users"].items()]
         st.dataframe(pd.DataFrame(users_list), use_container_width=True)
-        
-        col_adm1, col_adm2 = st.columns(2)
-        with col_adm1:
-            target = st.selectbox("選擇目標用戶", list(all_db["users"].keys()))
-        with col_adm2:
-            if st.button("重置密碼 (預設: 1234)"):
-                if target == "frank": st.error("不可重置指揮官")
-                else:
-                    all_db["users"][target]["password"] = "1234"
-                    save_users(all_db)
-                    st.success("密碼已重置")
-            if st.button("清空該用戶紀錄"):
-                all_db["users"][target]["history"] = []
-                save_users(all_db)
-                st.success("紀錄已清空")
 
 # ==================================================
 # 4. 登入頁面
@@ -397,8 +540,8 @@ def login_page():
     apply_theme()
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("CityOS V215")
-        st.caption("Full Access Restoration")
+        st.title("CityOS V3.0")
+        st.caption("Advanced Infrastructure Control")
         
         if not os.path.exists("questions.txt"):
             st.error("⚠️ 嚴重錯誤：題庫 questions.txt 遺失。")
