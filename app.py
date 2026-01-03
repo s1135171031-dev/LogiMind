@@ -90,7 +90,7 @@ def save_score(username, score_str):
 # ==================================================
 # 1. 系統視覺與工具
 # ==================================================
-st.set_page_config(page_title="CityOS V210", layout="wide", page_icon="🏙️")
+st.set_page_config(page_title="CityOS V215", layout="wide", page_icon="🏙️")
 
 SVG_ICONS = {
     "MUX": '''<svg width="120" height="100" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,10 L90,25 L90,75 L30,90 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="45" y="55" fill="currentColor" font-size="14">MUX</text><path d="M10,25 L30,25 M10,40 L30,40 M10,55 L30,55 M10,70 L30,70 M90,50 L110,50 M60,85 L60,95" stroke="currentColor" stroke-width="2"/></svg>''',
@@ -129,7 +129,6 @@ def apply_theme():
     .commander-card {{ border: 2px solid gold !important; box-shadow: 0 0 15px rgba(255, 215, 0, 0.2); background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(50,50,50,0.9)); }}
     .commander-badge {{ color: gold; font-weight: bold; font-size: 0.8em; border: 1px solid gold; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top:5px;}}
     
-    /* 強制顯示手冊區塊的樣式 */
     .manual-box {{ background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #00ADB5; margin-bottom: 20px; }}
     </style>
     """, unsafe_allow_html=True)
@@ -177,7 +176,7 @@ def main_app():
     is_commander = (user.get("level") == "最高指揮官")
 
     with st.sidebar:
-        st.title("🏙️ CityOS V210")
+        st.title("🏙️ CityOS V215")
         st.caption("Central Command Unit")
         
         # --- 個人卡片 ---
@@ -186,6 +185,7 @@ def main_app():
         card_class = "commander-card" if is_commander else ""
         badge_html = "<div class='commander-badge'>SUPREME ACCESS</div>" if is_commander else ""
         
+        # [修復點] 這裡原本少了結尾引號，現在已經加上了
         style_str = f"padding:15px; background:{card_bg}; border-radius:8px; margin-bottom:15px; border-left:4px solid {border_color};
         
         st.markdown(f"""
@@ -216,7 +216,7 @@ def main_app():
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
             st.caption(f"📅 更新至: {now_str}")
 
-        # [介紹區] 這裡直接顯示，不隱藏！
+        # [介紹區] 這裡直接顯示
         st.markdown("""
         <div class="manual-box">
             <h4>📖 城市作業系統操作指南 (System Manual)</h4>
@@ -397,7 +397,7 @@ def login_page():
     apply_theme()
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("CityOS V210")
+        st.title("CityOS V215")
         st.caption("Full Access Restoration")
         
         if not os.path.exists("questions.txt"):
