@@ -15,19 +15,22 @@ from datetime import datetime, date
 USER_DB_FILE = "users.json"
 EXP_PER_LEVEL = 100
 
-# 職業定義 (RPG)
+# 職業定義 (RPG) - 新增 Engineer
 CLASSES = {
     "None": {"name": "市民 (Citizen)", "desc": "尚無專精", "icon": "👤", "color": "#888888"},
     "Guardian": {"name": "守護者 (Guardian)", "desc": "專精資訊安全與加密技術", "icon": "🛡️", "color": "#00FF99"},
     "Architect": {"name": "架構師 (Architect)", "desc": "專精邏輯運算與硬體架構", "icon": "⚡", "color": "#00CCFF"},
-    "Oracle": {"name": "預言家 (Oracle)", "desc": "專精數據分析與預測", "icon": "🔮", "color": "#D500F9"}
+    "Oracle": {"name": "預言家 (Oracle)", "desc": "專精數據分析與預測", "icon": "🔮", "color": "#D500F9"},
+    "Engineer": {"name": "工程師 (Engineer)", "desc": "專精電路設計與歐姆定律", "icon": "🔧", "color": "#FF9900"}
 }
 
-# 商店物品 (RPG)
+# 商店物品 (RPG) - 新增主題
 SHOP_ITEMS = {
     "theme_cyber_punk": {"name": "主題: 賽博龐克 (Cyber Yellow)", "cost": 100, "type": "theme", "key": "Cyber Punk"},
     "theme_matrix": {"name": "主題: 駭客任務 (Matrix Green)", "cost": 150, "type": "theme", "key": "Matrix"},
-    "theme_royal": {"name": "主題: 皇家特務 (Royal Gold)", "cost": 300, "type": "theme", "key": "Royal"}
+    "theme_royal": {"name": "主題: 皇家特務 (Royal Gold)", "cost": 300, "type": "theme", "key": "Royal"},
+    "theme_amber": {"name": "主題: 復古終端 (Retro Amber)", "cost": 200, "type": "theme", "key": "Retro Amber"},
+    "theme_ocean": {"name": "主題: 深海潛航 (Deep Ocean)", "cost": 250, "type": "theme", "key": "Deep Ocean"}
 }
 
 # 介面主題 (擴充版)
@@ -36,7 +39,9 @@ THEMES = {
     "Day City": {"bg": "#F8F9FA", "txt": "#343A40", "btn": "#6C757D", "btn_txt": "#FFFFFF", "card": "#FFFFFF", "chart": ["#343A40", "#6C757D", "#ADB5BD"]},
     "Cyber Punk": {"bg": "#0b0c10", "txt": "#c5c6c7", "btn": "#fca311", "btn_txt": "#000000", "card": "#1f2833", "chart": ["#fca311", "#45a29e", "#66fcf1"]},
     "Matrix": {"bg": "#0D0208", "txt": "#00FF41", "btn": "#003B00", "btn_txt": "#00FF41", "card": "#001A00", "chart": ["#008F11", "#00FF41", "#003B00"]},
-    "Royal": {"bg": "#2C001E", "txt": "#FFD700", "btn": "#590035", "btn_txt": "#FFD700", "card": "#420025", "chart": ["#FFD700", "#FF007F", "#C0C0C0"]}
+    "Royal": {"bg": "#2C001E", "txt": "#FFD700", "btn": "#590035", "btn_txt": "#FFD700", "card": "#420025", "chart": ["#FFD700", "#FF007F", "#C0C0C0"]},
+    "Retro Amber": {"bg": "#1A1A1A", "txt": "#FFB000", "btn": "#332200", "btn_txt": "#FFB000", "card": "#261C00", "chart": ["#FFB000", "#FFD000", "#885500"]},
+    "Deep Ocean": {"bg": "#001f3f", "txt": "#7FDBFF", "btn": "#0074D9", "btn_txt": "#FFFFFF", "card": "#003366", "chart": ["#7FDBFF", "#0074D9", "#39CCCC"]}
 }
 
 # 權限等級
@@ -62,7 +67,6 @@ def init_user_db():
                     "level": "最高指揮官",
                     "avatar_color": "#000000",
                     "history": [],
-                    # RPG Data
                     "exp": 9900, "rpg_level": 99, "coins": 9999, "class_type": "None",
                     "inventory": list(THEMES.keys()), "last_login": ""
                 },
@@ -73,7 +77,6 @@ def init_user_db():
                     "level": "初級管理員", 
                     "avatar_color": "#4285F4",
                     "history": [],
-                    # RPG Data
                     "exp": 0, "rpg_level": 1, "coins": 0, "class_type": "None",
                     "inventory": ["Night City", "Day City"], "last_login": ""
                 }
@@ -87,7 +90,6 @@ def load_db():
     try:
         with open(USER_DB_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # 自動修復：如果舊帳號沒有 RPG 欄位，補上預設值
             changed = False
             for u in data["users"].values():
                 if "coins" not in u: 
@@ -169,13 +171,18 @@ def check_access(user_level_str, required_level_str):
 # ==================================================
 # 2. 系統視覺與工具
 # ==================================================
-st.set_page_config(page_title="CityOS V5.0", layout="wide", page_icon="🏙️")
+st.set_page_config(page_title="CityOS V5.5", layout="wide", page_icon="🏙️")
 
+# 擴充後的邏輯閘圖示
 SVG_ICONS = {
-    "MUX": '''<svg width="120" height="100" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,10 L90,25 L90,75 L30,90 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="45" y="55" fill="currentColor" font-size="14">MUX</text><path d="M10,25 L30,25 M10,40 L30,40 M10,55 L30,55 M10,70 L30,70 M90,50 L110,50 M60,85 L60,95" stroke="currentColor" stroke-width="2"/></svg>''',
-    "AND": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 L40,10 C55,10 65,20 65,30 C65,40 55,50 40,50 L10,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L10,20 M0,40 L10,40 M65,30 L80,30" stroke="currentColor" stroke-width="3"/></svg>''',
-    "OR": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 L35,10 Q50,30 35,50 L10,50 Q25,30 10,10 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L15,20 M0,40 L15,40 M45,30 L60,30" stroke="currentColor" stroke-width="3"/></svg>''',
-    "XOR": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M20,10 L45,10 Q60,30 45,50 L20,50 Q35,30 20,10 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10,10 Q25,30 10,50" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L15,20 M0,40 L15,40 M55,30 L70,30" stroke="currentColor" stroke-width="3"/></svg>'''
+    "AND": '''<svg width="100" height="60" viewBox="0 0 100 60"><path d="M10,10 L40,10 C55,10 65,20 65,30 C65,40 55,50 40,50 L10,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L10,20 M0,40 L10,40 M65,30 L80,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "OR": '''<svg width="100" height="60" viewBox="0 0 100 60"><path d="M10,10 L35,10 Q50,30 35,50 L10,50 Q25,30 10,10 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L15,20 M0,40 L15,40 M45,30 L60,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "XOR": '''<svg width="100" height="60" viewBox="0 0 100 60"><path d="M20,10 L45,10 Q60,30 45,50 L20,50 Q35,30 20,10 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10,10 Q25,30 10,50" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L15,20 M0,40 L15,40 M55,30 L70,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "NOT": '''<svg width="100" height="60" viewBox="0 0 100 60"><path d="M20,10 L20,50 L60,30 Z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="65" cy="30" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M0,30 L20,30 M69,30 L80,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "NAND": '''<svg width="100" height="60" viewBox="0 0 100 60"><path d="M10,10 L40,10 C55,10 65,20 65,30 C65,40 55,50 40,50 L10,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="70" cy="30" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M0,20 L10,20 M0,40 L10,40 M74,30 L85,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "NOR": '''<svg width="100" height="60" viewBox="0 0 100 60"><path d="M10,10 L35,10 Q50,30 35,50 L10,50 Q25,30 10,10 Z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="50" cy="30" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M0,20 L15,20 M0,40 L15,40 M54,30 L70,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "XNOR": '''<svg width="100" height="60" viewBox="0 0 100 60"><path d="M20,10 L45,10 Q60,30 45,50 L20,50 Q35,30 20,10 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10,10 Q25,30 10,50" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="50" cy="30" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M0,20 L15,20 M0,40 L15,40 M54,30 L70,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "MUX": '''<svg width="120" height="100" viewBox="0 0 120 100"><path d="M30,10 L90,25 L90,75 L30,90 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="45" y="55" fill="currentColor" font-size="14">MUX</text><path d="M10,25 L30,25 M10,40 L30,40 M10,55 L30,55 M10,70 L30,70 M90,50 L110,50 M60,85 L60,95" stroke="currentColor" stroke-width="2"/></svg>'''
 }
 
 if "user_data" not in st.session_state:
@@ -208,6 +215,31 @@ def render_svg(svg_code):
     b64 = base64.b64encode(svg_black.encode('utf-8')).decode("utf-8")
     st.markdown(f'''<div style="background-color: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px; margin-bottom: 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><img src="data:image/svg+xml;base64,{b64}" width="200"/></div>''', unsafe_allow_html=True)
 
+def get_truth_table(gate):
+    data = []
+    if gate == "NOT":
+        data = [{"A": 0, "Out": 1}, {"A": 1, "Out": 0}]
+    elif gate == "MUX":
+        # Simplified MUX Table
+        data = [
+            {"Sel": 0, "A": 0, "B": "X", "Out": 0},
+            {"Sel": 0, "A": 1, "B": "X", "Out": 1},
+            {"Sel": 1, "A": "X", "B": 0, "Out": 0},
+            {"Sel": 1, "A": "X", "B": 1, "Out": 1}
+        ]
+    else:
+        for a in [0, 1]:
+            for b in [0, 1]:
+                out = 0
+                if gate == "AND": out = a & b
+                elif gate == "OR": out = a | b
+                elif gate == "XOR": out = a ^ b
+                elif gate == "NAND": out = 1 - (a & b)
+                elif gate == "NOR": out = 1 - (a | b)
+                elif gate == "XNOR": out = 1 - (a ^ b)
+                data.append({"A": a, "B": b, "Out": out})
+    return pd.DataFrame(data)
+
 def load_qs_from_txt():
     q = []
     errors = []
@@ -239,7 +271,6 @@ def update_data_random_walk():
 # 3. 主應用程式邏輯
 # ==================================================
 def main_app():
-    # 確保 session 資料是最新的
     db = load_db()
     if st.session_state.user_key in db["users"]:
         st.session_state.user_data = db["users"][st.session_state.user_key]
@@ -261,8 +292,8 @@ def main_app():
     class_info = CLASSES.get(u_class, CLASSES["None"])
 
     with st.sidebar:
-        st.title("🏙️ CityOS V5.0")
-        st.caption("Hybrid System (Logic + RPG)")
+        st.title("🏙️ CityOS V5.5")
+        st.caption("Engineering Edition")
         
         # --- RPG 個人卡片 ---
         card_bg = "rgba(255,255,255,0.05)"
@@ -294,7 +325,8 @@ def main_app():
         st.markdown("### 導航選單")
         menu_options = {
             "Dashboard": "🏙️ 城市儀表板",
-            "Electricity": "⚡ 電力設施 (Logic)",
+            "Electricity": "⚡ 電力設施 (Logic)", # Updated
+            "Circuit": "🔌 基礎電路 (Circuit)", # NEW
             "Boolean": "🧩 布林轉換器 (Lv1+)",
             "GrayCode": "🏦 格雷碼核心 (Lv2+)",
             "BaseConv": "🔢 進制轉換 (Lv2+)",
@@ -318,7 +350,6 @@ def main_app():
         with col_h1: st.title(f"👋 早安，{class_info['name']}")
         with col_h2: st.caption(datetime.now().strftime("%Y-%m-%d %H:%M"))
         
-        # RPG 每日獎勵
         if st.button("🎁 領取每日補給"):
             ok, c, e = check_daily_login(user_key)
             if ok: 
@@ -328,15 +359,14 @@ def main_app():
             else:
                 st.info("今天已經領過囉！明天再來。")
 
-        # 職業特效
-        if u_class == "Oracle": st.success("🔮 預言家專屬：系統預測模組已啟動")
+        if u_class == "Engineer": st.success("🔧 工程師專屬：硬體運算效率提升")
         elif u_class == "Guardian": st.success("🛡️ 守護者專屬：防火牆強化中")
 
         st.markdown("""
         <div class="intro-box">
-            <b>CityOS V5.0 Hybrid</b> 整合了傳統邏輯運算與現代 RPG 激勵系統。
-            <br>完成運算任務可獲得 <b>EXP</b>，通過市政學院考核可獲得 <b>Coins</b>。
-            前往 <b>補給站</b> 購買主題，或在 <b>市民檔案</b> 進行轉職。
+            <b>CityOS V5.5</b> 新增了 <b>基礎電路單元</b> 與 <b>工程師</b> 職業。
+            <br>電力設施現已支援 <b>NAND/NOR/XNOR/NOT</b> 邏輯閘與即時真值表顯示。
+            前往補給站查看全新主題！
         </div>
         """, unsafe_allow_html=True)
 
@@ -356,19 +386,96 @@ def main_app():
             st.metric("目前等級", rpg_lvl)
 
     # -------------------------------------------
-    # 頁面: 電力設施 (Logic)
+    # 頁面: 電力設施 (Logic) - UPDATE
     # -------------------------------------------
     elif selection == "⚡ 電力設施 (Logic)":
-        st.header("⚡ 邏輯閘視覺化")
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            gate = st.selectbox("選擇邏輯閘", ["AND", "OR", "XOR", "MUX"])
+        st.header("⚡ 邏輯閘視覺化 (Advanced)")
+        st.caption("Visual Logic Gate & Truth Table")
+        
+        col_ctrl, col_viz = st.columns([1, 2])
+        
+        with col_ctrl:
+            st.subheader("控制台")
+            # 增加更多邏輯閘
+            gate = st.selectbox("選擇邏輯閘", ["AND", "OR", "XOR", "NAND", "NOR", "XNOR", "NOT", "MUX"])
+            
+            st.divider()
+            st.markdown("##### 📖 真值表 (Truth Table)")
+            tt_df = get_truth_table(gate)
+            # 使用 container width 讓表格整齊
+            st.dataframe(tt_df, use_container_width=True, hide_index=True)
+            
             if st.button("執行模擬"):
-                render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]))
-                add_exp(user_key, 2) # Reward
-                st.success("模擬完成 (+2 EXP)")
-        with col2:
-             render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]))
+                add_exp(user_key, 3) 
+                st.toast("邏輯模擬完成 (+3 EXP)")
+
+        with col_viz:
+            st.subheader("電路圖示")
+            render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]))
+            
+            st.info(f"當前顯示: **{gate} Gate**")
+            if gate == "NAND": st.write("AND 的輸出反相。只有當輸入全為 1 時，輸出才為 0。")
+            elif gate == "NOR": st.write("OR 的輸出反相。只要有任一輸入為 1，輸出即為 0。")
+            elif gate == "XNOR": st.write("XOR 的輸出反相。當輸入相同時，輸出為 1。")
+
+    # -------------------------------------------
+    # 頁面: 基礎電路 (Circuit) - NEW
+    # -------------------------------------------
+    elif selection == "🔌 基礎電路 (Circuit)":
+        st.header("🔌 基礎電路實驗室")
+        st.caption("Basic Circuit Assembly & Analysis")
+        
+        tab_ohm, tab_res = st.tabs(["Ω 歐姆定律實驗", "🔗 串並聯計算"])
+        
+        with tab_ohm:
+            st.subheader("歐姆定律 (Ohm's Law)")
+            st.write("公式: $V = I \\times R$")
+            
+            col_o1, col_o2 = st.columns(2)
+            with col_o1:
+                voltage = st.number_input("電壓 (V)", value=5.0, step=0.5)
+                resistance = st.number_input("電阻 (Ω)", value=100.0, step=10.0)
+            with col_o2:
+                if resistance > 0:
+                    current = voltage / resistance
+                    current_ma = current * 1000
+                    st.metric("電流 (Current)", f"{current:.4f} A", f"{current_ma:.2f} mA")
+                else:
+                    st.error("電阻不可為 0")
+            
+            if st.button("記錄實驗數據", key="btn_ohm"):
+                add_exp(user_key, 5)
+                st.success("數據已記錄 (+5 EXP)")
+
+        with tab_res:
+            st.subheader("電阻組合計算 (Resistor Combination)")
+            mode = st.radio("連接方式", ["串聯 (Series)", "並聯 (Parallel)"])
+            
+            r1 = st.slider("電阻 R1 (Ω)", 1, 1000, 100)
+            r2 = st.slider("電阻 R2 (Ω)", 1, 1000, 100)
+            
+            r_total = 0
+            if mode == "串聯 (Series)":
+                r_total = r1 + r2
+                formula = "$R_{total} = R_1 + R_2$"
+                # Diagram placeholder (Text based)
+                st.code(f"---[ R1: {r1} ]---[ R2: {r2} ]---", language="text")
+            else:
+                r_total = (r1 * r2) / (r1 + r2)
+                formula = "$R_{total} = \\frac{R_1 \\cdot R_2}{R_1 + R_2}$"
+                st.code(f"""
+      +---[ R1: {r1} ]---+
+  ----|                  |----
+      +---[ R2: {r2} ]---+
+                """, language="text")
+            
+            st.markdown(f"**計算公式:** {formula}")
+            st.metric("總電阻 (Total Resistance)", f"{r_total:.2f} Ω")
+            
+            if st.button("驗證計算", key="btn_res"):
+                bonus = 10 if u_class == "Engineer" else 5
+                add_exp(user_key, bonus)
+                st.toast(f"計算完成 (+{bonus} EXP)")
 
     # -------------------------------------------
     # 頁面: 布林轉換器 (Lv1+)
@@ -390,7 +497,6 @@ def main_app():
                         elif op == "NAND": val = 1 - (a & b)
                         res.append({"A": a, "B": b, "Out": val})
                 st.dataframe(pd.DataFrame(res), use_container_width=True)
-                
             if st.button("生成真值表報告"):
                 add_exp(user_key, 5)
                 st.toast("報告已生成 (+5 EXP)")
@@ -410,7 +516,6 @@ def main_app():
                 c1, c2 = st.columns(2)
                 with c1: st.metric("Binary", bin(val)[2:])
                 with c2: st.metric("Gray Code", bin(gray_val)[2:])
-                
                 if st.button("確認轉換"):
                     add_exp(user_key, 5)
                     st.success(f"轉換成功 (+5 EXP)")
@@ -483,8 +588,6 @@ def main_app():
     elif selection == "🗺️ 卡諾圖 (Lv3+)":
         if check_access(user_lvl, "高級管理員"):
             st.header("🗺️ 卡諾圖求簡")
-            st.info("Karnaugh Map (3 Variables)")
-            # 這裡簡化顯示，只保留邏輯
             if st.button("執行化簡運算"):
                 add_exp(user_key, 10)
                 st.success("運算完成 (+10 EXP)")
@@ -519,13 +622,11 @@ def main_app():
                     else:
                         score = sum([1 for i in range(5) if ans[i]==st.session_state.quiz_batch[i]['a']])
                         
-                        # RPG Rewards
                         reward_coins = score * 10
                         reward_exp = score * 15
                         add_coins(user_key, reward_coins)
                         add_exp(user_key, reward_exp)
                         
-                        # Save History
                         db = load_db()
                         db["users"][user_key]["history"].append({
                             "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -539,7 +640,7 @@ def main_app():
                         time.sleep(2); st.rerun()
 
     # -------------------------------------------
-    # 頁面: 補給站 (NEW)
+    # 頁面: 補給站 (NEW Items)
     # -------------------------------------------
     elif selection == "🛒 補給站 (New)":
         st.header("🛒 CityOS 補給站")
@@ -572,17 +673,21 @@ def main_app():
         
         if u_class == "None":
             st.write("可選職業 (需 Lv.5 或 指揮官):")
-            c1, c2, c3 = st.columns(3)
-            if st.button("轉職 守護者"): 
+            c1, c2, c3, c4 = st.columns(4) # Added col
+            if c1.button("轉職 守護者"): 
                 ok, msg = change_class(user_key, "Guardian")
                 if ok: st.balloons(); st.rerun()
                 else: st.error(msg)
-            if st.button("轉職 架構師"):
+            if c2.button("轉職 架構師"):
                 ok, msg = change_class(user_key, "Architect")
                 if ok: st.balloons(); st.rerun()
                 else: st.error(msg)
-            if st.button("轉職 預言家"):
+            if c3.button("轉職 預言家"):
                 ok, msg = change_class(user_key, "Oracle")
+                if ok: st.balloons(); st.rerun()
+                else: st.error(msg)
+            if c4.button("轉職 工程師"): # New
+                ok, msg = change_class(user_key, "Engineer")
                 if ok: st.balloons(); st.rerun()
                 else: st.error(msg)
         else:
@@ -636,8 +741,8 @@ def login_page():
     apply_theme()
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("CityOS V5.0")
-        st.caption("Secure Information Systems")
+        st.title("CityOS V5.5")
+        st.caption("Engineering Edition")
         
         if not os.path.exists("questions.txt"):
             st.error("⚠️ 題庫 questions.txt 遺失，請建立檔案以使用考評功能。")
