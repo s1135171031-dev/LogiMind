@@ -5,483 +5,615 @@ import os
 import base64
 import time
 import json
-import hashlib
+import hashlib # 新增雜湊函式庫
 import numpy as np 
-from datetime import datetime, date
+from datetime import datetime
 
 # ==================================================
-# 0. 核心設定與常數
+# 0. 資料庫與權限核心
 # ==================================================
-USER_DB_FILE = "users_v4.json"
-LEVEL_CAP = 100
-EXP_PER_LEVEL = 100
+USER_DB_FILE = "users.json"
 
-# 職業定義
-CLASSES = {
-    "None": {"name": "市民 (Citizen)", "desc": "尚無專精", "icon": "👤"},
-    "Guardian": {"name": "守護者 (Guardian)", "desc": "專精資訊安全與加密技術", "icon": "🛡️", "color": "#00FF99"},
-    "Architect": {"name": "架構師 (Architect)", "desc": "專精邏輯運算與硬體架構", "icon": "⚡", "color": "#00CCFF"},
-    "Oracle": {"name": "預言家 (Oracle)", "desc": "專精數據分析與預測", "icon": "🔮", "color": "#D500F9"}
+# 定義權限等級分數
+LEVEL_MAP = {
+    "實習生": 0,
+    "初級管理員": 1,
+    "中級管理員": 2,
+    "高級管理員": 3,
+    "最高指揮官": 99
 }
 
-# 商店物品
-SHOP_ITEMS = {
-    "theme_cyber_punk": {"name": "主題: 賽博龐克 (Cyber Yellow)", "cost": 100, "type": "theme", "key": "Cyber Punk"},
-    "theme_matrix": {"name": "主題: 駭客任務 (Matrix Green)", "cost": 150, "type": "theme", "key": "Matrix"},
-    "theme_royal": {"name": "主題: 皇家特務 (Royal Gold)", "cost": 300, "type": "theme", "key": "Royal"}
-}
-
-# 主題設定
-THEMES = {
-    "Night City": {"bg": "#212529", "txt": "#E9ECEF", "btn": "#495057", "btn_txt": "#FFFFFF", "card": "#343A40", "chart": ["#00ADB5", "#EEEEEE", "#FF2E63"]},
-    "Day City": {"bg": "#F8F9FA", "txt": "#343A40", "btn": "#6C757D", "btn_txt": "#FFFFFF", "card": "#FFFFFF", "chart": ["#343A40", "#6C757D", "#ADB5BD"]},
-    "Cyber Punk": {"bg": "#0b0c10", "txt": "#c5c6c7", "btn": "#fca311", "btn_txt": "#000000", "card": "#1f2833", "chart": ["#fca311", "#45a29e", "#66fcf1"]},
-    "Matrix": {"bg": "#0D0208", "txt": "#00FF41", "btn": "#003B00", "btn_txt": "#00FF41", "card": "#001A00", "chart": ["#008F11", "#00FF41", "#003B00"]},
-    "Royal": {"bg": "#2C001E", "txt": "#FFD700", "btn": "#590035", "btn_txt": "#FFD700", "card": "#420025", "chart": ["#FFD700", "#FF007F", "#C0C0C0"]}
-}
-
-# ==================================================
-# 1. 資料庫管理 (強制寫入管理者邏輯)
-# ==================================================
 def init_user_db():
-    # 1. 嘗試讀取現有資料
-    data = {"users": {}}
-    if os.path.exists(USER_DB_FILE):
-        try:
-            with open(USER_DB_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except:
-            pass # 讀取失敗則使用空字典
-
-    # 2. [關鍵修改] 強制定義最高管理者資料
-    admin_id = "frank"
-    admin_pass = "x12345678x"  # 您的密碼
-    
-    # 檢查管理者是否存在
-    if admin_id in data["users"]:
-        # 如果存在，強制更新權限與密碼，確保您永遠是最高指揮官
-        # (保留 RPG 數據如 inventory, coins)
-        data["users"][admin_id]["password"] = admin_pass
-        data["users"][admin_id]["level"] = "最高指揮官" 
-        # 防止名字被改掉
-        if "Supreme Commander" not in data["users"][admin_id]["name"]:
-            data["users"][admin_id]["name"] = "Frank (Supreme Commander)"
-    else:
-        # 如果不存在 (例如檔案被刪)，直接重生，並給予滿裝備
-        data["users"][admin_id] = {
-            "password": admin_pass,
-            "name": "Frank (Supreme Commander)",
-            "email": "frank@cityos.gov",
-            "level": "最高指揮官",
-            "avatar_color": "#000000",
-            "history": [],
-            # RPG Data: 給予初始福利
-            "exp": 9900, "rpg_level": 99, "coins": 9999, "class_type": "None",
-            "inventory": ["Night City", "Day City", "Cyber Punk", "Matrix", "Royal"], 
-            "last_login": ""
+    should_init = False
+    if not os.path.exists(USER_DB_FILE) or os.path.getsize(USER_DB_FILE) == 0:
+        should_init = True
+            
+    if should_init:
+        default_data = {
+            "users": {
+                # --- Frank (指揮官) ---
+                "frank": {
+                    "password": "x12345678x",
+                    "name": "Frank (Supreme Commander)",
+                    "email": "frank@cityos.gov",
+                    "level": "最高指揮官",
+                    "avatar_color": "#000000",
+                    "history": []
+                },
+                # --- 預設用戶 ---
+                "user": {
+                    "password": "123",
+                    "name": "Site Operator",
+                    "email": "op@cityos.gov",
+                    "level": "初級管理員", 
+                    "avatar_color": "#4285F4",
+                    "history": []
+                }
+            }
         }
+        with open(USER_DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(default_data, f, indent=4, ensure_ascii=False)
 
-    # 3. 確保一般測試帳號存在 (非必要，方便測試)
-    if "user" not in data["users"]:
-        data["users"]["user"] = {
-            "password": "123", "name": "Site Operator", "email": "op@cityos.gov",
-            "level": "初級管理員", "avatar_color": "#4285F4", "history": [],
-            "exp": 0, "rpg_level": 1, "coins": 0, "class_type": "None",
-            "inventory": ["Night City", "Day City"], "last_login": ""
-        }
-
-    # 4. 寫回檔案
-    with open(USER_DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-
-def load_db():
-    init_user_db() # 每次讀取前都執行一次初始化檢查，確保 Frank 存在
+def load_users():
+    init_user_db()
     try:
         with open(USER_DB_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    except: return {"users": {}}
+    except:
+        return {"users": {}}
 
-def save_db(data):
+def save_users(data):
     with open(USER_DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
-# --- RPG 邏輯 ---
-def add_exp(user_key, amount):
-    db = load_db()
-    if user_key in db["users"]:
-        u = db["users"][user_key]
-        u["exp"] += amount
-        new_level = 1 + (u["exp"] // EXP_PER_LEVEL)
-        if new_level > u.get("rpg_level", 1):
-            u["rpg_level"] = new_level
-            st.toast(f"🎉 升級了！現在是 Level {new_level}", icon="🆙")
-        save_db(db)
-        return u
+def authenticate(u, p):
+    db = load_users()
+    users = db.get("users", {})
+    if u in users and users[u]["password"] == p:
+        return users[u]
     return None
 
-def add_coins(user_key, amount):
-    db = load_db()
-    if user_key in db["users"]:
-        db["users"][user_key]["coins"] += amount
-        save_db(db)
-        st.toast(f"💰 獲得 {amount} CityCoins", icon="🪙")
-        return db["users"][user_key]
+def register_user(u, p, email):
+    db = load_users()
+    if u in db["users"]:
+        return False, "帳號已存在"
+    # 新註冊預設為 初級管理員
+    db["users"][u] = {
+        "password": p, "name": u, "email": email, "level": "初級管理員",
+        "avatar_color": random.choice(["#4285F4", "#34A853", "#FBBC05"]), "history": []
+    }
+    save_users(db)
+    return True, "註冊成功"
+
+def check_access(user_level_str, required_level_str):
+    """檢查用戶等級是否 >= 需求等級"""
+    u_score = LEVEL_MAP.get(user_level_str, 0)
+    r_score = LEVEL_MAP.get(required_level_str, 0)
+    return u_score >= r_score
+
+def save_score(username, score_str):
+    db = load_users()
+    if username in db["users"]:
+        if "history" not in db["users"][username]:
+            db["users"][username]["history"] = []
+        db["users"][username]["history"].append({
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "score": score_str
+        })
+        save_users(db)
+        return db["users"][username]
     return None
 
-def check_daily_login(user_key):
-    db = load_db()
-    if user_key in db["users"]:
-        u = db["users"][user_key]
-        today = str(date.today())
-        if u.get("last_login") != today:
-            u["last_login"] = today
-            bonus_coins = 50
-            bonus_exp = 50
-            u["coins"] += bonus_coins
-            u["exp"] += bonus_exp
-            u["rpg_level"] = 1 + (u["exp"] // EXP_PER_LEVEL)
-            save_db(db)
-            return True, bonus_coins, bonus_exp
-    return False, 0, 0
-
-def purchase_item(user_key, item_id):
-    db = load_db()
-    user = db["users"][user_key]
-    item = SHOP_ITEMS[item_id]
-    if item["cost"] > user["coins"]: return False, "餘額不足"
-    if item["key"] in user.get("inventory", []): return False, "已擁有此物品"
-    user["coins"] -= item["cost"]
-    user["inventory"].append(item["key"])
-    save_db(db)
-    return True, f"購買成功：{item['name']}"
-
-def change_class(user_key, new_class):
-    db = load_db()
-    user = db["users"][user_key]
-    if user.get("rpg_level", 1) < 5 and user["level"] != "最高指揮官": # 指揮官不受等級限制
-        return False, "等級不足 (需 Lv.5)"
-    user["class_type"] = new_class
-    save_db(db)
-    return True, f"轉職成功！你現在是 {CLASSES[new_class]['name']}"
-
 # ==================================================
-# 2. 介面與工具函數
+# 1. 系統視覺與工具
 # ==================================================
-st.set_page_config(page_title="CityOS V4.1", layout="wide", page_icon="🏙️")
+st.set_page_config(page_title="CityOS V3.2", layout="wide", page_icon="🏙️")
+
+SVG_ICONS = {
+    "MUX": '''<svg width="120" height="100" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,10 L90,25 L90,75 L30,90 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="45" y="55" fill="currentColor" font-size="14">MUX</text><path d="M10,25 L30,25 M10,40 L30,40 M10,55 L30,55 M10,70 L30,70 M90,50 L110,50 M60,85 L60,95" stroke="currentColor" stroke-width="2"/></svg>''',
+    "AND": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 L40,10 C55,10 65,20 65,30 C65,40 55,50 40,50 L10,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L10,20 M0,40 L10,40 M65,30 L80,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "OR": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 L35,10 Q50,30 35,50 L10,50 Q25,30 10,10 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L15,20 M0,40 L15,40 M45,30 L60,30" stroke="currentColor" stroke-width="3"/></svg>''',
+    "XOR": '''<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M20,10 L45,10 Q60,30 45,50 L20,50 Q35,30 20,10 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10,10 Q25,30 10,50" fill="none" stroke="currentColor" stroke-width="3"/><path d="M0,20 L15,20 M0,40 L15,40 M55,30 L70,30" stroke="currentColor" stroke-width="3"/></svg>'''
+}
+
+THEMES = {
+    "專業暗色 (Night City)": {"bg": "#212529", "txt": "#E9ECEF", "btn": "#495057", "btn_txt": "#FFFFFF", "card": "#343A40", "chart": ["#00ADB5", "#EEEEEE", "#FF2E63"]},
+    "舒適亮色 (Day City)": {"bg": "#F8F9FA", "txt": "#343A40", "btn": "#6C757D", "btn_txt": "#FFFFFF", "card": "#FFFFFF", "chart": ["#343A40", "#6C757D", "#ADB5BD"]}
+}
 
 if "user_data" not in st.session_state:
+    init_df = pd.DataFrame(np.random.randint(40, 60, size=(30, 3)), columns=['CPU', 'NET', 'SEC'])
     st.session_state.update({
-        "logged_in": False, "user_key": "", "user_data": {}, 
-        "theme_name": "Night City", 
-        "monitor_data": pd.DataFrame(np.random.randint(40, 60, size=(30, 3)), columns=['CPU', 'NET', 'SEC']), 
-        "exam_active": False, "quiz_batch": []
+        "logged_in": False, 
+        "user_key": "", 
+        "user_data": {}, 
+        "theme_name": "專業暗色 (Night City)",
+        "monitor_data": init_df, 
+        "exam_active": False, 
+        "quiz_batch": [],
+        "kmap_data": [0]*8 
     })
 
 def apply_theme():
-    current_theme = st.session_state.theme_name
-    t = THEMES.get(current_theme, THEMES["Night City"])
+    t = THEMES[st.session_state.theme_name]
     st.markdown(f"""
     <style>
     .stApp {{ background-color: {t['bg']} !important; }}
-    h1, h2, h3, h4, p, span, div, label, li, .stMarkdown, .stExpander, .stTabs, .stMetricValue {{ color: {t['txt']} !important; font-family: 'Segoe UI', sans-serif; }}
-    .stButton>button {{ background-color: {t['btn']} !important; color: {t['btn_txt']} !important; border: none !important; border-radius: 6px !important; }}
-    div[data-testid="stDataFrame"], div[data-testid="stExpander"] {{ background-color: {t['card']} !important; border: 1px solid rgba(128,128,128,0.2); }}
+    h1, h2, h3, h4, p, span, div, label, li, .stMarkdown, .stExpander, .stTabs {{ color: {t['txt']} !important; font-family: 'Segoe UI', sans-serif; }}
+    .stButton>button {{ background-color: {t['btn']} !important; color: {t['btn_txt']} !important; border: none !important; border-radius: 6px !important; padding: 0.5rem 1rem; }}
+    div[data-testid="stDataFrame"], div[data-testid="stExpander"] {{ background-color: {t['card']} !important; border: 1px solid rgba(128,128,128,0.2); border-radius: 8px; }}
     [data-testid="stSidebar"] {{ background-color: {t['card']}; border-right: 1px solid rgba(128,128,128,0.1); }}
+    
+    .commander-card {{ border: 2px solid gold !important; box-shadow: 0 0 15px rgba(255, 215, 0, 0.2); background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(50,50,50,0.9)); }}
+    .commander-badge {{ color: gold; font-weight: bold; font-size: 0.8em; border: 1px solid gold; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top:5px;}}
+    .intro-box {{ background-color: rgba(0, 173, 181, 0.1); border-left: 5px solid #00ADB5; padding: 15px; border-radius: 5px; margin-bottom: 20px; line-height: 1.6;}}
     </style>
     """, unsafe_allow_html=True)
 
 def render_svg(svg_code):
-    b64 = base64.b64encode(svg_code.encode('utf-8')).decode("utf-8")
-    st.markdown(f'<img src="data:image/svg+xml;base64,{b64}" width="200"/>', unsafe_allow_html=True)
+    svg_black = svg_code.replace('stroke="currentColor"', 'stroke="#888888"').replace('fill="currentColor"', 'fill="#888888"')
+    b64 = base64.b64encode(svg_black.encode('utf-8')).decode("utf-8")
+    st.markdown(f'''<div style="background-color: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px; margin-bottom: 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><img src="data:image/svg+xml;base64,{b64}" width="200"/></div>''', unsafe_allow_html=True)
 
-SVG_GATES = {
-    "AND": '''<svg width="100" height="60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 L40,10 C55,10 65,20 65,30 C65,40 55,50 40,50 L10,50 Z" fill="none" stroke="#888" stroke-width="3"/><path d="M0,20 L10,20 M0,40 L10,40 M65,30 L80,30" stroke="#888" stroke-width="3"/></svg>''',
-    "OR": '''<svg width="100" height="60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 L35,10 Q50,30 35,50 L10,50 Q25,30 10,10 Z" fill="none" stroke="#888" stroke-width="3"/><path d="M0,20 L15,20 M0,40 L15,40 M45,30 L60,30" stroke="#888" stroke-width="3"/></svg>'''
-}
+def load_qs_from_txt():
+    q = []
+    errors = []
+    if os.path.exists("questions.txt"):
+        try:
+            with open("questions.txt", "r", encoding="utf-8") as f:
+                for idx, l in enumerate(f):
+                    line_content = l.strip()
+                    if not line_content: continue
+                    p = line_content.split("|")
+                    if len(p) == 5: 
+                        q.append({"id":p[0],"diff":p[1],"q":p[2],"o":p[3].split(","),"a":p[4]})
+                    else:
+                        errors.append(f"Line {idx+1}: 格式錯誤")
+        except Exception as e:
+            errors.append(str(e))
+    return q, errors
 
-def load_qs():
-    return [
-        {"q": "AND 閘輸入 1, 1 輸出為何?", "o": ["0", "1"], "a": "1"},
-        {"q": "二進位 1010 等於十進位多少?", "o": ["8", "10", "12"], "a": "10"},
-        {"q": "格雷碼的主要特性?", "o": ["相鄰兩數僅1bit不同", "運算速度快"], "a": "相鄰兩數僅1bit不同"},
-        {"q": "哪種加密是不可逆的?", "o": ["AES", "RSA", "Hash (SHA-256)"], "a": "Hash (SHA-256)"},
-        {"q": "CPU 中的 ALU 負責什麼?", "o": ["儲存資料", "算術邏輯運算"], "a": "算術邏輯運算"}
-    ]
+def update_data_random_walk():
+    last_row = st.session_state.monitor_data.iloc[-1]
+    new_vals = [max(0, min(100, last_row[col] + random.randint(-5, 5))) for col in ['CPU', 'NET', 'SEC']]
+    new_row = pd.DataFrame([new_vals], columns=['CPU', 'NET', 'SEC'])
+    updated_df = pd.concat([st.session_state.monitor_data, new_row], ignore_index=True)
+    if len(updated_df) > 30: updated_df = updated_df.iloc[1:]
+    st.session_state.monitor_data = updated_df
+    return updated_df
 
 # ==================================================
-# 3. 主程式邏輯
+# 3. 主應用程式邏輯
 # ==================================================
 def main_app():
-    # 確保資料是最新的
-    db = load_db()
-    user_key = st.session_state.user_key
-    if user_key not in db["users"]:
-        st.session_state.logged_in = False
-        st.rerun()
-    
-    user = db["users"][user_key]
-    st.session_state.user_data = user
-    
+    user = st.session_state.user_data
+    user_lvl = user.get("level", "實習生")
     apply_theme()
+    t_colors = THEMES[st.session_state.theme_name]["chart"]
     
-    lvl = user.get("level", "實習生")
-    rpg_lvl = user.get("rpg_level", 1)
-    exp = user.get("exp", 0)
-    coins = user.get("coins", 0)
-    u_class = user.get("class_type", "None")
-    is_commander = (lvl == "最高指揮官")
+    is_commander = (user_lvl == "最高指揮官")
 
-    # --- Sidebar ---
     with st.sidebar:
-        st.title("🏙️ CityOS V4.1")
-        st.caption("Commander Access Ready")
+        st.title("🏙️ CityOS V3.2")
+        st.caption("Secured Infrastructure")
         
-        class_info = CLASSES.get(u_class, CLASSES["None"])
+        # --- 個人卡片 ---
+        card_bg = "rgba(255,255,255,0.05)"
+        border_color = user.get('avatar_color', '#888')
+        card_class = "commander-card" if is_commander else ""
+        badge_html = "<div class='commander-badge'>SUPREME ACCESS</div>" if is_commander else ""
+        
+        style_str = f"padding:15px; background:{card_bg}; border-radius:8px; margin-bottom:15px; border-left:4px solid {border_color};"
         
         st.markdown(f"""
-        <div style="border-left: 4px solid {class_info.get('color', '#888')}; padding-left: 10px; margin-bottom: 20px;">
-            <h3 style="margin:0">{class_info['icon']} {user['name']}</h3>
-            <small style="color:#aaa">{lvl}</small>
+        <div class="{card_class}" style="{style_str}">
+            <div style="font-size:1.1em; font-weight:bold;">{user['name']}</div>
+            <div style="font-size:0.8em; opacity:0.7;">{user['email']}</div>
+            <div style="font-size:0.8em; margin-top:5px; color:{border_color};">{user_lvl}</div>
+            {badge_html}
         </div>
         """, unsafe_allow_html=True)
+        # ---------------
         
-        c1, c2 = st.columns(2)
-        with c1: st.metric("Level", rpg_lvl)
-        with c2: st.metric("Coins", coins)
-        
-        exp_in_curr_lvl = exp % EXP_PER_LEVEL
-        progress_val = exp_in_curr_lvl / EXP_PER_LEVEL
-        st.write(f"EXP: {exp_in_curr_lvl} / {EXP_PER_LEVEL}")
-        st.progress(progress_val)
-        
-        st.markdown("---")
-        menu = {
-            "Dash": "🏙️ 儀表板",
-            "Logic": "⚡ 邏輯設施",
-            "Base": "🔢 進制轉換",
-            "Sec": "🛡️ 資訊安全局",
+        # 動態選單生成
+        st.markdown("### 導航選單")
+        menu_options = {
+            "Dashboard": "🏙️ 城市儀表板",
+            "Electricity": "⚡ 電力設施 (Logic)",
+            "Boolean": "🧩 布林轉換器 (Lv1+)",
+            "GrayCode": "🏦 格雷碼核心 (Lv2+)",
+            "BaseConv": "🔢 進制轉換 (Lv2+)",
+            "InfoSec": "🛡️ 資訊安全局 (Lv2+)", # NEW
+            "KMap": "🗺️ 卡諾圖 (Lv3+)",
             "Academy": "🎓 市政學院",
-            "Shop": "🛒 補給站",
-            "Profile": "📂 市民檔案"
+            "UpdateLog": "📜 更新日誌",
+            "Profile": "📂 人事檔案"
         }
-        sel = st.radio("導航", list(menu.values()), label_visibility="collapsed")
-
-    # --- Page 1: Dashboard ---
-    if sel == "🏙️ 儀表板":
-        st.title(f"👋 早安，{class_info['name']}")
         
-        if u_class == "Oracle": st.success("🔮 預言家專屬技能發動：系統負載預測已優化")
-        elif u_class == "Guardian": st.success("🛡️ 守護者專屬技能發動：防火牆效能提升 20%")
-            
-        col1, col2 = st.columns([2, 1])
+        if is_commander:
+            menu_options["Commander"] = "☢️ 核心控制"
+
+        selection = st.radio("前往", list(menu_options.values()), label_visibility="collapsed")
+
+    # -------------------------------------------
+    # 頁面: 城市儀表板 (All)
+    # -------------------------------------------
+    if selection == "🏙️ 城市儀表板":
+        col_h1, col_h2 = st.columns([3, 1])
+        with col_h1: st.title(f"👋 歡迎，{user['name']}")
+        with col_h2: st.caption(datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+        # 系統簡介
+        st.markdown("""
+        <div class="intro-box">
+            <b>CityOS (Urban Operation System) V3.2</b> 是一套專為現代智慧城市設計的中央控制中樞。
+            整合底層邏輯運算、多進制數據處理以及高階權限管理，並新增了<b>資訊安全局</b>以強化數據加密傳輸監控。
+            <br><br>
+            系統採用嚴格的分級授權機制（Level 1 至 Level 3），確保只有經過考核的合格人員能操作關鍵設施。
+            透過即時數據儀表板與市政學院的持續考核，我們致力於構建一個安全、高效且可持續發展的運算城市生態系統。
+        </div>
+        """, unsafe_allow_html=True)
+
+        col1, col2 = st.columns([3, 1])
         with col1:
             st.subheader("📡 即時監控")
-            chart_data = pd.DataFrame(np.random.randint(20, 90, size=(20, 3)), columns=['CPU', 'NET', 'SEC'])
-            if u_class == "Oracle": chart_data['PREDICT'] = np.random.randint(40, 60, size=20)
-            st.line_chart(chart_data, height=250)
-        
+            chart_ph = st.empty()
+            metric_ph = st.empty()
+            for _ in range(5): 
+                df = update_data_random_walk()
+                chart_ph.area_chart(df, color=t_colors, height=250)
+                last = df.iloc[-1]
+                metric_ph.markdown(f"""
+                <div style="display:flex; justify-content:space-around; background:rgba(255,255,255,0.1); padding:10px; border-radius:5px;">
+                    <div>CPU: <b>{int(last['CPU'])}%</b></div>
+                    <div>NET: <b>{int(last['NET'])} Mbps</b></div>
+                    <div>SEC: <b>{int(last['SEC'])} Lvl</b></div>
+                </div>
+                """, unsafe_allow_html=True)
+                time.sleep(0.3)
+
         with col2:
-            st.subheader("📢 任務板")
-            st.markdown("* ✅ **每日登入**: +50 Coins (已完成)")
-            st.caption("完成任務以提升等級並解鎖更多功能！")
+            st.subheader("📁 狀態")
+            qs, errs = load_qs_from_txt()
+            st.metric("題庫總數", len(qs))
+            st.metric("您的權限等級", LEVEL_MAP.get(user_lvl, 0))
 
-    # --- Page 2: Logic ---
-    elif sel == "⚡ 邏輯設施":
-        st.header("⚡ 邏輯閘實驗室")
-        gate = st.selectbox("Component", ["AND", "OR"])
-        render_svg(SVG_GATES.get(gate, SVG_GATES["AND"]))
-        if st.button("執行模擬運算"):
-            with st.spinner("Calculating..."):
-                time.sleep(0.5)
-                add_exp(user_key, 5)
-            st.success("運算完成！(EXP +5)")
+    # -------------------------------------------
+    # 頁面: 電力設施 (All)
+    # -------------------------------------------
+    elif selection == "⚡ 電力設施 (Logic)":
+        st.header("⚡ 邏輯閘視覺化")
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            gate = st.selectbox("選擇邏輯閘", ["AND", "OR", "XOR", "MUX"])
+        with col2:
+            render_svg(SVG_ICONS.get(gate, SVG_ICONS["AND"]))
 
-    # --- Page 3: Base ---
-    elif sel == "🔢 進制轉換":
-        st.header("🔢 數據轉換中心")
-        val = st.number_input("Decimal Input", value=255)
-        st.code(f"Binary: {bin(val)[2:]}\nHex: {hex(val)[2:].upper()}")
-        if st.button("記錄數據"):
-            add_exp(user_key, 5)
-            st.toast("數據已歸檔 (EXP +5)")
-
-    # --- Page 4: InfoSec ---
-    elif sel == "🛡️ 資訊安全局":
-        st.header("🛡️ 資訊安全局")
-        tabs = st.tabs(["🔐 基礎加密", "#️⃣ 雜湊驗證", "☢️ RSA (守護者專用)"])
-        
-        with tabs[0]:
-            txt = st.text_input("明文", "SECRET")
-            shift = st.slider("偏移", 1, 10, 3)
-            res = "".join([chr(ord(c)+shift) for c in txt])
-            st.code(f"Cipher: {res}")
+    # -------------------------------------------
+    # 頁面: 布林轉換器 (Lv1+)
+    # -------------------------------------------
+    elif selection == "🧩 布林轉換器 (Lv1+)":
+        if check_access(user_lvl, "初級管理員"):
+            st.header("🧩 布林代數實驗室")
+            st.caption("Boolean Algebra Converter")
             
-        with tabs[1]:
-            h_txt = st.text_input("雜湊輸入", "Password")
-            st.code(f"SHA256: {hashlib.sha256(h_txt.encode()).hexdigest()}")
-            if st.button("驗證雜湊"):
-                add_exp(user_key, 10)
-                
-        with tabs[2]:
-            if u_class == "Guardian" or is_commander:
-                st.success("權限驗證通過：守護者協定")
-                c1, c2 = st.columns(2)
-                c1.metric("Public Key", "E=65537")
-                c2.metric("Private Key", "****")
-                if st.button("生成新金鑰"):
-                    time.sleep(1)
-                    st.success("New Keys Generated! (EXP +20)")
-                    add_exp(user_key, 20)
-            else:
-                st.error("⛔ 此功能僅限「守護者」職業或指揮官使用。")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.subheader("真值表生成器")
+                op = st.selectbox("運算邏輯", ["A AND B", "A OR B", "A XOR B", "NOT A", "NAND"])
+            
+            with c2:
+                st.subheader("結果")
+                res = []
+                for a in [0, 1]:
+                    for b in [0, 1]:
+                        if op == "A AND B": val = a & b
+                        elif op == "A OR B": val = a | b
+                        elif op == "A XOR B": val = a ^ b
+                        elif op == "NOT A": val = 1 - a
+                        elif op == "NAND": val = 1 - (a & b)
+                        res.append({"A": a, "B": b, "Out": val})
+                st.dataframe(pd.DataFrame(res), use_container_width=True)
+        else:
+            st.error("🔒 權限不足：需要 [初級管理員] 權限。")
 
-    # --- Page 5: Academy ---
-    elif sel == "🎓 市政學院":
-        st.header("🎓 技能考核中心")
-        qs = load_qs()
+    # -------------------------------------------
+    # 頁面: 格雷碼核心 (Lv2+)
+    # -------------------------------------------
+    elif selection == "🏦 格雷碼核心 (Lv2+)":
+        if check_access(user_lvl, "中級管理員"):
+            st.header("🏦 格雷碼運算單元")
+            st.caption("Gray Code Processor")
+            st.info("權限驗證通過：中級管理員存取權限")
+            
+            val_str = st.text_input("輸入十進位數值", "127")
+            if val_str.isdigit():
+                val = int(val_str)
+                gray_val = val ^ (val >> 1)
+                c1, c2 = st.columns(2)
+                with c1: st.metric("Binary", bin(val)[2:])
+                with c2: st.metric("Gray Code", bin(gray_val)[2:])
+                st.success(f"轉換成功：{val} -> {bin(gray_val)[2:]}")
+            else:
+                st.error("請輸入整數")
+        else:
+            st.error("🔒 權限不足：需要 [中級管理員] 權限。")
+
+    # -------------------------------------------
+    # 頁面: 進制轉換 (Lv2+)
+    # -------------------------------------------
+    elif selection == "🔢 進制轉換 (Lv2+)":
+        if check_access(user_lvl, "中級管理員"):
+            st.header("🔢 多功能進制轉換器")
+            st.caption("Advanced Base Converter (2/8/10/16)")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                base_from = st.selectbox("來源進制", [2, 8, 10, 16], index=2)
+                num_input = st.text_input("輸入數值", "255")
+            
+            with c2:
+                try:
+                    dec_val = int(num_input, base_from)
+                    st.write("---")
+                    st.write(f"**BIN (2):** `{bin(dec_val)[2:]}`")
+                    st.write(f"**OCT (8):** `{oct(dec_val)[2:]}`")
+                    st.write(f"**DEC (10):** `{dec_val}`")
+                    st.write(f"**HEX (16):** `{hex(dec_val)[2:].upper()}`")
+                except ValueError:
+                    st.error("輸入格式與選擇的進制不符")
+        else:
+            st.error("🔒 權限不足：需要 [中級管理員] 權限。")
+
+    # -------------------------------------------
+    # 頁面: 資訊安全局 (Lv2+) - NEW
+    # -------------------------------------------
+    elif selection == "🛡️ 資訊安全局 (Lv2+)":
+        if check_access(user_lvl, "中級管理員"):
+            st.header("🛡️ 資訊安全局 (InfoSec Bureau)")
+            st.caption("Cryptography & Hashing Tools")
+            
+            tab_crypt, tab_hash = st.tabs(["🔐 凱薩加密 (Caesar)", "#️⃣ 數位雜湊 (Hashing)"])
+            
+            with tab_crypt:
+                st.subheader("古典加密通訊")
+                c1, c2 = st.columns([2, 1])
+                with c1:
+                    plain_text = st.text_input("輸入明文 (Plain Text)", "HELLO CITY")
+                    shift = st.slider("偏移量 (Shift Key)", 1, 25, 3)
+                with c2:
+                    st.write("")
+                    st.write("")
+                    mode = st.radio("模式", ["加密", "解密"], horizontal=True)
+                
+                result_text = ""
+                if plain_text:
+                    for char in plain_text:
+                        if char.isalpha():
+                            start = 65 if char.isupper() else 97
+                            offset = shift if mode == "加密" else -shift
+                            result_text += chr((ord(char) - start + offset) % 26 + start)
+                        else:
+                            result_text += char
+                
+                st.success(f"運算結果: {result_text}")
+
+            with tab_hash:
+                st.subheader("單向雜湊驗證")
+                st.info("雜湊函數是不可逆的，常用於密碼儲存與檔案驗證。")
+                
+                hash_input = st.text_input("輸入任意字串", "MyPassword123")
+                if hash_input:
+                    # MD5
+                    md5_val = hashlib.md5(hash_input.encode()).hexdigest()
+                    # SHA256
+                    sha_val = hashlib.sha256(hash_input.encode()).hexdigest()
+                    
+                    st.code(f"MD5    : {md5_val}", language="text")
+                    st.code(f"SHA-256: {sha_val}", language="text")
+
+        else:
+            st.error("🔒 權限不足：需要 [中級管理員] 權限。")
+
+    # -------------------------------------------
+    # 頁面: 卡諾圖 (Lv3+)
+    # -------------------------------------------
+    elif selection == "🗺️ 卡諾圖 (Lv3+)":
+        if check_access(user_lvl, "高級管理員"):
+            st.header("🗺️ 卡諾圖求簡 (3變數)")
+            st.caption("Karnaugh Map Solver")
+            
+            c_label, c00, c01, c11, c10 = st.columns([1,1,1,1,1])
+            with c_label: st.write("**BC:**")
+            with c00: st.write("00")
+            with c01: st.write("01")
+            with c11: st.write("11")
+            with c10: st.write("10")
+            
+            # Row A=0
+            r0_label, r0_00, r0_01, r0_11, r0_10 = st.columns([1,1,1,1,1])
+            with r0_label: st.write("**A=0**")
+            m0 = r0_00.checkbox("m0", key="k0")
+            m1 = r0_01.checkbox("m1", key="k1")
+            m3 = r0_11.checkbox("m3", key="k3")
+            m2 = r0_10.checkbox("m2", key="k2")
+            
+            # Row A=1
+            r1_label, r1_00, r1_01, r1_11, r1_10 = st.columns([1,1,1,1,1])
+            with r1_label: st.write("**A=1**")
+            m4 = r1_00.checkbox("m4", key="k4")
+            m5 = r1_01.checkbox("m5", key="k5")
+            m7 = r1_11.checkbox("m7", key="k7")
+            m6 = r1_10.checkbox("m6", key="k6")
+
+            minterms = []
+            if m0: minterms.append(0)
+            if m1: minterms.append(1)
+            if m2: minterms.append(2)
+            if m3: minterms.append(3)
+            if m4: minterms.append(4)
+            if m5: minterms.append(5)
+            if m6: minterms.append(6)
+            if m7: minterms.append(7)
+            
+            st.divider()
+            if minterms:
+                st.info(f"Σm({', '.join(map(str, minterms))})")
+                st.write("Sum of Minterms 計算完成。")
+            else:
+                st.write("輸出為 0")
+        else:
+            st.error("🔒 權限不足：需要 [高級管理員] 權限。")
+
+    # -------------------------------------------
+    # 頁面: 市政學院 (All)
+    # -------------------------------------------
+    elif selection == "🎓 市政學院":
+        st.header("🎓 市政考評")
+        qs, errs = load_qs_from_txt()
+        
+        if errs: st.warning(f"題庫錯誤: {len(errs)} 行")
         
         if not st.session_state.exam_active:
-            if st.button("🚀 開始測驗"):
-                st.session_state.quiz_batch = random.sample(qs, 3)
-                st.session_state.exam_active = True
-                st.rerun()
+            if st.button("🚀 啟動考核"):
+                if len(qs) >= 5:
+                    st.session_state.quiz_batch = random.sample(qs, 5)
+                    st.session_state.exam_active = True
+                    st.rerun()
+                else: st.error("題庫不足 5 題")
         else:
-            score = 0
-            with st.form("quiz"):
+            with st.form("exam_form"):
+                ans = {}
                 for i, q in enumerate(st.session_state.quiz_batch):
-                    st.write(f"**Q{i+1}: {q['q']}**")
-                    ans = st.radio("Ans", q['o'], key=f"q{i}")
-                    if ans == q['a']: score += 1
+                    st.write(f"**{i+1}. {q['q']}**")
+                    ans[i] = st.radio("Select", q['o'], key=f"q{i}", index=None, label_visibility="collapsed")
+                    st.divider()
                 
-                if st.form_submit_button("提交"):
-                    st.session_state.exam_active = False
-                    reward_coins = score * 10
-                    reward_exp = score * 20
-                    st.balloons()
-                    st.success(f"測驗結束！答對 {score}/3 題")
-                    add_coins(user_key, reward_coins)
-                    add_exp(user_key, reward_exp)
-                    time.sleep(2)
-                    st.rerun()
-
-    # --- Page 6: Shop ---
-    elif sel == "🛒 補給站":
-        st.header("🛒 CityOS 補給站")
-        st.markdown(f"**持有貨幣:** `{coins} CityCoins`")
-        cols = st.columns(3)
-        for idx, (item_id, item) in enumerate(SHOP_ITEMS.items()):
-            with cols[idx % 3]:
-                with st.container(border=True):
-                    st.subheader(item["type"] == "theme" and "🎨" or "🎁")
-                    st.write(f"**{item['name']}**")
-                    st.write(f"💰 {item['cost']}")
-                    is_owned = item["key"] in user.get("inventory", [])
-                    if is_owned:
-                        st.button("已擁有", disabled=True, key=item_id)
+                if st.form_submit_button("提交考卷"):
+                    if any(a is None for a in ans.values()):
+                        st.warning("請作答所有題目")
                     else:
-                        if st.button(f"購買", key=item_id):
-                            ok, msg = purchase_item(user_key, item_id)
-                            if ok:
-                                st.success(msg)
-                                time.sleep(1)
-                                st.rerun()
-                            else: st.error(msg)
+                        score = sum([1 for i in range(5) if ans[i]==st.session_state.quiz_batch[i]['a']])
+                        new_data = save_score(st.session_state.user_key, f"{score}/5")
+                        st.session_state.user_data = new_data
+                        
+                        if score==5: st.balloons()
+                        st.success(f"成績存檔完成！得分: {score}")
+                        st.session_state.exam_active = False
+                        time.sleep(2); st.rerun()
 
-    # --- Page 7: Profile ---
-    elif sel == "📂 市民檔案":
-        st.header("📂 檔案管理")
-        st.subheader("⚔️ 職業專精")
-        current = CLASSES.get(u_class)
-        st.info(f"當前職業: **{current['name']}** - {current['desc']}")
+    # -------------------------------------------
+    # 頁面: 更新日誌 (All)
+    # -------------------------------------------
+    elif selection == "📜 更新日誌":
+        st.header("📜 CityOS 系統更新日誌")
+        st.markdown("""
+        ### Version 3.2 (Security Update)
+        * **New Feature**: 新增 **[🛡️ 資訊安全局]**，包含凱薩加密 (Caesar Cipher) 與 雜湊計算 (SHA-256)。
+        * **Permission**: 資訊安全局列為 **Level 2 (中級管理員)** 功能。
         
-        if u_class == "None":
-            st.write("可選職業 (需 Lv.5 或 指揮官):")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.write("#### 🛡️ 守護者")
-                if st.button("轉職 守護者"):
-                    ok, msg = change_class(user_key, "Guardian")
-                    if ok: st.balloons(); st.rerun()
-                    else: st.error(msg)
-            with c2:
-                st.write("#### ⚡ 架構師")
-                if st.button("轉職 架構師"):
-                    ok, msg = change_class(user_key, "Architect")
-                    if ok: st.balloons(); st.rerun()
-                    else: st.error(msg)
-            with c3:
-                st.write("#### 🔮 預言家")
-                if st.button("轉職 預言家"):
-                    ok, msg = change_class(user_key, "Oracle")
-                    if ok: st.balloons(); st.rerun()
-                    else: st.error(msg)
-        else:
-            if st.button("🔄 重置職業 (花費 500 Coins)"):
-                if coins >= 500:
-                    add_coins(user_key, -500)
-                    change_class(user_key, "None")
-                    st.rerun()
-                else: st.error("金幣不足")
+        ### Version 3.1
+        * **Architecture**: 權限架構優化，格雷碼獨立為 Lv2 功能。
+        * **UI**: 更新日誌移至側欄底部，新增儀表板簡介。
 
-        st.divider()
-        st.subheader("🎨 介面風格")
-        my_themes = user.get("inventory", ["Night City"])
-        selected_theme = st.selectbox("選擇主題", my_themes, index=0 if st.session_state.theme_name not in my_themes else my_themes.index(st.session_state.theme_name))
+        ### Version 3.0
+        * **Core**: 實裝五級權限系統 (Intern ~ Commander)。
+        * **Modules**: 新增布林轉換、進制轉換、卡諾圖。
+        """)
+
+    # -------------------------------------------
+    # 頁面: 人事檔案 (All)
+    # -------------------------------------------
+    elif selection == "📂 人事檔案":
+        st.header("📂 檔案管理中心")
+        st.text_input("當前用戶", user['name'], disabled=True)
+        st.info(f"目前權限等級: {user_lvl}")
+        st.selectbox("介面主題", list(THEMES.keys()), key="theme_name")
         
-        if selected_theme != st.session_state.theme_name:
-            st.session_state.theme_name = selected_theme
-            st.rerun()
-            
-        st.divider()
+        st.subheader("📊 考核績效趨勢")
+        if "history" in user and user["history"]:
+            hist_df = pd.DataFrame(user["history"])
+            try:
+                hist_df["numeric_score"] = hist_df["score"].apply(lambda x: int(str(x).split('/')[0]))
+                st.line_chart(hist_df[["date", "numeric_score"]].set_index("date"))
+            except:
+                st.dataframe(hist_df)
+        else: st.info("尚無考核紀錄")
+        
         if st.button("登出系統"):
             st.session_state.logged_in = False
+            st.session_state.user_data = {}
             st.rerun()
+
+    # -------------------------------------------
+    # 頁面: 核心控制 (Commander Only)
+    # -------------------------------------------
+    elif selection == "☢️ 核心控制" and is_commander:
+        st.title("☢️ 核心控制台")
+        st.warning("Commander Access Granted")
+        
+        all_db = load_users()
+        # 顯示並編輯用戶等級
+        st.subheader("用戶權限管理")
+        
+        c_adm1, c_adm2, c_adm3 = st.columns(3)
+        with c_adm1:
+            target = st.selectbox("選擇目標用戶", list(all_db["users"].keys()))
+        with c_adm2:
+            new_lvl = st.selectbox("調整權限等級", ["實習生", "初級管理員", "中級管理員", "高級管理員", "最高指揮官"])
+        with c_adm3:
+            st.write("")
+            st.write("")
+            if st.button("更新權限"):
+                if target == "frank" and new_lvl != "最高指揮官":
+                    st.error("不能降級指揮官")
+                else:
+                    all_db["users"][target]["level"] = new_lvl
+                    save_users(all_db)
+                    st.success(f"{target} 已更新為 {new_lvl}")
+                    time.sleep(1)
+                    st.rerun()
+                    
+        st.divider()
+        users_list = [{"ID":k, "Name":v["name"], "Level":v["level"]} for k,v in all_db["users"].items()]
+        st.dataframe(pd.DataFrame(users_list), use_container_width=True)
 
 # ==================================================
 # 4. 登入頁面
 # ==================================================
 def login_page():
-    st.title("CityOS V4.1")
-    st.caption("Secure Login Gateway")
-    
-    # 初始化資料庫，確保 Frank 存在
-    init_user_db()
-    
-    tab1, tab2 = st.tabs(["登入", "註冊"])
-    
-    with tab1:
-        u = st.text_input("User", "frank")
-        p = st.text_input("Pass", "x", type="password")
-        if st.button("Login"):
-            db = load_db()
-            users = db["users"]
-            if u in users and users[u]["password"] == p:
-                ok, c, e = check_daily_login(u)
-                st.session_state.logged_in = True
-                st.session_state.user_key = u
-                if ok: st.toast(f"每日登入獎勵！ Coins +{c}, EXP +{e}", icon="🎁")
-                st.rerun()
-            else:
-                st.error("登入失敗")
-                
-    with tab2:
-        nu = st.text_input("New User")
-        np_ = st.text_input("New Pass", type="password")
-        if st.button("Register"):
-            db = load_db()
-            if nu not in db["users"]:
-                db["users"][nu] = {
-                    "password": np_, "name": nu, "email": f"{nu}@city.gov",
-                    "level": "實習生", "coins": 100, "exp": 0, "rpg_level": 1,
-                    "class_type": "None", "inventory": ["Night City", "Day City"],
-                    "history": [], "last_login": ""
-                }
-                save_db(db)
-                st.success("註冊成功")
-            else:
-                st.error("帳號已存在")
+    apply_theme()
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.title("CityOS V3.2")
+        st.caption("Secure Information Systems")
+        
+        if not os.path.exists("questions.txt"):
+            st.error("⚠️ 嚴重錯誤：題庫 questions.txt 遺失。")
 
-if st.session_state.logged_in:
-    main_app()
-else:
-    login_page()
+        tab1, tab2 = st.tabs(["🔒 登入", "📝 註冊"])
+        with tab1:
+            with st.form("login"):
+                # 這裡已經修改為空白，不預填 frank
+                u = st.text_input("帳號")
+                p = st.text_input("密碼", type="password")
+                if st.form_submit_button("登入系統"):
+                    data = authenticate(u, p)
+                    if data:
+                        st.session_state.logged_in = True
+                        st.session_state.user_key = u
+                        st.session_state.user_data = data
+                        st.rerun()
+                    else: st.error("帳號或密碼錯誤")
+        with tab2:
+            with st.form("signup"):
+                nu = st.text_input("新帳號")
+                np_ = st.text_input("新密碼", type="password")
+                ne = st.text_input("Email")
+                if st.form_submit_button("建立檔案"):
+                    ok, msg = register_user(nu, np_, ne)
+                    if ok: st.success(msg)
+                    else: st.error(msg)
+
+if st.session_state.logged_in: main_app()
+else: login_page()
