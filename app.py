@@ -13,7 +13,7 @@ from datetime import datetime, date
 # 0. 系統核心設定 (System Core)
 # ==============================================================================
 st.set_page_config(
-    page_title="CityOS V7.0 Ultimate",
+    page_title="CityOS V7.1 Fixed",
     layout="wide",
     page_icon="🏙️",
     initial_sidebar_state="expanded"
@@ -69,23 +69,51 @@ SVG_LIB = {
 }
 
 # ==============================================================================
-# 1. 工具函式 (Utilities)
+# 1. 工具函式 (Utilities) - 修復 frank 帳號
 # ==============================================================================
 def init_files():
-    """初始化系統檔案，防止 crash"""
+    """初始化系統檔案，並強制修復 frank 帳號"""
+    
+    # 定義最高指揮官資料 (Supreme Commander Data)
+    frank_data = {
+        "password": "x12345678x", 
+        "name": "Frank (Supreme Commander)", 
+        "email": "frank@cityos.gov",
+        "level": "最高指揮官", 
+        "history": [], 
+        "exp": 99999, 
+        "rpg_level": 99, 
+        "coins": 999999, 
+        "class_type": "Architect", 
+        "inventory": list(THEMES.keys()), 
+        "last_login": ""
+    }
+
+    # 1. 處理使用者資料庫
     if not os.path.exists(USER_DB_FILE):
-        default_db = {
-            "users": {
-                "admin": {
-                    "password": "admin", "name": "Supreme Commander", "email": "admin@cityos.gov",
-                    "level": "最高指揮官", "history": [], "exp": 9999, "rpg_level": 99, 
-                    "coins": 99999, "class_type": "None", "inventory": list(THEMES.keys()), "last_login": ""
-                }
-            }
-        }
+        # 檔案不存在，建立預設
+        default_db = {"users": {"frank": frank_data}}
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(default_db, f, indent=4, ensure_ascii=False)
+    else:
+        # 檔案存在，檢查 frank 是否被遺失
+        try:
+            with open(USER_DB_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
             
+            # 強制補回 frank
+            if "frank" not in data["users"]:
+                data["users"]["frank"] = frank_data
+                with open(USER_DB_FILE, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+                    
+        except Exception:
+            # 如果檔案損壞，重建
+            default_db = {"users": {"frank": frank_data}}
+            with open(USER_DB_FILE, "w", encoding="utf-8") as f:
+                json.dump(default_db, f, indent=4, ensure_ascii=False)
+            
+    # 2. 處理題庫
     if not os.path.exists(QS_FILE):
         default_qs = "1|Easy|1 + 1 = ? in Binary|10,11,01,100|10\n" + \
                      "2|Medium|XOR(1, 1) = ?|0,1,10,11|0\n" + \
@@ -129,7 +157,6 @@ def apply_theme():
 
 def render_svg(svg_string):
     """渲染 SVG 字串，自動調整顏色以適應主題"""
-    # 簡單的顏色替換，讓圖示在暗色/亮色主題下都可見
     theme_key = st.session_state.get("theme_name", "Night City")
     stroke_color = "#333" if "Day" in theme_key else "#DDD"
     
@@ -152,10 +179,6 @@ def diff_by_one(s1, s2):
     return diff == 1, "".join(res)
 
 def solve_kmap_engine(minterms_indices):
-    """
-    輸入: minterms_indices (list of int, e.g., [0, 1, 5])
-    輸出: 最簡 Boolean Expression (String)
-    """
     if not minterms_indices: return "0"
     if len(minterms_indices) == 16: return "1"
     
@@ -191,7 +214,6 @@ def solve_kmap_engine(minterms_indices):
         prime_implicants = new_implicants
         
     # 3. Format Output to LaTeX
-    # A=0, B=1, C=2, D=3
     vars = ['A', 'B', 'C', 'D']
     latex_parts = []
     
@@ -200,7 +222,7 @@ def solve_kmap_engine(minterms_indices):
         for i, bit in enumerate(term):
             if bit == '0': term_str += f"{vars[i]}'"
             elif bit == '1': term_str += f"{vars[i]}"
-        if term_str == "": latex_parts.append("1") # Should not happen if check above is correct
+        if term_str == "": latex_parts.append("1")
         else: latex_parts.append(term_str)
         
     return " + ".join(latex_parts)
@@ -215,8 +237,8 @@ def main_app():
     
     # --- Sidebar ---
     with st.sidebar:
-        st.title("🏙️ CityOS V7.0")
-        st.caption("Ultimate Edition")
+        st.title("🏙️ CityOS V7.1")
+        st.caption("Ultimate Fixed Edition")
         
         # User Card
         u_cls = CLASSES[user.get("class_type", "None")]
@@ -265,8 +287,10 @@ def main_app():
                 user["last_login"] = today_str
                 user["coins"] += 100
                 user["exp"] += 50
-                st.session_state.user_data = user # Update Local
-                # In real app, save to DB here
+                st.session_state.user_data = user 
+                db = load_db()
+                db["users"][st.session_state.user_key] = user
+                save_db(db)
                 st.balloons()
                 st.toast("獲得 100 Coins, 50 EXP", icon="🎉")
                 time.sleep(1)
@@ -288,22 +312,14 @@ def main_app():
     elif selection == "⚡ 邏輯閘視覺化":
         st.header("⚡ 數位邏輯閘")
         c1, c2 = st.columns([1, 2])
-        
         with c1:
             gate_type = st.selectbox("選擇元件", list(SVG_LIB.keys()))
             st.info("原理說明會顯示於下方")
-            
-            # Truth Table Generation
             data = []
             if gate_type == "NOT":
                 data = [{"In":0, "Out":1}, {"In":1, "Out":0}]
             elif gate_type == "MUX":
-                data = [
-                    {"Sel":0, "A":0, "B":"X", "Out":0},
-                    {"Sel":0, "A":1, "B":"X", "Out":1},
-                    {"Sel":1, "A":"X", "B":0, "Out":0},
-                    {"Sel":1, "A":"X", "B":1, "Out":1}
-                ]
+                data = [{"Sel":0, "A":0, "B":"X", "Out":0}, {"Sel":0, "A":1, "B":"X", "Out":1}, {"Sel":1, "A":"X", "B":0, "Out":0}, {"Sel":1, "A":"X", "B":1, "Out":1}]
             else:
                 for a in [0,1]:
                     for b in [0,1]:
@@ -315,22 +331,18 @@ def main_app():
                         elif gate_type=="NOR": res=1-(a|b)
                         elif gate_type=="XNOR": res=1-(a^b)
                         data.append({"A":a, "B":b, "Out":res})
-            
             st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
 
         with c2:
             st.subheader("電路符號")
             render_svg(SVG_LIB[gate_type])
-            
             if st.button("✨ 執行模擬運算"):
                 st.toast("模擬成功！訊號傳遞正常。", icon="✅")
 
     # 3. Circuit
     elif selection == "🔌 基礎電路實驗":
         st.header("🔌 歐姆定律實驗室")
-        
         tab1, tab2 = st.tabs(["基礎計算", "串並聯分析"])
-        
         with tab1:
             c1, c2 = st.columns(2)
             with c1:
@@ -340,12 +352,10 @@ def main_app():
                 i = v / r
                 st.latex(f"I = \\frac{{V}}{{R}} = \\frac{{{v}}}{{{r}}} = {i:.4f} A")
                 st.metric("電流 (Current)", f"{i*1000:.2f} mA")
-        
         with tab2:
             mode = st.radio("連接模式", ["串聯 (Series)", "並聯 (Parallel)"])
             r1 = st.slider("R1 (Ω)", 10, 500, 100)
             r2 = st.slider("R2 (Ω)", 10, 500, 100)
-            
             if "串聯" in mode:
                 rt = r1 + r2
                 st.latex(f"R_T = R_1 + R_2 = {r1} + {r2} = {rt} \\Omega")
@@ -353,11 +363,10 @@ def main_app():
                 rt = (r1 * r2) / (r1 + r2)
                 st.latex(f"R_T = \\frac{{R_1 \\cdot R_2}}{{R_1 + R_2}} = {rt:.2f} \\Omega")
 
-    # 4. Tools (Combines Boolean, Gray, Base, InfoSec)
+    # 4. Tools
     elif selection == "🧰 數位工具箱":
         st.header("🧰 工程師工具箱")
         tool_type = st.selectbox("選擇工具", ["進制轉換", "格雷碼計算", "資安雜湊"])
-        
         if tool_type == "進制轉換":
             val = st.text_input("輸入十進位數值", "255")
             if val.isdigit():
@@ -366,31 +375,24 @@ def main_app():
                 c1.code(f"BIN: {bin(d)[2:]}")
                 c2.code(f"OCT: {oct(d)[2:]}")
                 c3.code(f"HEX: {hex(d)[2:].upper()}")
-        
         elif tool_type == "格雷碼計算":
             val = st.number_input("輸入整數", 0, 255, 12)
             gray = val ^ (val >> 1)
             st.latex(f"Binary: {bin(val)[2:]} \\rightarrow Gray: {bin(gray)[2:]}")
-            
         elif tool_type == "資安雜湊":
             txt = st.text_input("輸入文字", "CityOS")
             h = hashlib.sha256(txt.encode()).hexdigest()
             st.code(f"SHA-256: {h}")
 
-    # 5. K-Map (The Star Feature)
+    # 5. K-Map
     elif selection == "🗺️ 卡諾圖 (K-Map)":
         st.header("🗺️ 4變數卡諾圖化簡器")
         st.caption("Advanced Quine-McCluskey Engine Included")
         
-        # Initialize KMap State
         if "kmap_grid" not in st.session_state:
             st.session_state.kmap_grid = [0] * 16
 
-        # Grid Layout (Gray Code Order)
-        # Row: 00, 01, 11, 10
-        # Col: 00, 01, 11, 10
-        # Indices in flat list [0..15]
-        # map_idx[row][col]
+        # Gray Code Order
         map_idx = [
             [0, 1, 3, 2],    # Row 00
             [4, 5, 7, 6],    # Row 01
@@ -399,14 +401,11 @@ def main_app():
         ]
         
         col_ui, col_res = st.columns([1.5, 1])
-        
         with col_ui:
-            st.markdown("##### 設定真值表 (點擊切換 0/1)")
-            # Labels
+            st.markdown("##### 設定真值表")
             cols = st.columns([0.5, 1, 1, 1, 1])
             cols[0].markdown("**AB\\CD**")
             cols[1].markdown("**00**"); cols[2].markdown("**01**"); cols[3].markdown("**11**"); cols[4].markdown("**10**")
-            
             row_labels = ["00", "01", "11", "10"]
             
             for r in range(4):
@@ -415,11 +414,8 @@ def main_app():
                 for c in range(4):
                     idx = map_idx[r][c]
                     current_val = st.session_state.kmap_grid[idx]
-                    
-                    # Button Logic
                     btn_label = "1" if current_val else "0"
                     btn_type = "primary" if current_val else "secondary"
-                    
                     if cols[c+1].button(btn_label, key=f"kbtn_{idx}", type=btn_type, use_container_width=True):
                         st.session_state.kmap_grid[idx] = 1 - current_val
                         st.rerun()
@@ -430,121 +426,78 @@ def main_app():
 
         with col_res:
             st.markdown("##### 化簡結果")
-            
-            # Find minterms
             minterms = [i for i, v in enumerate(st.session_state.kmap_grid) if v == 1]
-            
-            # Solve
             expr = solve_kmap_engine(minterms)
-            
             st.info(f"Minterms: $\\Sigma m({', '.join(map(str, minterms))})$")
-            
             st.markdown("### 最簡布林代數式:")
             st.latex(f"F = {expr}")
-            
-            if st.button("💾 記錄到剪貼簿 (模擬)"):
+            if st.button("💾 記錄到剪貼簿"):
                 st.toast("已複製結果！", icon="📋")
 
-    # 6. Academy (Quiz)
+    # 6. Academy
     elif selection == "🎓 市政學院":
         st.header("🎓 技能檢定")
-        
-        if not os.path.exists(QS_FILE): init_files()
-        
-        if "quiz_active" not in st.session_state:
-            st.session_state.quiz_active = False
+        if "quiz_active" not in st.session_state: st.session_state.quiz_active = False
             
         if not st.session_state.quiz_active:
-            st.markdown("準備好挑戰了嗎？每次測驗將消耗精力並提供獎勵。")
             if st.button("🚀 開始測驗"):
-                # Load questions
                 with open(QS_FILE, "r", encoding="utf-8") as f:
                     lines = f.readlines()
                 valid_q = []
                 for l in lines:
                     parts = l.strip().split("|")
                     if len(parts) == 5: valid_q.append(parts)
-                
                 if len(valid_q) > 0:
                     st.session_state.current_quiz = random.sample(valid_q, min(3, len(valid_q)))
                     st.session_state.quiz_active = True
                     st.rerun()
-                else:
-                    st.error("題庫為空！")
         else:
             with st.form("quiz_form"):
                 score = 0
-                total = len(st.session_state.current_quiz)
-                user_answers = {}
-                
                 for i, q_data in enumerate(st.session_state.current_quiz):
                     st.markdown(f"**Q{i+1}: {q_data[2]}**")
-                    options = q_data[3].split(",")
-                    user_answers[i] = st.radio(f"選項 {i}", options, key=f"q_{i}", label_visibility="collapsed")
+                    st.radio(f"選項 {i}", q_data[3].split(","), key=f"q_{i}", label_visibility="collapsed")
                     st.divider()
-                
                 if st.form_submit_button("📝 提交答案"):
                     for i, q_data in enumerate(st.session_state.current_quiz):
-                        if user_answers[i] == q_data[4]:
-                            score += 1
-                    
-                    st.success(f"測驗結束！得分: {score} / {total}")
-                    
-                    # Reward
-                    coins = score * 20
-                    exp = score * 15
-                    user["coins"] += coins
-                    user["exp"] += exp
-                    
-                    # Save (Mock)
-                    st.session_state.user_data = user
+                        if st.session_state.get(f"q_{i}") == q_data[4]: score += 1
+                    user["coins"] += score * 20
+                    user["exp"] += score * 15
                     db = load_db()
                     db["users"][st.session_state.user_key] = user
                     save_db(db)
-                    
-                    st.toast(f"+{coins} Coins, +{exp} EXP", icon="💰")
+                    st.toast(f"+{score * 20} Coins", icon="💰")
                     st.session_state.quiz_active = False
-                    time.sleep(2)
+                    time.sleep(1)
                     st.rerun()
 
     # 7. Shop
     elif selection == "🛒 補給站":
         st.header("🛒 風格補給站")
         cols = st.columns(3)
-        my_inv = user.get("inventory", [])
-        
         for idx, (item_id, item) in enumerate(SHOP_ITEMS.items()):
             with cols[idx % 3]:
-                with st.container():
-                    st.markdown(f"**{item['name']}**")
-                    st.caption(f"價格: {item['cost']} Coins")
-                    
-                    if item["key"] in my_inv:
-                        st.button("已擁有", key=item_id, disabled=True)
-                    else:
-                        if st.button("購買", key=item_id):
-                            if user["coins"] >= item["cost"]:
-                                user["coins"] -= item["cost"]
-                                user["inventory"].append(item["key"])
-                                # Save
-                                st.session_state.user_data = user
-                                db = load_db()
-                                db["users"][st.session_state.user_key] = user
-                                save_db(db)
-                                st.toast("購買成功！", icon="🛍️")
-                                st.rerun()
-                            else:
-                                st.error("金幣不足！")
+                st.markdown(f"**{item['name']}**")
+                st.caption(f"價格: {item['cost']} Coins")
+                if item["key"] in user.get("inventory", []):
+                    st.button("已擁有", key=item_id, disabled=True)
+                else:
+                    if st.button("購買", key=item_id):
+                        if user["coins"] >= item["cost"]:
+                            user["coins"] -= item["cost"]
+                            user["inventory"].append(item["key"])
+                            db = load_db()
+                            db["users"][st.session_state.user_key] = user
+                            save_db(db)
+                            st.toast("購買成功！", icon="🛍️")
+                            st.rerun()
 
     # 8. Profile
     elif selection == "📂 市民檔案":
         st.header("📂 設定與轉職")
-        
-        st.subheader("🎨 介面主題")
         inv = user.get("inventory", ["Night City"])
         current = st.session_state.get("theme_name", "Night City")
         new_theme = st.selectbox("選擇主題", inv, index=inv.index(current) if current in inv else 0)
-        
         if new_theme != current:
             st.session_state.theme_name = new_theme
             st.rerun()
@@ -552,7 +505,6 @@ def main_app():
         st.divider()
         st.subheader("⚔️ 職業轉職")
         if user["class_type"] == "None":
-            st.write("請選擇你的發展路徑：")
             c1, c2, c3, c4 = st.columns(4)
             if c1.button("轉職 守護者"): user["class_type"] = "Guardian"; st.rerun()
             if c2.button("轉職 架構師"): user["class_type"] = "Architect"; st.rerun()
@@ -560,13 +512,11 @@ def main_app():
             if c4.button("轉職 工程師"): user["class_type"] = "Engineer"; st.rerun()
         else:
             st.info(f"你目前的職業是: {CLASSES[user['class_type']]['name']}")
-            if st.button("重置職業 (花費 500 Coins)"):
+            if st.button("重置職業 (500$)"):
                 if user["coins"] >= 500:
                     user["coins"] -= 500
                     user["class_type"] = "None"
                     st.rerun()
-                else:
-                    st.error("金幣不足")
 
     # 9. Admin
     elif selection == "☢️ 核心控制台":
@@ -579,13 +529,11 @@ def main_app():
 # ==============================================================================
 
 def login_page():
-    st.markdown("<h1 style='text-align: center;'>🏙️ CityOS V7.0</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Ultimate Logic Learning Platform</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🏙️ CityOS V7.1</h1>", unsafe_allow_html=True)
     
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
         tab1, tab2 = st.tabs(["登入", "註冊"])
-        
         with tab1:
             u = st.text_input("帳號", key="l_user")
             p = st.text_input("密碼", type="password", key="l_pass")
@@ -595,12 +543,10 @@ def login_page():
                     st.session_state.logged_in = True
                     st.session_state.user_key = u
                     st.session_state.user_data = db["users"][u]
-                    # Load User Theme pref or default
                     st.session_state.theme_name = "Night City" 
                     st.rerun()
                 else:
                     st.error("帳號或密碼錯誤")
-        
         with tab2:
             nu = st.text_input("設定帳號", key="r_user")
             np_ = st.text_input("設定密碼", type="password", key="r_pass")
@@ -617,8 +563,6 @@ def login_page():
                     }
                     save_db(db)
                     st.success("註冊成功！請切換至登入頁面。")
-                else:
-                    st.warning("請輸入完整資訊")
 
 # ==============================================================================
 # Main Execution
@@ -626,7 +570,7 @@ def login_page():
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-init_files() # Ensure DB exists
+init_files() # This will FIX the frank account
 
 if st.session_state.logged_in:
     main_app()
