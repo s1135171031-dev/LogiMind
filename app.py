@@ -106,7 +106,6 @@ def load_db():
             data = json.load(f)
             
         # --- 強制檢查：如果檔案裡沒有 frank，補進去 ---
-        # 這是為了防止你已經有舊檔案，導致新帳號無法寫入
         if "frank" not in data["users"]:
             data["users"]["frank"] = get_admin_data()
             save_db(data)
@@ -115,7 +114,8 @@ def load_db():
     except Exception as e:
         # 如果檔案壞了，重置
         st.error(f"資料庫讀取錯誤: {e}，已重置資料庫。")
-        os.remove(USER_DB_FILE)
+        if os.path.exists(USER_DB_FILE):
+            os.remove(USER_DB_FILE)
         init_db()
         return load_db()
 
@@ -402,7 +402,8 @@ def main():
         with c2:
             tab1, tab2 = st.tabs(["登入", "註冊"])
             with tab1:
-                u = st.text_input("帳號", "frank")
+                # 這裡改回了空白，不自動填入
+                u = st.text_input("帳號")
                 p = st.text_input("密碼", type="password")
                 if st.button("登入"):
                     db = load_db()
@@ -433,9 +434,7 @@ def main():
     uid = st.session_state.user_id
     render_sidebar_hud(user)
     
-    pages = {"主頁": page_daily_quiz, "測驗": page_daily_quiz, "工具": page_toolbox, "轉職": page_career, "社群": page_message_board, "名片": page_profile}
-    
-    # 修改 Dashboard 顯示內容
+    # 導航
     sel = st.sidebar.radio("導航", ["主頁", "每日測驗", "工具箱", "轉職中心", "社群留言", "個人名片", "登出"])
     
     if sel == "主頁":
