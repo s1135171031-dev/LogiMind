@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 # 1. 系統核心設定 & 常數
 # ==============================================================================
 st.set_page_config(
-    page_title="CityOS V9.5 Engineer RPG",
+    page_title="CityOS V11.0 Engineer RPG",
     layout="wide",
     page_icon="🏙️",
     initial_sidebar_state="expanded"
@@ -30,42 +30,37 @@ CLASSES = {
     },
     "Engineer": {
         "name": "硬體工程師", "icon": "🔧", 
-        "desc": "擅長硬體。解鎖：[訊號產生器]、[電阻色碼]。", "unlocks": ["Resistor", "AdvancedCircuit", "SignalGen"]
+        "desc": "硬體專家。解鎖：[訊號產生器]、[挖礦效率+20%]", "unlocks": ["SignalGen", "MiningBonus"]
     },
     "Programmer": {
         "name": "軟體工程師", "icon": "💻", 
-        "desc": "擅長編碼。解鎖：[進位轉換]、[ASCII]。", "unlocks": ["ASCII", "BaseConverter"]
+        "desc": "軟體專家。解鎖：[頭像生成器]、[進位轉換]", "unlocks": ["AvatarGen", "BaseConverter"]
     },
     "Architect": {
         "name": "系統架構師", "icon": "⚡", 
-        "desc": "全能型專家。解鎖：[所有工具]。", "unlocks": ["All"]
+        "desc": "全能神。解鎖：[所有功能]。", "unlocks": ["All"]
     },
     "Hacker": {
         "name": "資安專家", "icon": "🛡️", 
-        "desc": "擅長網絡。解鎖：[網路計算器]、[密碼學]。", "unlocks": ["Crypto", "NetworkCalc"]
+        "desc": "網絡攻防。解鎖：[駭客終端機]、[網路工具]", "unlocks": ["Terminal", "NetworkCalc"]
     }
 }
 
 SVG_LIB = {
     "AND": '''<svg width="100" height="60"><path d="M10,5 L40,5 C55,5 65,15 65,25 C65,35 55,45 40,45 L10,45 Z" fill="none" stroke="#CCC" stroke-width="3"/><path d="M0,15 L10,15 M0,35 L10,35 M65,25 L80,25" stroke="#CCC" stroke-width="3"/></svg>''',
-    "OR": '''<svg width="100" height="60"><path d="M10,5 L35,5 Q50,25 35,45 L10,45 Q25,25 10,5 Z" fill="none" stroke="#CCC" stroke-width="3"/><path d="M0,15 L15,15 M0,35 L15,35 M45,25 L60,25" stroke="#CCC" stroke-width="3"/></svg>''',
-    "NOT": '''<svg width="100" height="60"><path d="M20,5 L20,45 L55,25 Z" fill="none" stroke="#CCC" stroke-width="3"/><circle cx="59" cy="25" r="3" fill="none" stroke="#CCC" stroke-width="2"/><path d="M0,25 L20,25 M63,25 L80,25" stroke="#CCC" stroke-width="3"/></svg>''',
-    "XOR": '''<svg width="100" height="60"><path d="M20,5 L45,5 Q60,25 45,45 L20,45 Q35,25 20,5 Z" fill="none" stroke="#CCC" stroke-width="3"/><path d="M10,5 Q25,25 10,45" fill="none" stroke="#CCC" stroke-width="3"/><path d="M0,15 L15,15 M0,35 L15,35 M55,25 L70,25" stroke="#CCC" stroke-width="3"/></svg>''',
-    "NAND": '''<svg width="100" height="60"><path d="M10,5 L40,5 C55,5 65,15 65,25 C65,35 55,45 40,45 L10,45 Z" fill="none" stroke="#CCC" stroke-width="3"/><circle cx="69" cy="25" r="3" fill="none" stroke="#CCC" stroke-width="2"/><path d="M0,15 L10,15 M0,35 L10,35 M73,25 L85,25" stroke="#CCC" stroke-width="3"/></svg>''',
-    "NOR": '''<svg width="100" height="60"><path d="M10,5 L35,5 Q50,25 35,45 L10,45 Q25,25 10,5 Z" fill="none" stroke="#CCC" stroke-width="3"/><circle cx="64" cy="25" r="3" fill="none" stroke="#CCC" stroke-width="2"/><path d="M0,15 L15,15 M0,35 L15,35 M68,25 L80,25" stroke="#CCC" stroke-width="3"/></svg>'''
+    "OR": '''<svg width="100" height="60"><path d="M10,5 L35,5 Q50,25 35,45 L10,45 Q25,25 10,5 Z" fill="none" stroke="#CCC" stroke-width="3"/><path d="M0,15 L15,15 M0,35 L15,35 M45,25 L60,25" stroke="#CCC" stroke-width="3"/></svg>'''
 }
 
 # ==============================================================================
-# 2. Backend Logic
+# 2. 資料庫邏輯 (Backend)
 # ==============================================================================
 
 def get_admin_data():
     return {
         "password": "x12345678x", "name": "Frank (Admin)", 
         "level": 100, "exp": 99999, "money": 99999, "job": "Architect", 
-        "badges": ["GM"], "inventory": ["無限經驗卡"],
-        "last_quiz_date": str(date.today()), "quiz_attempts": 0, "history_score": 5,
-        "bio": "System Creator."
+        "inventory": ["RTX 4090"], "mining_balance": 0.0,
+        "last_quiz_date": str(date.today()), "quiz_attempts": 0, "bio": "System Creator."
     }
 
 def init_db():
@@ -91,17 +86,15 @@ def save_db(data):
 
 def load_questions():
     questions = []
-    if os.path.exists(QUESTION_DB_FILE):
-        try:
-            with open(QUESTION_DB_FILE, "r", encoding="utf-8") as f:
-                for line in f:
-                    p = line.strip().split('|')
-                    if len(p)>=5: questions.append({"id":p[0],"type":p[1],"q":p[2],"opts":p[3].split(','),"ans":p[4]})
-            return questions
-        except: pass
-    for i in range(5):
-        questions.append({"id":f"M{i}","type":"1","q":f"Logic Test {i}","opts":["0","1"],"ans":"1"})
-    return questions
+    # 這裡模擬題庫，實際可讀檔
+    demos = [
+        {"q":"在 Python 中，哪個關鍵字用於定義函數?", "opts":["func", "def", "function", "lambda"], "ans":"def"},
+        {"q":"二進位數字 1010 等於十進位的多少?", "opts":["8", "10", "12", "5"], "ans":"10"},
+        {"q":"HTTP 協定中，哪個狀態碼代表「找不到網頁」?", "opts":["200", "500", "404", "403"], "ans":"404"},
+        {"q":"邏輯閘 AND 的輸入為 1 和 0 時，輸出為何?", "opts":["1", "0", "High", "Z"], "ans":"0"},
+        {"q":"下列哪個不是 Linux 的發行版?", "opts":["Ubuntu", "CentOS", "Windows", "Kali"], "ans":"Windows"}
+    ]
+    return demos
 
 def check_level_up(user):
     cur, exp = user.get("level", 1), user.get("exp", 0)
@@ -111,220 +104,301 @@ def check_level_up(user):
     return False, cur
 
 # ==============================================================================
-# 3. 頁面功能模組
+# 3. 主要功能模組
 # ==============================================================================
 
-def render_sidebar_hud(user):
-    st.sidebar.markdown(f"### 🆔 {user['name']}")
-    job = CLASSES.get(user.get("job", "Novice"), CLASSES["Novice"])
-    st.sidebar.markdown(f"**職業**: {job['icon']} {job['name']}")
-    c1, c2 = st.sidebar.columns([1,2])
-    c1.metric("Lv", user.get("level", 1))
-    c2.metric("💰", user.get("money", 0))
-    st.sidebar.progress((user.get("exp",0)%100)/100.0, text=f"XP: {user.get('exp',0)}")
-    st.sidebar.markdown("---")
-
-def page_shop(uid, user):
-    st.title("🛒 道具商店")
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        items = [{"name":"經驗卡","p":100},{"name":"重置券","p":200},{"name":"咖啡","p":50}]
-        cols = st.columns(3)
-        for i, item in enumerate(items):
-            with cols[i]:
-                st.info(f"{item['name']}\n${item['p']}")
-                if st.button("購買", key=f"b{i}"):
-                    if user["money"]>=item['p']:
-                        user["money"]-=item['p']; 
-                        if "inventory" not in user: user["inventory"]=[]
-                        user["inventory"].append(item['name'])
-                        db=load_db(); db["users"][uid]=user; save_db(db)
-                        st.toast("購買成功!"); st.rerun()
-                    else: st.error("沒錢")
-    with c2:
-        st.write("🎒 背包:", ", ".join(user.get("inventory", [])))
-
-def page_network():
-    st.title("🌐 網路子網掩碼計算器")
-    ip = st.text_input("IP", "192.168.1.10")
-    cidr = st.slider("CIDR", 0, 32, 24)
-    try:
-        net = ipaddress.IPv4Network(f"{ip}/{cidr}", strict=False)
-        st.code(f"Net: {net.network_address}\nMask: {net.netmask}\nHosts: {net.num_addresses}")
-    except: st.error("Error")
-
-def page_signal_gen():
-    st.title("🌊 波形訊號產生器")
-    c1, c2 = st.columns([1,3])
-    with c1:
-        wt = st.selectbox("Wave", ["Sine","Square"])
-        freq = st.slider("Hz", 1, 100, 5)
-    with c2:
-        t = np.linspace(0, 1, 500)
-        y = np.sin(2*np.pi*freq*t) if wt=="Sine" else np.sign(np.sin(2*np.pi*freq*t))
-        fig, ax = plt.subplots(figsize=(8,3))
-        ax.plot(t, y, 'g'); ax.set_facecolor('#111'); fig.patch.set_facecolor('#111')
-        ax.tick_params(colors='white')
-        st.pyplot(fig)
-
+# --- [V11.0 更新] 每日測驗系統 (含確認頁面) ---
 def page_daily_quiz(uid, user):
-    st.header("📝 每日測驗")
+    st.header("📝 每日工程師能力測驗")
+    
+    # 1. 檢查日期與次數
     today = str(date.today())
-    if user.get("last_quiz_date")!=today:
-        user["last_quiz_date"]=today; user["quiz_attempts"]=0
-        db=load_db(); db["users"][uid]=user; save_db(db)
+    if user.get("last_quiz_date") != today:
+        user["last_quiz_date"] = today
+        user["quiz_attempts"] = 0
+        db = load_db(); db["users"][uid] = user; save_db(db)
     
-    if user["quiz_attempts"]>=3: st.error("今日次數已盡"); return
+    attempts_left = 3 - user.get("quiz_attempts", 0)
     
-    if "qs" not in st.session_state:
-        st.session_state.qs = random.sample(load_questions(), 3)
-        st.session_state.q_idx = 0
-        st.session_state.score = 0
+    # 初始化 Session State
+    if "quiz_phase" not in st.session_state:
+        st.session_state.quiz_phase = "LOBBY" # LOBBY, PLAYING, RESULT
+        st.session_state.quiz_score = 0
+        st.session_state.quiz_idx = 0
     
-    q_curr = st.session_state.qs[st.session_state.q_idx]
-    st.write(f"Q{st.session_state.q_idx+1}: {q_curr['q']}")
-    with st.form("quiz"):
-        ans = st.radio("Ans", q_curr['opts'])
-        if st.form_submit_button("Submit"):
-            if ans==q_curr['ans']: st.session_state.score+=1
-            if st.session_state.q_idx+1 >= 3:
-                # Finish
-                r = st.session_state.score
-                gain = r * 20
-                st.success(f"得分: {r}/3 | +${gain}")
-                user["money"]+=gain; user["exp"]+=gain*2; user["quiz_attempts"]+=1
-                check_level_up(user)
-                db=load_db(); db["users"][uid]=user; save_db(db)
-                del st.session_state["qs"]
-                st.rerun()
-            else:
-                st.session_state.q_idx+=1
-                st.rerun()
-
-def page_toolbox(user):
-    st.title("🧰 基礎工具箱")
-    t1, t2 = st.tabs(["邏輯閘", "進位"])
-    with t1:
-        g = st.selectbox("Gate", list(SVG_LIB.keys()))
-        a, b = st.toggle("A"), st.toggle("B")
-        st.write("Res:", int(eval(f"{a} and {b}") if g=="AND" else 0)) # 簡化顯示
-        st.markdown(SVG_LIB[g].replace('width="100"','width="200"'), unsafe_allow_html=True)
-    with t2:
-        v = st.number_input("Dec", 255)
-        st.code(f"HEX: {hex(v)}")
-
-def page_career(uid, user):
-    st.title("🏹 轉職中心")
-    curr = user.get("job", "Novice")
-    for k,v in CLASSES.items():
-        if k=="Novice": continue
-        with st.container(border=True):
-            c1, c2 = st.columns([3,1])
-            c1.markdown(f"### {v['icon']} {v['name']}")
-            c1.caption(v['desc'])
-            if curr==k: c2.button("Current", disabled=True, key=k)
-            elif user["level"]>=5: 
-                if c2.button("轉職", key=k):
-                    user["job"]=k; db=load_db(); db["users"][uid]=user; save_db(db); st.rerun()
-            else: c2.button("Lv.5解鎖", disabled=True, key=k)
-
-def page_board(uid, user):
-    st.title("💬 留言")
-    db=load_db(); msgs=db.get("messages", [])
-    t = st.text_input("Msg")
-    if st.button("Send") and t:
-        msgs.insert(0, {"u":user["name"],"j":user.get("job","Novice"),"t":t})
-        db["messages"]=msgs[:20]; save_db(db); st.rerun()
-    for m in msgs: st.caption(f"{CLASSES.get(m['j'],CLASSES['Novice'])['icon']} {m['u']}: {m['t']}")
-
-def page_profile(uid, user):
-    st.title("📇 名片")
-    st.write(user)
-
-# ==============================================================================
-# 4. 主流程 (含動態側邊欄)
-# ==============================================================================
-def main():
-    if "logged_in" not in st.session_state: st.session_state.logged_in=False
-
-    # --- Login ---
-    if not st.session_state.logged_in:
-        st.markdown("<h1 style='text-align:center'>🏙️ CityOS V9.5</h1>", unsafe_allow_html=True)
-        c2 = st.columns([1,2,1])[1]
-        with c2:
-            tab1, tab2 = st.tabs(["登入", "註冊"])
-            with tab1:
-                u = st.text_input("帳號", value="") # 空白
-                p = st.text_input("密碼", type="password", value="")
-                if st.button("登入"):
-                    db=load_db()
-                    if u in db["users"] and db["users"][u]["password"]==p:
-                        st.session_state.logged_in=True
-                        st.session_state.user_id=u
-                        st.session_state.user_data=db["users"][u]
-                        st.rerun()
-                    else: st.error("Fail")
-            with tab2:
-                nu = st.text_input("新帳號"); np_ = st.text_input("新密碼", type="password")
-                if st.button("註冊"):
-                    db=load_db()
-                    if nu not in db["users"]:
-                        db["users"][nu] = {"password":np_,"name":nu,"level":1,"exp":0,"money":0,"job":"Novice"}
-                        save_db(db); st.success("OK")
-        return
-
-    # --- Main App ---
-    user = st.session_state.user_data
-    uid = st.session_state.user_id
-    render_sidebar_hud(user)
-    
-    # === 動態選單邏輯 (Dynamic Sidebar) ===
-    job = user.get("job", "Novice")
-    
-    # 1. 核心選單 (Everyone)
-    pages = {"📊 主控台": "home", "📝 每日測驗": "quiz", "🏹 轉職中心": "career", "🛒 道具商店": "shop"}
-    
-    # 2. 職業解鎖功能 (Job Unlocks)
-    # 只有工程師(Engineer)或架構師(Architect)看得到
-    if job in ["Engineer", "Architect"]:
-        pages["🌊 訊號產生器"] = "signal"
+    # === 階段 1: 準備大廳 (Lobby) ===
+    if st.session_state.quiz_phase == "LOBBY":
         
-    # 只有駭客(Hacker)或架構師(Architect)看得到
-    if job in ["Hacker", "Architect"]:
-        pages["🌐 網路工具"] = "network"
+        # 顯示狀態卡片
+        c1, c2, c3 = st.columns(3)
+        c1.metric("今日剩餘次數", f"{attempts_left} / 3")
+        c2.metric("單題獎勵", "$20 / 40xp")
+        c3.metric("全對額外獎勵", "$50")
         
-    # 3. 社群與系統 (System)
-    pages["💬 社群留言"] = "board"
-    pages["📇 個人名片"] = "profile"
-    
-    # 側邊欄渲染
-    st.sidebar.markdown("### 🗺️ 導航")
-    
-    # 使用單一 Radio，但選項是動態過濾過的
-    selection_name = st.sidebar.radio("前往", list(pages.keys()), label_visibility="collapsed")
-    selection = pages[selection_name]
+        st.divider()
+        
+        if attempts_left <= 0:
+            st.warning("🔒 今日測驗次數已用盡，請明天再來！")
+            st.info("💡 提示：你可以去「雲端挖礦」或「駭客終端」賺取更多金幣。")
+        else:
+            st.info("準備好了嗎？測驗內容包含基礎邏輯、程式語言與電腦科學知識。")
+            
+            # 開始按鈕
+            if st.button("🚀 確認開始測驗", use_container_width=True, type="primary"):
+                # 載入題目
+                all_q = load_questions()
+                st.session_state.quiz_qs = random.sample(all_q, 3) # 隨機抽3題
+                st.session_state.quiz_phase = "PLAYING"
+                st.session_state.quiz_idx = 0
+                st.session_state.quiz_score = 0
+                st.rerun()
 
-    # 4. 登出按鈕 (獨立放在最下方)
-    st.sidebar.markdown("---")
-    if st.sidebar.button("🚪 登出系統"):
-        st.session_state.logged_in = False
-        del st.session_state['user_data']
+    # === 階段 2: 測驗進行中 (Playing) ===
+    elif st.session_state.quiz_phase == "PLAYING":
+        q_list = st.session_state.quiz_qs
+        idx = st.session_state.quiz_idx
+        q_curr = q_list[idx]
+        
+        # 進度條
+        st.progress((idx + 1) / len(q_list), text=f"Question {idx+1} / {len(q_list)}")
+        
+        st.subheader(f"Q{idx+1}: {q_curr['q']}")
+        
+        with st.form(key=f"quiz_form_{idx}"):
+            user_ans = st.radio("請選擇答案:", q_curr['opts'], key=f"ans_{idx}")
+            submitted = st.form_submit_button("送出答案")
+            
+            if submitted:
+                if user_ans == q_curr['ans']:
+                    st.toast("✅ 正確！", icon="🎉")
+                    st.session_state.quiz_score += 1
+                else:
+                    st.toast(f"❌ 錯誤... 正解是 {q_curr['ans']}", icon="⚠️")
+                
+                time.sleep(0.5) # 稍微停頓讓使用者看提示
+                
+                # 判斷是否下一題
+                if idx + 1 < len(q_list):
+                    st.session_state.quiz_idx += 1
+                    st.rerun()
+                else:
+                    st.session_state.quiz_phase = "RESULT"
+                    st.rerun()
+
+    # === 階段 3: 結算畫面 (Result) ===
+    elif st.session_state.quiz_phase == "RESULT":
+        score = st.session_state.quiz_score
+        total_q = 3
+        
+        # 計算獎勵
+        money_gain = score * 20
+        exp_gain = score * 40
+        if score == total_q:
+            money_gain += 50 # 全對獎金
+            st.balloons()
+        
+        st.markdown(f"<h2 style='text-align:center'>測驗結束</h2>", unsafe_allow_html=True)
+        
+        rc1, rc2 = st.columns(2)
+        with rc1:
+            st.markdown(f"### 答對題數: {score} / {total_q}")
+            if score == total_q: st.success("🌟 完美表現！ (S級)")
+            elif score >= 1: st.info("👍 還不錯！ (A級)")
+            else: st.error("💀 再接再厲...")
+            
+        with rc2:
+            st.markdown("### 獲得獎勵")
+            st.write(f"💰 金幣: +${money_gain}")
+            st.write(f"📈 經驗: +{exp_gain} XP")
+        
+        if st.button("領取獎勵並返回大廳", use_container_width=True):
+            # 寫入資料庫
+            user["money"] += money_gain
+            user["exp"] += exp_gain
+            user["quiz_attempts"] += 1
+            is_up, new_lv = check_level_up(user)
+            if is_up: st.toast(f"升級了！目前等級 Lv.{new_lv}", icon="🆙")
+            
+            db = load_db()
+            db["users"][uid] = user
+            save_db(db)
+            
+            # 重置狀態
+            st.session_state.quiz_phase = "LOBBY"
+            st.rerun()
+
+# --- 其他功能 (保留 V10.0) ---
+
+def page_mining(uid, user):
+    st.title("⛏️ 雲端挖礦場")
+    
+    # 計算算力
+    hashrate = 0
+    for item in user.get("inventory", []):
+        if "GTX 1060" in item: hashrate += 10
+        elif "RTX 3060" in item: hashrate += 30
+        elif "RTX 4090" in item: hashrate += 100
+    if user.get("job") == "Engineer": hashrate *= 1.2
+    
+    # 被動挖礦模擬
+    balance = user.get("mining_balance", 0.0)
+    mined_now = hashrate * 0.001 * random.uniform(0.8, 1.2)
+    user["mining_balance"] = balance + mined_now
+    
+    c1, c2, c3 = st.columns(3)
+    c1.metric("算力 (Hash/s)", int(hashrate))
+    c2.metric("持有 BTC", f"{user['mining_balance']:.6f}")
+    c3.metric("預估價值", f"${int(user['mining_balance'] * 5000)}")
+    
+    if st.button("💰 提領收益"):
+        if user["mining_balance"] > 0.0001:
+            gain = int(user['mining_balance'] * 5000)
+            user["money"] += gain
+            user["mining_balance"] = 0
+            db = load_db(); db["users"][uid] = user; save_db(db)
+            st.success(f"已提領 ${gain}")
+            st.rerun()
+        else: st.warning("餘額不足")
+
+    st.markdown("---")
+    st.caption("🛒 購買顯卡增加算力")
+    gpus = [{"n":"GTX 1060", "p":500}, {"n":"RTX 4090", "p":3500}]
+    cc = st.columns(2)
+    for i, g in enumerate(gpus):
+        with cc[i]:
+            if st.button(f"買 {g['n']} (${g['p']})"):
+                if user["money"] >= g['p']:
+                    user["money"] -= g['p']
+                    if "inventory" not in user: user["inventory"] = []
+                    user["inventory"].append(g['n'])
+                    db = load_db(); db["users"][uid] = user; save_db(db)
+                    st.rerun()
+                else: st.error("沒錢")
+
+def page_hacker_terminal(uid, user):
+    st.title("📟 駭客終端機")
+    if "term_log" not in st.session_state: st.session_state.term_log = ["System ready."]
+    
+    st.code("\n".join(st.session_state.term_log), language="bash")
+    cmd = st.chat_input("Command (scan, crack, loot)")
+    
+    if cmd:
+        st.session_state.term_log.append(f"> {cmd}")
+        if cmd == "scan": res = "Found target: 192.168.1.X"
+        elif cmd == "crack": 
+            if random.random() > 0.5: 
+                res = "Access Granted."; st.session_state.hacked = True
+            else: res = "Access Denied."
+        elif cmd == "loot":
+            if st.session_state.get("hacked"):
+                amt = random.randint(50, 200)
+                res = f"Stolen ${amt}."; user["money"] += amt; st.session_state.hacked=False
+                db = load_db(); db["users"][uid] = user; save_db(db)
+            else: res = "No access."
+        else: res = "Unknown command."
+        st.session_state.term_log.append(res)
         st.rerun()
 
-    # === 頁面路由 ===
-    if selection == "home":
+def page_avatar_gen(uid, user):
+    st.title("🧬 頭像生成")
+    f = st.selectbox("Face", ["( )", "[ ]"])
+    e = st.selectbox("Eyes", ["o o", "- -", "X X"])
+    av = f"  {f[0]} {e} {f[1]}  "
+    st.code(av)
+    if st.button("Save to Bio"):
+        user["bio"] = av; db=load_db(); db["users"][uid]=user; save_db(db)
+        st.success("Saved!")
+
+def page_signal_gen():
+    st.title("🌊 訊號產生器")
+    freq = st.slider("Hz", 1, 100, 10)
+    t = np.linspace(0, 1, 200)
+    y = np.sin(2*np.pi*freq*t)
+    st.line_chart(y)
+
+def page_network():
+    st.title("🌐 網路工具")
+    ip = st.text_input("IP", "192.168.1.1")
+    st.write(f"Analyzing {ip}...")
+
+def page_career(uid, user):
+    st.title("🏹 轉職")
+    curr = user.get("job", "Novice")
+    for k, v in CLASSES.items():
+        if k == "Novice": continue
+        c1, c2 = st.columns([3,1])
+        c1.write(f"**{v['name']}**: {v['desc']}")
+        if curr == k: c2.button("當前", disabled=True, key=k)
+        elif user["level"] >= 5:
+            if c2.button("轉職", key=k):
+                user["job"] = k; db=load_db(); db["users"][uid]=user; save_db(db); st.rerun()
+        else: c2.button("Lv.5", disabled=True, key=k)
+
+def page_profile(uid, user):
+    st.title(f"📇 {user['name']}")
+    st.write(f"Job: {user.get('job')} | Money: ${user.get('money')}")
+    st.text(user.get("bio", ""))
+
+# ==============================================================================
+# 4. 主程式與導航
+# ==============================================================================
+def main():
+    if "logged_in" not in st.session_state: st.session_state.logged_in = False
+
+    if not st.session_state.logged_in:
+        st.title("🏙️ CityOS V11.0")
+        u = st.text_input("User"); p = st.text_input("Pass", type="password")
+        if st.button("Login"):
+            db = load_db()
+            if u in db["users"] and db["users"][u]["password"] == p:
+                st.session_state.logged_in = True; st.session_state.user_id = u
+                st.session_state.user_data = db["users"][u]
+                st.rerun()
+            else: st.error("Error or Register first")
+        return
+
+    # Logged In
+    user = st.session_state.user_data
+    uid = st.session_state.user_id
+    
+    # Sidebar HUD
+    st.sidebar.markdown(f"### 🆔 {user['name']}")
+    st.sidebar.markdown(f"**{CLASSES.get(user.get('job','Novice'))['name']}**")
+    c1, c2 = st.sidebar.columns(2)
+    c1.metric("Lv", user.get("level", 1))
+    c2.metric("💰", user.get("money", 0))
+    st.sidebar.progress((user.get("exp",0)%100)/100.0)
+    st.sidebar.divider()
+
+    # Dynamic Navigation
+    job = user.get("job", "Novice")
+    pages = {"📊 主控台":"home", "📝 每日測驗":"quiz", "🏹 轉職中心":"career", "⛏️ 雲端挖礦":"mining"}
+    
+    if job in ["Engineer", "Architect"]: pages["🌊 訊號產生器"] = "signal"
+    if job in ["Programmer", "Architect"]: pages["🧬 頭像生成器"] = "avatar"
+    if job in ["Hacker", "Architect"]: pages["📟 駭客終端機"] = "terminal"; pages["🌐 網路工具"] = "network"
+    
+    pages["📇 個人名片"] = "profile"
+
+    sel_name = st.sidebar.radio("導航", list(pages.keys()))
+    sel = pages[sel_name]
+    
+    if st.sidebar.button("登出"):
+        st.session_state.logged_in = False; st.rerun()
+
+    # Routing
+    if sel == "home":
         st.title("📊 主控台")
-        st.info(f"歡迎回來，{user['name']}。")
-        st.write("目前系統運作正常。")
-        st.line_chart(np.random.randn(10,2))
-        
-    elif selection == "quiz": page_daily_quiz(uid, user)
-    elif selection == "shop": page_shop(uid, user)
-    elif selection == "signal": page_signal_gen()
-    elif selection == "network": page_network()
-    elif selection == "career": page_career(uid, user)
-    elif selection == "board": page_board(uid, user)
-    elif selection == "profile": page_profile(uid, user)
+        st.info("歡迎回來。請從側邊欄選擇功能。")
+        st.bar_chart(np.random.randint(10, 100, 7))
+    elif sel == "quiz": page_daily_quiz(uid, user)
+    elif sel == "mining": page_mining(uid, user)
+    elif sel == "terminal": page_hacker_terminal(uid, user)
+    elif sel == "avatar": page_avatar_gen(uid, user)
+    elif sel == "signal": page_signal_gen()
+    elif sel == "network": page_network()
+    elif sel == "career": page_career(uid, user)
+    elif sel == "profile": page_profile(uid, user)
 
 if __name__ == "__main__":
     main()
