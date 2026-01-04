@@ -71,12 +71,36 @@ def init_db():
             json.dump({"users": users}, f, ensure_ascii=False, indent=4)
 
 def load_db():
+    # 1. 如果檔案完全不存在，先建立基礎結構
     init_db()
+    
     try:
-        with open(USER_DB_FILE, "r", encoding="utf-8") as f: data = json.load(f)
-        if "frank" not in data["users"]: data["users"]["frank"] = get_admin_data(); save_db(data)
+        with open(USER_DB_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        # === 關鍵修正：強制重置 Admin 帳號 ===
+        # 無論舊檔案內容為何，這裡會強行把 frank 覆寫為最新的神之數據
+        admin_data = get_admin_data()
+        
+        # 為了保留你可能已經玩過的資產，我們只更新密碼和權限，保留錢和道具
+        if "frank" in data["users"]:
+            # 保留舊錢，但更新權限與密碼
+            current_money = data["users"]["frank"].get("money", admin_data["money"])
+            current_inv = data["users"]["frank"].get("inventory", admin_data["inventory"])
+            data["users"]["frank"] = admin_data 
+            data["users"]["frank"]["money"] = current_money
+            data["users"]["frank"]["inventory"] = current_inv
+        else:
+            # 如果 frank 不見了，直接寫入全新的
+            data["users"]["frank"] = admin_data
+            
+        # 儲存修復後的資料
+        save_db(data)
         return data
-    except:
+        
+    except Exception as e:
+        # 如果檔案格式真的壞了，直接刪除重建
+        st.error(f"資料庫損毀，正在重置... ({e})")
         if os.path.exists(USER_DB_FILE): os.remove(USER_DB_FILE)
         return load_db()
 
@@ -439,3 +463,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
