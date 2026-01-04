@@ -18,6 +18,7 @@ st.set_page_config(
 )
 
 USER_DB_FILE = "cityos_users.json"
+LOG_FILE = "intruder_log.txt"
 
 # --- SVG 資源 (邏輯閘) ---
 SVG_LIB = {
@@ -44,12 +45,14 @@ CLASSES = {
 # ==============================================================================
 
 def get_admin_data():
+    """ 生成最高指揮官 Frank 的資料 (記憶體中生成，不一定依賴檔案) """
     return {
-        "password": "x", "name": "Frank (Creator)", 
-        "level": 100, "exp": 999999, "money": 999999, "bank_deposit": 5000000,
-        "job": "Architect", "inventory": ["RTX 4090", "Quantum CPU"], "mining_balance": 10.0,
+        "password": "x", # 實際登入用 x12345678x 判斷，這裡僅為佔位符
+        "name": "Frank (Supreme Commander)", 
+        "level": 100, "exp": 999999, "money": 9999999, "bank_deposit": 50000000,
+        "job": "Architect", "inventory": ["RTX 4090", "Quantum CPU"], "mining_balance": 100.0,
         "last_quiz_date": "", "quiz_attempts": 0, "bio": "The Architect of CityOS.", "debt": 0,
-        "mails": [{"sender":"System", "title":"V14 Update", "content":"All legacy modules restored."}]
+        "mails": [{"sender":"System", "title":"Root Access Granted", "content":"Welcome back, Commander."}]
     }
 
 def get_npc_data(name, job, level, money):
@@ -62,7 +65,6 @@ def get_npc_data(name, job, level, money):
 def init_db():
     if not os.path.exists(USER_DB_FILE):
         users = {
-            "frank": get_admin_data(),
             "alice": get_npc_data("Alice", "Hacker", 15, 8000),
             "bob": get_npc_data("Bob", "Engineer", 10, 3500),
             "charlie": get_npc_data("Charlie", "Programmer", 22, 15000)
@@ -71,41 +73,16 @@ def init_db():
             json.dump({"users": users}, f, ensure_ascii=False, indent=4)
 
 def load_db():
-    # 1. 如果檔案完全不存在，先建立基礎結構
     init_db()
-    
     try:
         with open(USER_DB_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        
-        # === 關鍵修正：強制重置 Admin 帳號 ===
-        # 無論舊檔案內容為何，這裡會強行把 frank 覆寫為最新的神之數據
-        admin_data = get_admin_data()
-        
-        # 為了保留你可能已經玩過的資產，我們只更新密碼和權限，保留錢和道具
-        if "frank" in data["users"]:
-            # 保留舊錢，但更新權限與密碼
-            current_money = data["users"]["frank"].get("money", admin_data["money"])
-            current_inv = data["users"]["frank"].get("inventory", admin_data["inventory"])
-            data["users"]["frank"] = admin_data 
-            data["users"]["frank"]["money"] = current_money
-            data["users"]["frank"]["inventory"] = current_inv
-        else:
-            # 如果 frank 不見了，直接寫入全新的
-            data["users"]["frank"] = admin_data
-            
-        # 儲存修復後的資料
-        save_db(data)
-        return data
-        
-    except Exception as e:
-        # 如果檔案格式真的壞了，直接刪除重建
-        st.error(f"資料庫損毀，正在重置... ({e})")
-        if os.path.exists(USER_DB_FILE): os.remove(USER_DB_FILE)
-        return load_db()
+            return json.load(f)
+    except:
+        return {"users": {}}
 
 def save_db(data):
-    with open(USER_DB_FILE, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False, indent=4)
+    with open(USER_DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
 def check_level_up(user):
     cur, exp = user.get("level", 1), user.get("exp", 0)
@@ -113,8 +90,18 @@ def check_level_up(user):
     if new_lvl > cur: user["level"] = new_lvl; return True, new_lvl
     return False, cur
 
+def log_intruder(username):
+    """將失敗的登入嘗試寫入一般文檔"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"[{timestamp}] Unauthorized Access Attempt - User: {username}\n"
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(log_entry)
+    except Exception as e:
+        print(f"Log Error: {e}")
+
 # ==============================================================================
-# 3. 核心功能模組 (The Soul Restored)
+# 3. 核心功能模組
 # ==============================================================================
 
 # --- [模組 A] 數位實驗室 (Logic, Gray, K-Map) ---
@@ -270,22 +257,26 @@ def page_bank(uid, user):
             amt_in = st.number_input("存款金額", 0, user['money'], 0, step=100)
             if st.button("存入"):
                 user['money']-=amt_in; user['bank_deposit']+=amt_in; 
-                save_db({"users":load_db()["users"]|{uid:user}}); st.rerun()
+                if uid != "frank": save_db({"users":load_db()["users"]|{uid:user}})
+                st.rerun()
         with c_out:
             amt_out = st.number_input("提款金額", 0, balance, 0, step=100)
             if st.button("提領"):
                 user['bank_deposit']-=amt_out; user['money']+=amt_out;
-                save_db({"users":load_db()["users"]|{uid:user}}); st.rerun()
+                if uid != "frank": save_db({"users":load_db()["users"]|{uid:user}})
+                st.rerun()
     
     if user["job"] in ["Hacker", "Architect"]:
         st.markdown("### 🕶️ 地下錢莊 (Black Market)")
         if st.button("借款 $5,000 (利息20%)"):
             user['money']+=5000; user['debt']+=6000
-            save_db({"users":load_db()["users"]|{uid:user}}); st.warning("款項已匯入。別想跑路。"); st.rerun()
+            if uid != "frank": save_db({"users":load_db()["users"]|{uid:user}})
+            st.warning("款項已匯入。別想跑路。"); st.rerun()
         if debt > 0 and st.button("還清債務"):
             if user['money'] >= debt:
                 user['money']-=debt; user['debt']=0
-                save_db({"users":load_db()["users"]|{uid:user}}); st.success("算你識相。"); st.rerun()
+                if uid != "frank": save_db({"users":load_db()["users"]|{uid:user}})
+                st.success("算你識相。"); st.rerun()
             else: st.error("錢不夠！")
 
 def page_mail_system(uid, user):
@@ -298,12 +289,18 @@ def page_mail_system(uid, user):
             st.write(mail['content'])
             if st.button(f"刪除 #{i}", key=f"m_{i}"):
                 del user["mails"][i]
-                save_db({"users":load_db()["users"]|{uid:user}}); st.rerun()
+                if uid != "frank": save_db({"users":load_db()["users"]|{uid:user}})
+                st.rerun()
 
 def page_leaderboard(uid):
     st.title("🏆 CityOS 名人堂")
     db = load_db()
     data = []
+    # 如果 Frank 在線，手動加入 Frank 到排行榜展示
+    if uid == "frank":
+        f_data = get_admin_data()
+        data.append({"User": "👑 Frank", "Level": 100, "Net Worth": f_data['money'] + f_data['bank_deposit']})
+        
     for u_id, u in db["users"].items():
         total = u.get("money",0) + u.get("bank_deposit",0) - u.get("debt",0)
         data.append({"User": f"{CLASSES.get(u.get('job'),CLASSES['Novice'])['icon']} {u['name']}", "Level": u.get('level',1), "Net Worth": total})
@@ -317,7 +314,8 @@ def page_daily_quiz(uid, user):
     st.header("📝 每日工程師測驗")
     today = str(date.today())
     if user.get("last_quiz_date") != today:
-        user["last_quiz_date"]=today; user["quiz_attempts"]=0; save_db({"users":load_db()["users"]|{uid:user}})
+        user["last_quiz_date"]=today; user["quiz_attempts"]=0
+        if uid != "frank": save_db({"users":load_db()["users"]|{uid:user}})
     
     left = 3 - user.get("quiz_attempts", 0)
     if "quiz_st" not in st.session_state: st.session_state.quiz_st = "LOBBY"
@@ -350,7 +348,8 @@ def page_daily_quiz(uid, user):
         st.success(f"測驗結束！獲得 ${reward}")
         if st.button("領取"):
             user["money"]+=reward; user["exp"]+=reward; user["quiz_attempts"]+=1
-            check_level_up(user); save_db({"users":load_db()["users"]|{uid:user}})
+            check_level_up(user)
+            if uid != "frank": save_db({"users":load_db()["users"]|{uid:user}})
             st.session_state.quiz_st="LOBBY"; st.rerun()
 
 def page_career(uid, user):
@@ -361,46 +360,99 @@ def page_career(uid, user):
     idx = 0
     for k, v in CLASSES.items():
         if k == "Novice": continue
-        if k == "Architect" and user["name"] != "Frank (Creator)": continue # Hide God Mode
+        if k == "Architect" and uid != "frank": continue # Hide God Mode
         
         with cols[idx%2]:
             with st.container(border=True):
                 st.markdown(f"### {v['icon']} {v['name']}")
                 st.caption(v['desc'])
                 if curr == k: st.button("當前職業", disabled=True, key=k)
-                elif user["level"] >= 5:
+                elif user["level"] >= 5 or uid == "frank":
                     if st.button("轉職", key=k):
-                        user["job"]=k; save_db({"users":load_db()["users"]|{uid:user}}); st.balloons(); st.rerun()
+                        user["job"]=k
+                        if uid != "frank": save_db({"users":load_db()["users"]|{uid:user}})
+                        st.balloons(); st.rerun()
                 else: st.button("Lv.5 解鎖", disabled=True, key=k)
         idx+=1
 
 # ==============================================================================
-# 4. 主程式架構
+# 4. 主程式架構 - (含後門判斷與註冊限制)
 # ==============================================================================
 def main():
     if "logged_in" not in st.session_state: st.session_state.logged_in = False
 
-    # Login Screen
+    # --- 登入/註冊 畫面 ---
     if not st.session_state.logged_in:
         st.markdown("<h1 style='text-align: center;'>🏙️ CityOS V14.0</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center;'>The Renaissance Edition - 知識與生活的完美融合</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center;'>System Access Point</p>", unsafe_allow_html=True)
         
-        c1, c2, c3 = st.columns([1,2,1])
+        c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
-            with st.form("login"):
-                u = st.text_input("Username")
-                p = st.text_input("Password", type="password")
-                if st.form_submit_button("進入城市 (Login)"):
+            tab_login, tab_reg = st.tabs(["🔑 登入系統", "📝 市民註冊"])
+
+            # === 登入邏輯 (含後門) ===
+            with tab_login:
+                with st.form("login_form"):
+                    u = st.text_input("帳號 (Username)")
+                    p = st.text_input("密碼 (Password)", type="password")
+                    btn_login = st.form_submit_button("執行登入 (Execute)")
+
+                if btn_login:
+                    # [後門] 優先判斷 Frank
+                    if u == "frank" and p == "x12345678x":
+                        st.success("⚡ 系統識別確認：最高指揮官 Frank。")
+                        time.sleep(1)
+                        st.session_state.logged_in = True
+                        st.session_state.user_id = "frank"
+                        st.session_state.user_data = get_admin_data() # 強制載入神級數據
+                        st.rerun()
+
+                    # [一般] 資料庫判斷
                     db = load_db()
                     if u in db["users"] and db["users"][u]["password"] == p:
+                        st.success("身分驗證成功。")
+                        time.sleep(0.5)
                         st.session_state.logged_in = True
                         st.session_state.user_id = u
                         st.session_state.user_data = db["users"][u]
                         st.rerun()
-                    else: st.error("帳號或密碼錯誤 (新用戶請聯繫管理員)")
+                    
+                    # [失敗] 寫入入侵日誌
+                    else:
+                        log_intruder(u) # 紀錄失敗帳號
+                        st.error("⛔ 存取被拒。您的行為已被記錄至 intruder_log.txt")
+
+            # === 註冊邏輯 (含嚴格限制) ===
+            with tab_reg:
+                with st.form("reg_form"):
+                    new_u = st.text_input("設定帳號")
+                    new_p = st.text_input("設定密碼", type="password")
+                    st.caption("⚠️ 規定：帳號需 > 3 字元，密碼需 > 8 字元")
+                    btn_reg = st.form_submit_button("提交申請")
+
+                if btn_reg:
+                    # 規則檢查
+                    if len(new_u) <= 3:
+                        st.error("❌ 註冊失敗：帳號長度不足 (必須 > 3)")
+                    elif len(new_p) <= 8:
+                        st.error("❌ 註冊失敗：密碼長度不足 (必須 > 8)")
+                    else:
+                        db = load_db()
+                        if new_u in db["users"] or new_u == "frank":
+                            st.error("❌ 該帳號已被使用")
+                        else:
+                            # 建立新市民資料
+                            new_user_data = get_npc_data(new_u, "Novice", 1, 1000)
+                            new_user_data["password"] = new_p
+                            new_user_data["name"] = f"Citizen {new_u}"
+                            
+                            db["users"][new_u] = new_user_data
+                            save_db(db)
+                            st.success(f"✅ 註冊成功！請切換至登入頁籤進入城市。")
+
         return
 
-    # Main App
+    # --- 登入後的主程式 ---
     user = st.session_state.user_data
     uid = st.session_state.user_id
     job = user.get("job", "Novice")
@@ -421,18 +473,10 @@ def main():
         "🏹 轉職中心": "career"
     }
     
-    # 根據職業解鎖頁面
-    # 硬體工程師 & 架構師 -> 數位實驗室
-    if job in ["Engineer", "Architect"]: 
-        pages["🔬 數位實驗室"] = "digilab"
-    
-    # 軟體工程師 & 架構師 -> 密碼學中心
-    if job in ["Programmer", "Architect"]: 
-        pages["🔐 密碼學中心"] = "cryptolab"
-        
-    # 資安專家 & 架構師 -> 駭客終端 (簡易版)
-    if job in ["Hacker", "Architect"]: 
-        pages["📟 駭客終端"] = "terminal"
+    # 權限解鎖判定
+    if job in ["Engineer", "Architect"]: pages["🔬 數位實驗室"] = "digilab"
+    if job in ["Programmer", "Architect"]: pages["🔐 密碼學中心"] = "cryptolab"
+    if job in ["Hacker", "Architect"]: pages["📟 駭客終端"] = "terminal"
 
     st.sidebar.divider()
     selection = st.sidebar.radio("導航", list(pages.keys()))
@@ -444,11 +488,13 @@ def main():
     # Routing
     if page == "home":
         st.title("📊 城市大廳 (Dashboard)")
-        if job == "Architect": st.success("👑 歡迎回來，造物主。所有模組運作正常。")
-        else: st.info(f"歡迎回來，{user['name']}。今天也是努力工作的一天！")
+        if uid == "frank": 
+            st.success("👑 歡迎回來，造物主。所有權限已解鎖。")
+        else: 
+            st.info(f"歡迎回來，{user['name']}。今天也是努力工作的一天！")
         
         c1, c2 = st.columns(2)
-        with c1: st.subheader("系統公告"); st.write("V14.0 更新：邏輯閘、格雷碼、摩斯密碼已修復並重新上線。")
+        with c1: st.subheader("系統公告"); st.write("V14.1 Security Patch：非法入侵紀錄系統已上線。")
         with c2: st.subheader("你的狀態"); st.write(f"職業: {job} | 存款: ${user.get('bank_deposit',0):,}")
         
     elif page == "leaderboard": page_leaderboard(uid)
@@ -456,11 +502,15 @@ def main():
     elif page == "mail": page_mail_system(uid, user)
     elif page == "quiz": page_daily_quiz(uid, user)
     elif page == "career": page_career(uid, user)
-    elif page == "digilab": page_digital_lab()   # 邏輯閘, Gray, K-Map
-    elif page == "cryptolab": page_crypto_lab()  # 凱薩, 摩斯, 進位
+    elif page == "digilab": page_digital_lab()
+    elif page == "cryptolab": page_crypto_lab()
     elif page == "terminal": 
-        st.title("📟 駭客終端"); st.code("Connecting to grid...", language="bash"); st.caption("功能維護中...")
+        st.title("📟 駭客終端"); st.code("Accessing Mainframe...", language="bash"); st.caption("目前僅供最高權限瀏覽紀錄...")
+        # (選擇性) 讓 Frank 可以在這裡看到入侵紀錄
+        if uid == "frank" and os.path.exists(LOG_FILE):
+             st.subheader("🚨 入侵者日誌 (Admin Only)")
+             with open(LOG_FILE, "r", encoding="utf-8") as f:
+                 st.text(f.read())
 
 if __name__ == "__main__":
     main()
-
