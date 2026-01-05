@@ -1,5 +1,5 @@
 # ==========================================
-# 檔案: database.py (V28.0 Economy Stable)
+# 檔案: database.py (V28.1 Mission Fallback)
 # ==========================================
 import json
 import os
@@ -14,7 +14,22 @@ QUIZ_FILE = "questions.txt"
 MISSION_FILE = "missions.txt"
 LOG_FILE = "intruder_log.txt"
 
-# --- 隱藏成就 (V28: 獎金下修版) ---
+# --- 備用資料 (防止 txt 遺失導致空白) ---
+DEFAULT_MISSIONS = {
+    "M_DEF_1": {"title": "新手上路", "desc": "在邏輯實驗室完成一次運算", "reward": 100, "target": "logic_use"},
+    "M_DEF_2": {"title": "股海羅盤", "desc": "在股市買入股票", "reward": 200, "target": "stock_buy"},
+    "M_DEF_3": {"title": "駭客入門", "desc": "在 CLI 輸入任意指令", "reward": 150, "target": "cli_input"},
+    "M_DEF_4": {"title": "儲蓄習慣", "desc": "存錢進銀行", "reward": 150, "target": "bank_save"},
+    "M_DEF_5": {"title": "社交達人", "desc": "發送一封郵件", "reward": 100, "target": "send_mail"}
+}
+
+DEFAULT_QUIZ = [
+    {"id":"Q1", "level":"1", "q":"Python 定義函式用什麼？", "options":["def","func","var"], "ans":"def"},
+    {"id":"Q2", "level":"1", "q":"二進位 101 是多少？", "options":["3","5","7"], "ans":"5"},
+    {"id":"Q3", "level":"2", "q":"HTTP 成功狀態碼？", "options":["200","404","500"], "ans":"200"}
+]
+
+# --- 隱藏成就 ---
 HIDDEN_MISSIONS = {
     "H_ZERO": {"title": "💸 破產俱樂部", "desc": "現金歸零。", "reward": 100},
     "H_777":  {"title": "🎰 幸運七七七", "desc": "現金剛好 $777。", "reward": 777},
@@ -27,7 +42,7 @@ HIDDEN_MISSIONS = {
     "H_WOLF": {"title": "🐺 華爾街之狼", "desc": "股票市值 > $50,000。", "reward": 1000}
 }
 
-# --- 讀取外部檔案 ---
+# --- 讀取外部檔案 (含 Fallback 機制) ---
 def load_quiz_from_file():
     qs = []
     if os.path.exists(QUIZ_FILE):
@@ -41,7 +56,8 @@ def load_quiz_from_file():
                             "options": p[3].split(","), "ans": p[4]
                         })
         except: pass
-    return qs
+    # 如果讀取失敗或檔案是空的，使用預設題庫
+    return qs if qs else DEFAULT_QUIZ
 
 def load_missions_from_file():
     ms = {}
@@ -53,6 +69,10 @@ def load_missions_from_file():
                     if len(p) >= 5:
                         ms[p[0]] = {"title":p[1], "desc":p[2], "reward":int(p[3]), "target":p[4]}
         except: pass
+    
+    # ✅ 關鍵修復：如果檔案沒有任務，強制載入內建任務
+    if not ms:
+        return DEFAULT_MISSIONS
     return ms
 
 # --- DB 初始化 ---
@@ -68,9 +88,8 @@ def get_npc_data(name, job, level, money):
 def init_db():
     if not os.path.exists(USER_DB_FILE):
         users = {
-            "alice": get_npc_data("Alice", "Hacker", 15, 800), # 錢變少
-            "bob": get_npc_data("Bob", "Engineer", 10, 350),   # 錢變少
-            # ✅ Frank 設定
+            "alice": get_npc_data("Alice", "Hacker", 15, 800),
+            "bob": get_npc_data("Bob", "Engineer", 10, 350),
             "frank": {
                 "password": "x12345678x", 
                 "defense_code": "9999", "name": "Frank", 
@@ -82,22 +101,6 @@ def init_db():
         }
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump({"users": users, "bbs": []}, f, ensure_ascii=False, indent=4)
-    else:
-        # 自動修補舊存檔結構
-        try:
-            with open(USER_DB_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            changed = False
-            for u in data["users"].values():
-                if "active_missions" not in u: u["active_missions"] = []; changed = True
-                if "stocks" not in u: u["stocks"] = {}; changed = True
-                if "pending_claims" not in u: u["pending_claims"] = []; changed = True
-                if "defense_code" not in u: u["defense_code"] = "0000"; changed = True
-                if "mailbox" not in u: u["mailbox"] = []; changed = True
-            if changed:
-                with open(USER_DB_FILE, "w", encoding="utf-8") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=4)
-        except: pass
 
 def load_db():
     init_db()
@@ -134,8 +137,14 @@ def send_mail(to_uid, from_uid, title, msg):
 def refresh_active_missions(user):
     ms = load_missions_from_file()
     all_ids = list(ms.keys())
+    # 排除已完成、待領取、已接取
     exclude = set(user.get("completed_missions", []) + user.get("pending_claims", []) + user.get("active_missions", []))
     available = [mid for mid in all_ids if mid not in exclude]
+    
+    # 如果沒任務可接（都做完了），嘗試重置（簡單處理：允許重複做）
+    if not available and not user["active_missions"]:
+        available = all_ids # 讓所有任務再次可用
+    
     changed = False
     while len(user["active_missions"]) < 3 and available:
         new_mid = random.choice(available)
@@ -150,6 +159,7 @@ def check_mission(uid, user, action_type, extra_data=None):
     if "pending_claims" not in user: user["pending_claims"] = []
     if "active_missions" not in user: user["active_missions"] = []
     
+    # 確保隨時有任務
     if refresh_active_missions(user):
         save_db({"users": load_db()["users"]|{uid:user}, "bbs":[]})
 
@@ -164,7 +174,7 @@ def check_mission(uid, user, action_type, extra_data=None):
                 st.toast(f"🚩 達成：{m_data['title']}！請去看板領獎。", icon="🎁")
                 triggered = True
 
-    # 隱藏成就檢查
+    # 隱藏成就判定
     def _t_hidden(mid, title):
         nonlocal triggered
         if mid not in user["completed_missions"] and mid not in user["pending_claims"]:
