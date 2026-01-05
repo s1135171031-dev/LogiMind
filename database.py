@@ -1,14 +1,44 @@
+# ==========================================
 # 檔案名稱: database.py
-# 用途: 處理 JSON 讀寫、資料初始化、邏輯運算
+# 用途: 處理 JSON 讀寫、資料初始化、邏輯運算、讀取題庫
+# ==========================================
 import json
 import os
 import random
 import streamlit as st
 from datetime import datetime, date
-from config import CITY_EVENTS, MISSIONS, ITEMS # 從 config 匯入資料
+from config import CITY_EVENTS, MISSIONS # 匯入設定
 
 USER_DB_FILE = "cityos_users.json"
+QUIZ_FILE = "questions.txt"  # 指定外部題庫
 LOG_FILE = "intruder_log.txt"
+
+# --- 讀取外部題目 ---
+def load_quiz_from_file():
+    """從 questions.txt 讀取題目"""
+    questions = []
+    if not os.path.exists(QUIZ_FILE):
+        return []
+    
+    try:
+        with open(QUIZ_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split("|")
+                # 格式: ID|難度|題目|選項(逗號隔開)|答案
+                if len(parts) >= 5:
+                    questions.append({
+                        "id": parts[0],
+                        "level": parts[1],
+                        "q": parts[2],
+                        "options": parts[3].split(","), 
+                        "ans": parts[4]
+                    })
+    except Exception as e:
+        print(f"Error loading quiz: {e}")
+        return []
+    return questions
+
+# --- 遊戲邏輯與資料庫 ---
 
 def get_today_event():
     seed = int(date.today().strftime("%Y%m%d"))
@@ -19,9 +49,9 @@ def get_today_event():
 
 def get_admin_data():
     return {
-        "password": "x", "name": "Frank (Admin)", "level": 100, "exp": 999999, "money": 9999999, "bank_deposit": 50000000,
-        "job": "Architect", "inventory": {"Mining GPU": 10}, "mining_balance": 100.0,
-        "defense_code": 7, "mails": [], "completed_missions": []
+        "password": "x12345678x", "name": "Frank (Admin)", "level": 100, "exp": 999999, "money": 99999999, "bank_deposit": 900000000,
+        "job": "Architect", "inventory": {"Mining GPU": 99}, "mining_balance": 100.0,
+        "defense_code": 777, "mails": [], "completed_missions": []
     }
 
 def get_npc_data(name, job, level, money):
@@ -32,15 +62,25 @@ def get_npc_data(name, job, level, money):
     }
 
 def init_db():
+    # 檢查資料庫是否存在
     if not os.path.exists(USER_DB_FILE):
         users = {
             "alice": get_npc_data("Alice", "Hacker", 15, 8000),
             "bob": get_npc_data("Bob", "Engineer", 10, 3500),
-            "charlie": get_npc_data("Charlie", "Programmer", 22, 15000)
+            "charlie": get_npc_data("Charlie", "Programmer", 22, 15000),
+            "frank": get_admin_data() # 預設建立 Admin
         }
         users["alice"]["inventory"]["Firewall"] = 1
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump({"users": users, "bbs": []}, f, ensure_ascii=False, indent=4)
+    else:
+        # 檢查 Frank 是否存在，若無則補回 (修復 Admin)
+        with open(USER_DB_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if "frank" not in data["users"]:
+            data["users"]["frank"] = get_admin_data()
+            with open(USER_DB_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
 
 def load_db():
     init_db()
