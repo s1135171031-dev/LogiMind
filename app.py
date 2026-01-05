@@ -1,6 +1,7 @@
 # ==========================================
-# 檔案: app.py (V31.2 Matrix Edition)
-# 特色: 功能全開 (V31) + 駭客視覺風格 (V30 CSS)
+# 檔案: app.py (V31.3 Stable Matrix)
+# 修復: 按鈕文字看不見的問題、文字重疊排版崩壞的問題
+# 保留: 所有功能 + 駭客風格配色
 # ==========================================
 import streamlit as st
 import random
@@ -17,61 +18,70 @@ from database import (
 )
 
 # --- 1. 頁面基礎設定 ---
-st.set_page_config(page_title="CityOS V31.2", layout="wide", page_icon="📟", initial_sidebar_state="expanded")
+st.set_page_config(page_title="CityOS V31.3", layout="wide", page_icon="📟", initial_sidebar_state="expanded")
 
-# --- 2. CSS 美化 (復刻 V30 駭客風格) ---
+# --- 2. CSS 美化 (修復版) ---
 st.markdown("""
 <style>
-    /* 全局強制字體與駭客綠 */
-    .stApp, .main, .stMarkdown, p, h1, h2, h3, h4, h5, h6, li, span, div {
-        font-family: 'Courier New', monospace !important;
-        color: #00ff41 !important;
+    /* 1. 基礎字體與背景 - 針對內容層級設定，不破壞佈局 div */
+    .stApp {
+        background-color: #0e1117;
+        font-family: 'Courier New', monospace;
     }
     
-    /* 背景全黑 */
-    .stApp { background-color: #0e1117; }
+    /* 2. 強制文字顏色為螢光綠，但排除輸入框內部以免看不見 */
+    h1, h2, h3, h4, h5, h6, p, li, span, .stMarkdown, label, .stMetricValue, .stMetricLabel {
+        color: #00ff41 !important;
+        font-family: 'Courier New', monospace !important;
+        text-shadow: 0 0 2px rgba(0, 255, 65, 0.2); /* 微微發光 */
+    }
+
+    /* 3. 按鈕修復：預設黑底綠框，懸停變綠底黑字 */
+    .stButton > button {
+        background-color: #0e1117 !important;
+        color: #00ff41 !important;
+        border: 1px solid #00ff41 !important;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace !important;
+        font-weight: bold;
+        transition: all 0.2s ease;
+    }
+    .stButton > button:hover {
+        background-color: #00ff41 !important;
+        color: #000000 !important;
+        box-shadow: 0 0 10px #00ff41;
+    }
+    .stButton > button:active {
+        color: #000000 !important;
+    }
+
+    /* 4. 輸入框修復：確保輸入時文字看得到 */
+    .stTextInput > div > div > input, 
+    .stNumberInput > div > div > input,
+    .stSelectbox > div > div > div,
+    .stTextArea > div > div > textarea {
+        background-color: #1a1a1a !important;
+        color: #00ff41 !important;
+        border: 1px solid #333 !important;
+        font-family: 'Courier New', monospace !important;
+    }
     
-    /* 側邊欄樣式 */
+    /* 5. 側邊欄與分隔線 */
     [data-testid="stSidebar"] {
         background-color: #000000;
         border-right: 1px solid #00ff41;
     }
+    hr { border-color: #00ff41 !important; opacity: 0.3; }
     
-    /* 按鈕：黑底綠字 / 綠底黑字 (高對比) */
-    .stButton>button {
-        color: #0e1117;
-        background-color: #00ff41;
-        border: 1px solid #00ff41;
-        font-weight: bold;
-        transition: all 0.2s ease-in-out;
-    }
-    .stButton>button:hover {
-        color: #00ff41;
-        background-color: #000000;
-        box-shadow: 0 0 10px #00ff41;
-        border: 1px solid #00ff41;
-    }
+    /* 6. 表格修復 */
+    [data-testid="stDataFrame"] { border: 1px solid #00ff41; }
     
-    /* 輸入框與其他元件 */
-    .stTextInput>div>div>input, .stSelectbox, .stTextArea textarea {
-        color: #00ff41 !important;
-        background-color: #111 !important;
-        border: 1px solid #333;
-    }
-    
-    /* 標題發光特效 */
-    h1, h2, h3 { text-shadow: 0 0 5px #00ff41; }
-    
-    /* 進度條 */
+    /* 7. 進度條 */
     .stProgress > div > div > div > div { background-color: #00ff41; }
-    
-    /* Toast 訊息框 */
-    .stToast { background-color: #111; border: 1px solid #00ff41; }
-    
-    /* 啟動特效字 */
-    .boot-text { color: #00ff41; font-size: 16px; margin-bottom: 2px; }
-    
-    /* 圖表線條顏色調整 (Streamlit 原生圖表較難改，但文字會變綠) */
+
+    /* 8. 修正文字重疊：增加行高 */
+    p, .stMarkdown { line-height: 1.6 !important; }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -82,22 +92,22 @@ def play_boot_sequence():
         st.markdown("<br><br><br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1,2,1])
         with col2:
-            st.markdown("### 🟢 SYSTEM BOOT SEQUENCE")
+            st.markdown("### 🟢 SYSTEM REBOOT")
             st.markdown("---")
             msg_spot = st.empty()
             bar = st.progress(0, text="Initializing...")
             
             steps = [
-                ("Loading Kernel V31.2...", 20),
-                ("Applying Retro Theme...", 40),
+                ("Fixing CSS Grid...", 20),
+                ("Restoring Visual Cortex...", 40),
                 ("Decrypting User Data...", 60),
                 ("Simulating Market (30 ticks)...", 80),
-                ("Access Granted.", 100)
+                ("System Stable.", 100)
             ]
             
             for text, percent in steps:
                 time.sleep(random.uniform(0.1, 0.25))
-                msg_spot.markdown(f"<p class='boot-text'>> {text}</p>", unsafe_allow_html=True)
+                msg_spot.markdown(f"<p style='color:#00ff41;'>> {text}</p>", unsafe_allow_html=True)
                 bar.progress(percent, text=text)
             
             time.sleep(0.5)
@@ -151,7 +161,7 @@ def page_dashboard(uid, user):
     
     c1, c2 = st.columns([1, 5])
     with c1:
-        st.markdown(f"<div style='font-size:50px;text-align:center'>{'📉' if 'nerf' in str(evt.get('effect','')) else '📈'}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:50px;text-align:center;color:#00ff41'>{'📉' if 'nerf' in str(evt.get('effect','')) else '📈'}</div>", unsafe_allow_html=True)
     with c2:
         st.subheader(f"HEADLINE: {evt['name']}")
         st.write(f">> {evt['desc']}")
@@ -416,7 +426,7 @@ def page_cli(uid, user):
         "404 Brain Not Found.", "I'm calling the cyber-police.", "Go touch grass."
     ]
     
-    if "cli_h" not in st.session_state: st.session_state.cli_h = ["Kernel v31.2 loaded..."]
+    if "cli_h" not in st.session_state: st.session_state.cli_h = ["Kernel v31.3 loaded..."]
     for l in st.session_state.cli_h[-6:]: st.code(l)
     
     cmd = st.chat_input("user@cityos:~$")
@@ -462,7 +472,7 @@ def main():
     update_stock_market()
     
     if not st.session_state.logged_in:
-        st.title("🏙️ CityOS V31.2")
+        st.title("🏙️ CityOS V31.3")
         
         with st.expander("💾 DATA MANAGEMENT"):
             c1, c2 = st.columns(2)
