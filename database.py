@@ -1,5 +1,5 @@
 # ==========================================
-# 檔案: database.py (V28.1 Mission Fallback)
+# 檔案: database.py
 # ==========================================
 import json
 import os
@@ -14,7 +14,7 @@ QUIZ_FILE = "questions.txt"
 MISSION_FILE = "missions.txt"
 LOG_FILE = "intruder_log.txt"
 
-# --- 備用資料 (防止 txt 遺失導致空白) ---
+# --- 備用資料 (防止空白) ---
 DEFAULT_MISSIONS = {
     "M_DEF_1": {"title": "新手上路", "desc": "在邏輯實驗室完成一次運算", "reward": 100, "target": "logic_use"},
     "M_DEF_2": {"title": "股海羅盤", "desc": "在股市買入股票", "reward": 200, "target": "stock_buy"},
@@ -42,7 +42,7 @@ HIDDEN_MISSIONS = {
     "H_WOLF": {"title": "🐺 華爾街之狼", "desc": "股票市值 > $50,000。", "reward": 1000}
 }
 
-# --- 讀取外部檔案 (含 Fallback 機制) ---
+# --- 讀取外部檔案 ---
 def load_quiz_from_file():
     qs = []
     if os.path.exists(QUIZ_FILE):
@@ -51,12 +51,8 @@ def load_quiz_from_file():
                 for line in f:
                     p = line.strip().split("|")
                     if len(p) >= 5:
-                        qs.append({
-                            "id": p[0], "level": p[1], "q": p[2], 
-                            "options": p[3].split(","), "ans": p[4]
-                        })
+                        qs.append({"id": p[0], "level": p[1], "q": p[2], "options": p[3].split(","), "ans": p[4]})
         except: pass
-    # 如果讀取失敗或檔案是空的，使用預設題庫
     return qs if qs else DEFAULT_QUIZ
 
 def load_missions_from_file():
@@ -69,10 +65,7 @@ def load_missions_from_file():
                     if len(p) >= 5:
                         ms[p[0]] = {"title":p[1], "desc":p[2], "reward":int(p[3]), "target":p[4]}
         except: pass
-    
-    # ✅ 關鍵修復：如果檔案沒有任務，強制載入內建任務
-    if not ms:
-        return DEFAULT_MISSIONS
+    if not ms: return DEFAULT_MISSIONS
     return ms
 
 # --- DB 初始化 ---
@@ -91,8 +84,7 @@ def init_db():
             "alice": get_npc_data("Alice", "Hacker", 15, 800),
             "bob": get_npc_data("Bob", "Engineer", 10, 350),
             "frank": {
-                "password": "x12345678x", 
-                "defense_code": "9999", "name": "Frank", 
+                "password": "x12345678x", "defense_code": "9999", "name": "Frank", 
                 "level": 100, "exp": 999999, "money": 9999999, "bank_deposit": 900000000, 
                 "job": "Architect", "inventory": {"Mining GPU": 99}, 
                 "completed_missions": [], "pending_claims": [], "stocks": {}, 
@@ -125,10 +117,7 @@ def log_intruder(u):
 def send_mail(to_uid, from_uid, title, msg):
     db = load_db()
     if to_uid in db["users"]:
-        mail = {
-            "from": from_uid, "title": title, "msg": msg,
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "read": False
-        }
+        mail = {"from": from_uid, "title": title, "msg": msg, "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "read": False}
         db["users"][to_uid].setdefault("mailbox", []).insert(0, mail)
         save_db(db)
         return True
@@ -137,13 +126,9 @@ def send_mail(to_uid, from_uid, title, msg):
 def refresh_active_missions(user):
     ms = load_missions_from_file()
     all_ids = list(ms.keys())
-    # 排除已完成、待領取、已接取
     exclude = set(user.get("completed_missions", []) + user.get("pending_claims", []) + user.get("active_missions", []))
     available = [mid for mid in all_ids if mid not in exclude]
-    
-    # 如果沒任務可接（都做完了），嘗試重置（簡單處理：允許重複做）
-    if not available and not user["active_missions"]:
-        available = all_ids # 讓所有任務再次可用
+    if not available and not user["active_missions"]: available = all_ids
     
     changed = False
     while len(user["active_missions"]) < 3 and available:
@@ -159,9 +144,7 @@ def check_mission(uid, user, action_type, extra_data=None):
     if "pending_claims" not in user: user["pending_claims"] = []
     if "active_missions" not in user: user["active_missions"] = []
     
-    # 確保隨時有任務
-    if refresh_active_missions(user):
-        save_db({"users": load_db()["users"]|{uid:user}, "bbs":[]})
+    if refresh_active_missions(user): save_db({"users": load_db()["users"]|{uid:user}, "bbs":[]})
 
     triggered = False
     active_copy = user["active_missions"][:]
@@ -171,10 +154,9 @@ def check_mission(uid, user, action_type, extra_data=None):
             if m_data["target"] == action_type:
                 user["pending_claims"].append(mid)
                 user["active_missions"].remove(mid)
-                st.toast(f"🚩 達成：{m_data['title']}！請去看板領獎。", icon="🎁")
+                st.toast(f"🚩 達成：{m_data['title']}！", icon="🎁")
                 triggered = True
 
-    # 隱藏成就判定
     def _t_hidden(mid, title):
         nonlocal triggered
         if mid not in user["completed_missions"] and mid not in user["pending_claims"]:
