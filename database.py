@@ -1,5 +1,5 @@
 # ==========================================
-# 檔案: database.py (V27.0 Security Update)
+# 檔案: database.py (V28.0 Economy Nerf)
 # ==========================================
 import json
 import os
@@ -14,17 +14,17 @@ QUIZ_FILE = "questions.txt"
 MISSION_FILE = "missions.txt"
 LOG_FILE = "intruder_log.txt"
 
-# --- 隱藏成就定義 ---
+# --- 隱藏成就定義 (💰 獎勵已大幅下修) ---
 HIDDEN_MISSIONS = {
-    "H_ZERO": {"title": "💸 破產俱樂部", "desc": "現金歸零。", "reward": 1000},
-    "H_777":  {"title": "🎰 幸運七七七", "desc": "現金剛好 $777。", "reward": 7777},
-    "H_SHOP": {"title": "🛍️ 囤積症", "desc": "背包物品 > 15。", "reward": 2000},
-    "H_HACK": {"title": "💀 ROOT", "desc": "CLI 輸入 sudo su。", "reward": 5000},
-    "H_MATH": {"title": "🤓 1024", "desc": "密碼學輸入 1024。", "reward": 1024},
-    "H_SPAM": {"title": "🤬 暴怒駭客", "desc": "CLI 連續錯誤 5 次。", "reward": 500},
-    "H_BANK": {"title": "🏦 避險大師", "desc": "存款>10萬且現金<100。", "reward": 3000},
-    "H_PVP_W": {"title": "⚔️ 戰爭之王", "desc": "PVP 獲勝。", "reward": 1500},
-    "H_WOLF": {"title": "🐺 華爾街之狼", "desc": "股票市值 > $50,000。", "reward": 5000}
+    "H_ZERO": {"title": "💸 破產俱樂部", "desc": "現金歸零。", "reward": 100},   # 原 1000
+    "H_777":  {"title": "🎰 幸運七七七", "desc": "現金剛好 $777。", "reward": 777},  # 原 7777
+    "H_SHOP": {"title": "🛍️ 囤積症", "desc": "背包物品 > 15。", "reward": 200},    # 原 2000
+    "H_HACK": {"title": "💀 ROOT", "desc": "CLI 輸入 sudo su。", "reward": 500},    # 原 5000
+    "H_MATH": {"title": "🤓 1024", "desc": "密碼學輸入 1024。", "reward": 128},    # 原 1024
+    "H_SPAM": {"title": "🤬 暴怒駭客", "desc": "CLI 連續錯誤 5 次。", "reward": 50},   # 原 500
+    "H_BANK": {"title": "🏦 避險大師", "desc": "存款>10萬且現金<100。", "reward": 300}, # 原 3000
+    "H_PVP_W": {"title": "⚔️ 戰爭之王", "desc": "PVP 獲勝。", "reward": 150},    # 原 1500
+    "H_WOLF": {"title": "🐺 華爾街之狼", "desc": "股票市值 > $50,000。", "reward": 1000} # 原 5000
 }
 
 # --- 讀取外部檔案 ---
@@ -51,6 +51,7 @@ def load_missions_from_file():
                 for line in f:
                     p = line.strip().split("|")
                     if len(p) >= 5:
+                        # 這裡也可以考慮在讀取時強制除以 10 來減少獎勵，目前先維持讀取原值
                         ms[p[0]] = {"title":p[1], "desc":p[2], "reward":int(p[3]), "target":p[4]}
         except: pass
     return ms
@@ -68,11 +69,11 @@ def get_npc_data(name, job, level, money):
 def init_db():
     if not os.path.exists(USER_DB_FILE):
         users = {
-            "alice": get_npc_data("Alice", "Hacker", 15, 8000),
-            "bob": get_npc_data("Bob", "Engineer", 10, 3500),
-            # ✅ 更新：Frank 管理員設定
+            "alice": get_npc_data("Alice", "Hacker", 15, 800), # 錢變少
+            "bob": get_npc_data("Bob", "Engineer", 10, 350),   # 錢變少
+            # ✅ Frank 設定 (保持你的要求)
             "frank": {
-                "password": "x12345678x", # 👈 你的新密碼
+                "password": "x12345678x", 
                 "defense_code": "9999", "name": "Frank", 
                 "level": 100, "exp": 999999, "money": 9999999, "bank_deposit": 900000000, 
                 "job": "Architect", "inventory": {"Mining GPU": 99}, 
@@ -83,7 +84,6 @@ def init_db():
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump({"users": users, "bbs": []}, f, ensure_ascii=False, indent=4)
     else:
-        # 自動修補舊存檔
         try:
             with open(USER_DB_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
