@@ -11,7 +11,7 @@ import json
 from config import CITY_EVENTS, ITEMS, SVG_LIB, MORSE_CODE_DICT, STOCKS_DATA
 from database import (
     load_db, save_db, check_mission, get_today_event, 
-    log_intruder, load_quiz_from_file, load_missions_from_file, 
+    log_intruder, load_quiz_from_file,
     HIDDEN_MISSIONS, get_npc_data, send_mail
 )
 
@@ -830,3 +830,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
