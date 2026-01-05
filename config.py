@@ -1,36 +1,36 @@
 # ==========================================
-# 檔案: config.py
+# 檔案: config.py (V29.0 Hardcore Economy)
 # ==========================================
 
 # --- 城市隨機事件 ---
 CITY_EVENTS = [
-    {"name": "平靜的一天", "desc": "風和日麗，網路連線穩定。", "effect": None},
-    {"name": "黑客松大賽", "desc": "科技股大漲，但網路擁堵。", "effect": "tech_boom"},
-    {"name": "DDOS 攻擊", "desc": "全城網路變慢，防禦系統升級。", "effect": "network_slow"},
-    {"name": "黑色星期五", "desc": "黑市全面七折！", "effect": "shop_discount"},
-    {"name": "挖礦熱潮", "desc": "顯示卡價格飆升，CybrCoin 波動劇烈。", "effect": "mining_boost"},
-    {"name": "金融監管", "desc": "所有駭客行動收益降低。", "effect": "hack_nerf"},
+    {"name": "平靜的一天", "desc": "除了你的存款在縮水，一切都很平靜。", "effect": None},
+    {"name": "韭菜收割日", "desc": "股市大戶進場，散戶請抓緊扶手。", "effect": "tech_boom"},
+    {"name": "伺服器過熱", "desc": "全城降速，就像你阿嬤家的撥接網路。", "effect": "network_slow"},
+    {"name": "跳樓大拍賣", "desc": "黑市打七折！雖然你還是買不起。", "effect": "shop_discount"},
+    {"name": "礦工的眼淚", "desc": "顯卡價格崩盤...等等，是暴漲才對。", "effect": "mining_boost"},
+    {"name": "查水表", "desc": "金管會介入，駭客收益大幅降低。", "effect": "hack_nerf"},
 ]
 
-# --- 物品清單 ---
+# --- 物品清單 (價格不變，但因獎勵變少，相對變超貴) ---
 ITEMS = {
-    "Firewall": {"price": 500, "desc": "PVP 防禦道具，減少被搶金額 (消耗品)"},
-    "Brute Force Script": {"price": 300, "desc": "PVP 攻擊道具，入侵必備 (消耗品)"},
-    "Mining GPU": {"price": 1200, "desc": "放在背包裡似乎能增加一點駭客運氣..."},
-    "Chaos Heart": {"price": 2500, "desc": "讓入侵你的駭客面臨 8 個選項而非 4 個 (消耗品)"},
-    "Clarity Necklace": {"price": 2000, "desc": "攻擊時移除一半錯誤選項 (消耗品)"},
-    "Coffee": {"price": 50, "desc": "工程師的燃料，目前僅供收藏。"}
+    "Firewall": {"price": 500, "desc": "防止被搶的最後一道防線，比你的薪水還貴。"},
+    "Brute Force Script": {"price": 300, "desc": "攻擊別人的腳本。投資有賺有賠，入侵失敗請自行負責。"},
+    "Mining GPU": {"price": 1200, "desc": "放在背包就能挖礦？你信這種鬼話？(增加被動收入)"},
+    "Chaos Heart": {"price": 2500, "desc": "讓入侵者看到 8 個密碼選項。看他們崩潰就是爽。"},
+    "Clarity Necklace": {"price": 2000, "desc": "作弊神器，刪除一半錯誤答案。有錢就是任性。"},
+    "Engineer Heart": {"price": 50, "desc": "俗稱「咖啡」。沒有它，你的程式碼就是一坨義大利麵。"}
 }
 
-# --- 股票數據 ---
+# --- 股票數據 (波動率大幅提升) ---
 STOCKS_DATA = {
-    "CYBR": {"name": "CyberCorp", "base": 100, "volatility": 0.15},
-    "NETW": {"name": "NetWorld", "base": 50, "volatility": 0.05},
-    "DARK": {"name": "DarkWeb Inc", "base": 200, "volatility": 0.25},
-    "CHIP": {"name": "MicroChip", "base": 80, "volatility": 0.1},
+    "CYBR": {"name": "賽博科技", "base": 100, "volatility": 0.30}, # 原 0.15 -> 0.3 (大起大落)
+    "NETW": {"name": "全球網通", "base": 50, "volatility": 0.15},  # 原 0.05 -> 0.15
+    "DARK": {"name": "暗網控股", "base": 200, "volatility": 0.40}, # 妖股等級
+    "CHIP": {"name": "台積電路", "base": 80, "volatility": 0.20},
 }
 
-# --- 摩斯密碼表 ---
+# --- 摩斯密碼表 (維持不變) ---
 MORSE_CODE_DICT = { 'A':'.-', 'B':'-...', 'C':'-.-.', 'D':'-..', 'E':'.', 
     'F':'..-.', 'G':'--.', 'H':'....', 'I':'..', 'J':'.---', 'K':'-.-', 
     'L':'.-..', 'M':'--', 'N':'-.', 'O':'---', 'P':'.--.', 'Q':'--.-', 
@@ -40,7 +40,7 @@ MORSE_CODE_DICT = { 'A':'.-', 'B':'-...', 'C':'-.-.', 'D':'-..', 'E':'.',
     '8':'---..', '9':'----.', '0':'-----', ', ':'--..--', '.':'.-.-.-', 
     '?':'..--..', '/':'-..-.', '-':'-....-', '(':'-.--.', ')':'-.--.-'}
 
-# --- SVG 邏輯閘圖示 ---
+# --- SVG 邏輯閘圖示 (維持修復版) ---
 SVG_LIB = {
     "AND": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 L40,10 A25,25 0 0,1 40,60 L10,60 Z" fill="none" stroke="#00FF00" stroke-width="3"/><text x="25" y="40" fill="white" font-family="monospace" font-size="14">AND</text></svg>''',
     "OR": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg"><path d="M10,10 Q60,10 80,35 Q60,60 10,60 Q30,35 10,10 Z" fill="none" stroke="#00FF00" stroke-width="3"/><text x="25" y="40" fill="white" font-family="monospace" font-size="14">OR</text></svg>''',
