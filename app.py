@@ -1,5 +1,5 @@
 # ==========================================
-# 檔案: app.py (CityOS V23.0 Ultimate)
+# 檔案: app.py (CityOS V23.0 Ultimate Fixed)
 # ==========================================
 import streamlit as st
 import random
@@ -99,10 +99,6 @@ def page_dashboard(uid, user):
         st.markdown("* **股市**: 低買高賣賺價差。\n* **PVP**: 買腳本攻人，猜密碼。\n* **任務**: 達成後需手動領獎。")
 
 def page_stock_market(uid, user):
-    
-
-[Image of stock market chart]
-
     st.title("💹 夜之城證券交易所 (NCSE)")
     generate_market_data()
     prices = st.session_state.stock_prices
@@ -260,4 +256,204 @@ def page_missions(uid, user):
             if not m: continue
             with st.container(border=True):
                 c1, c2 = st.columns([3, 1])
-                c1.write(f"**{m['title']}**"); c1.caption
+                c1.write(f"**{m['title']}**"); c1.caption(m['desc']); c1.write(f"💰 ${m['reward']}")
+                if c2.button("領取", key=f"clm_{mid}", type="primary"):
+                    user["money"] += m['reward']
+                    user["exp"] = user.get("exp", 0) + 100
+                    user["pending_claims"].remove(mid)
+                    user["completed_missions"].append(mid)
+                    save_db({"users": load_db()["users"]|{uid:user}, "bbs":[]})
+                    st.balloons(); st.toast("領取成功！"); time.sleep(1); st.rerun()
+        st.markdown("---")
+
+    # 任務列表
+    t1, t2 = st.tabs(["🚧 進行中", "✅ 已完成"])
+    with t1:
+        for mid, m in ms.items():
+            if mid not in done and mid not in pending:
+                with st.container(border=True):
+                    st.write(f"**{m['title']}**"); st.caption(m['desc']); st.write(f"報酬: ${m['reward']}")
+    with t2:
+        for mid in reversed(done):
+            m = ms.get(mid, HIDDEN_MISSIONS.get(mid))
+            if m: st.caption(f"✅ {m['title']}")
+
+def page_shop(uid, user):
+    st.title("🛒 地下黑市")
+    disc = 0.7 if st.session_state.today_event['effect']=="shop_discount" else 1.0
+    if disc<1: st.success("🔥 7 折特賣中！")
+    
+    cols = st.columns(3)
+    for i, (k, v) in enumerate(ITEMS.items()):
+        p = int(v['price']*disc)
+        with cols[i%3].container(border=True):
+            st.subheader(k)
+            st.caption(v['desc'])
+            st.write(f"**${p:,}**")
+            st.caption(f"持有: {user.get('inventory',{}).get(k,0)}")
+            if st.button("購買", key=f"buy_{k}"):
+                if user['money']>=p:
+                    user['money']-=p
+                    user.setdefault("inventory", {})[k] = user.get("inventory",{}).get(k,0)+1
+                    check_mission(uid, user, "shop_buy")
+                    st.toast(f"已購買 {k}"); time.sleep(0.5); st.rerun()
+                else: st.error("資金不足")
+
+def page_bank(uid, user):
+    st.title("🏦 賽博銀行")
+    c1, c2 = st.columns(2)
+    c1.metric("銀行存款", f"${user.get('bank_deposit',0):,}")
+    c2.metric("身上現金", f"${user['money']:,}")
+    amt = st.number_input("金額", 0, 100000, 100)
+    b1, b2 = st.columns(2)
+    if b1.button("存入") and user['money']>=amt:
+        user['money']-=amt; user['bank_deposit']+=amt
+        check_mission(uid, user, "bank_save"); st.rerun()
+    if b2.button("提款") and user['bank_deposit']>=amt:
+        user['bank_deposit']-=amt; user['money']+=amt
+        check_mission(uid, user, "bank_withdraw"); st.rerun()
+
+def page_quiz(uid, user):
+    st.title("📝 每日測驗")
+    if st.session_state.get("quiz_done"): st.info("今日已完成"); return
+    if "q_curr" not in st.session_state:
+        qs = load_quiz_from_file()
+        st.session_state.q_curr = random.choice(qs) if qs else None
+    
+    q = st.session_state.q_curr
+    if not q: st.error("無題庫"); return
+    
+    st.write(f"**Q: {q['q']}**")
+    ans = st.radio("Answer:", q['options'])
+    if st.button("提交"):
+        if ans == q['ans']:
+            st.balloons(); user["money"]+=300
+            check_mission(uid, user, "quiz_done")
+            st.session_state.quiz_done=True
+            save_db({"users": load_db()["users"]|{uid:user}, "bbs":[]})
+            st.rerun()
+        else: st.error("錯誤"); st.session_state.quiz_done=True; st.rerun()
+
+def page_lab(uid, user):
+    st.title("🔬 邏輯實驗室")
+    t1, t2 = st.tabs(["邏輯閘", "K-Map"])
+    with t1:
+        g = st.selectbox("Gate", list(SVG_LIB.keys()))
+        c1, c2 = st.columns(2)
+        a = c1.toggle("In A"); b = c2.toggle("In B")
+        st.markdown(SVG_LIB[g], unsafe_allow_html=True)
+        if a and b: check_mission(uid, user, "logic_state", "11")
+    with t2:
+        st.write("2-Var Map (Click to toggle)")
+        if "km" not in st.session_state: st.session_state.km=[0,0,0,0]
+        c1, c2 = st.columns(2)
+        if c1.button(f"00: {st.session_state.km[0]}"): st.session_state.km[0]^=1; st.rerun()
+        if c1.button(f"01: {st.session_state.km[1]}"): st.session_state.km[1]^=1; st.rerun()
+        if c2.button(f"10: {st.session_state.km[2]}"): st.session_state.km[2]^=1; st.rerun()
+        if c2.button(f"11: {st.session_state.km[3]}"): st.session_state.km[3]^=1; st.rerun()
+
+def page_crypto(uid, user):
+    st.title("🔐 密碼學")
+    t1, t2 = st.tabs(["Caesar", "Morse"])
+    with t1:
+        txt = st.text_input("Text", "ABC")
+        shift = st.slider("Shift", 1, 10, 3)
+        check_mission(uid, user, "crypto_input", txt)
+        st.code("".join([chr(ord(c)+shift) if c.isalpha() else c for c in txt.upper()]))
+    with t2:
+        mt = st.text_input("Morse Input", "SOS").upper()
+        st.code(" ".join([MORSE_CODE_DICT.get(c,c) for c in mt]))
+
+def page_cli(uid, user):
+    st.title("💻 駭客終端")
+    if "cli_h" not in st.session_state: st.session_state.cli_h = []
+    for l in st.session_state.cli_h[-6:]: st.code(l)
+    cmd = st.chat_input("Command...")
+    if cmd:
+        st.session_state.cli_h.append(f"> {cmd}")
+        check_mission(uid, user, "cli_input", cmd)
+        res = "OK"
+        if cmd == "help": res = "Available: bal, whoami, scan, sudo"
+        elif cmd == "bal": res = f"${user['money']}"
+        elif cmd == "whoami": res = user['name']
+        elif cmd == "scan": res = "Scanning... found targets."
+        elif cmd.startswith("sudo"): res = "Permission Denied."
+        else:
+            res = "Error"
+            st.session_state.cli_err = st.session_state.get("cli_err",0)+1
+            check_mission(uid, user, "cli_error", st.session_state.cli_err)
+        
+        st.session_state.cli_h.append(res)
+        st.rerun()
+
+def page_leaderboard(uid, user):
+    st.title("🏆 名人堂")
+    db = load_db()
+    data = [{"User":u['name'], "Job":u['job'], "Assets":u['money']+u.get('bank_deposit',0)} for u in db['users'].values()]
+    st.dataframe(pd.DataFrame(data).sort_values("Assets", ascending=False), use_container_width=True)
+
+# --- 主程式 ---
+def main():
+    if "logged_in" not in st.session_state: st.session_state.logged_in = False
+    if "today_event" not in st.session_state: st.session_state.today_event = get_today_event()
+
+    if not st.session_state.logged_in:
+        st.title("🏙️ CityOS V23.0")
+        t1, t2 = st.tabs(["Login", "Register"])
+        with t1:
+            u = st.text_input("User"); p = st.text_input("Pass", type="password")
+            if st.button("Login"):
+                db = load_db()
+                if u in db["users"] and db["users"][u]["password"]==p:
+                    st.session_state.logged_in=True; st.session_state.uid=u; st.session_state.user=db["users"][u]
+                    # 挖礦結算
+                    mine = st.session_state.user.get("inventory",{}).get("Mining GPU",0)*100
+                    if st.session_state.today_event['effect']=="mining_boost": mine=int(mine*1.5)
+                    if mine>0: 
+                        st.session_state.user['money']+=mine; st.toast(f"⛏️ 挖礦 +${mine}")
+                        save_db(db)
+                    st.rerun()
+                else: st.error("Fail"); log_intruder(u)
+        with t2:
+            nu = st.text_input("New User"); np = st.text_input("New Pass", type="password")
+            if st.button("Sign Up"):
+                db = load_db()
+                if nu not in db["users"]:
+                    db["users"][nu] = get_npc_data(nu, "Novice", 1, 1000)
+                    db["users"][nu]["password"] = np
+                    save_db(db); st.success("Created! Please Login.")
+                else: st.error("Exists")
+        return
+
+    uid = st.session_state.uid
+    # 確保資料最新
+    user = st.session_state.user if uid=="frank" else load_db()["users"].get(uid, st.session_state.user)
+
+    st.sidebar.title(f"🆔 {user['name']}")
+    st.sidebar.metric("💵 現金", f"${user['money']:,}")
+    
+    menu = {
+        "✨ 大廳": "dash", "💹 股市": "stock", "⚔️ 網路戰": "pvp", 
+        "🎯 任務": "miss", "🛒 黑市": "shop", "🏦 銀行": "bank", 
+        "📝 測驗": "quiz", "🔬 實驗": "lab", "🔐 密碼": "cryp", 
+        "💻 CLI": "cli", "🏆 排名": "rank"
+    }
+    pg = menu[st.sidebar.radio("Menu", list(menu.keys()))]
+
+    if pg=="dash": page_dashboard(uid, user)
+    elif pg=="stock": page_stock_market(uid, user)
+    elif pg=="pvp": page_pvp(uid, user)
+    elif pg=="miss": page_missions(uid, user)
+    elif pg=="shop": page_shop(uid, user)
+    elif pg=="bank": page_bank(uid, user)
+    elif pg=="quiz": page_quiz(uid, user)
+    elif pg=="lab": page_lab(uid, user)
+    elif pg=="cryp": page_crypto(uid, user)
+    elif pg=="cli": page_cli(uid, user)
+    elif pg=="rank": page_leaderboard(uid, user)
+    
+    if st.sidebar.button("🚪 Logout"):
+        st.session_state.logged_in=False; st.rerun()
+
+if __name__ == "__main__":
+    main()
