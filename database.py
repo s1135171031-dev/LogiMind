@@ -68,10 +68,10 @@ def load_missions_from_file():
     if not ms: return DEFAULT_MISSIONS
     return ms
 
-# --- DB 初始化 ---
-def get_npc_data(name, job, level, money):
+# --- DB 初始化 (設定固定密碼) ---
+def get_npc_data(name, job, level, money, fixed_code="1234"):
     return {
-        "password": "npc", "defense_code": "1234", "name": name, 
+        "password": "npc", "defense_code": fixed_code, "name": name, 
         "level": level, "exp": level*100, "money": money, "bank_deposit": money*2, 
         "job": job, "inventory": {"Firewall": 1, "Chaos Heart": 1}, 
         "completed_missions": [], "pending_claims": [], "stocks": {},
@@ -81,8 +81,8 @@ def get_npc_data(name, job, level, money):
 def init_db():
     if not os.path.exists(USER_DB_FILE):
         users = {
-            "alice": get_npc_data("Alice", "Hacker", 15, 800),
-            "bob": get_npc_data("Bob", "Engineer", 10, 350),
+            "alice": get_npc_data("Alice", "Hacker", 15, 800, "1357"), # Alice 固定密碼
+            "bob": get_npc_data("Bob", "Engineer", 10, 350, "2468"),   # Bob 固定密碼
             "frank": {
                 "password": "x12345678x", "defense_code": "9999", "name": "Frank", 
                 "level": 100, "exp": 999999, "money": 9999999, "bank_deposit": 900000000, 
