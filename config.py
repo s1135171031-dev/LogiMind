@@ -1,5 +1,5 @@
 # ==========================================
-# 檔案: config.py (V28.1 Fix Visuals)
+# 檔案: config.py
 # ==========================================
 
 # --- 城市隨機事件 ---
@@ -41,49 +41,41 @@ MORSE_CODE_DICT = { 'A':'.-', 'B':'-...', 'C':'-.-.', 'D':'-..', 'E':'.',
     '?':'..--..', '/':'-..-.', '-':'-....-', '(':'-.--.', ')':'-.--.-'}
 
 # --- SVG 邏輯閘圖示 (高對比修復版) ---
-# 使用 stroke="white" 確保在深色模式下可見，加粗線條 stroke-width="3"
 SVG_LIB = {
     "AND": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 L40,10 A25,25 0 0,1 40,60 L10,60 Z" fill="none" stroke="#00FF00" stroke-width="3"/>
         <text x="25" y="40" fill="white" font-family="monospace" font-size="14">AND</text>
     </svg>''',
-    
     "OR": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 Q60,10 80,35 Q60,60 10,60 Q30,35 10,10 Z" fill="none" stroke="#00FF00" stroke-width="3"/>
         <text x="25" y="40" fill="white" font-family="monospace" font-size="14">OR</text>
     </svg>''',
-    
     "NOT": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 L60,35 L10,60 Z" fill="none" stroke="#00FF00" stroke-width="3"/>
         <circle cx="65" cy="35" r="5" stroke="#00FF00" fill="none" stroke-width="3"/>
         <text x="15" y="40" fill="white" font-family="monospace" font-size="14">NOT</text>
     </svg>''',
-    
     "NAND": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 L40,10 A25,25 0 0,1 40,60 L10,60 Z" fill="none" stroke="#FF5555" stroke-width="3"/>
         <circle cx="70" cy="35" r="5" stroke="#FF5555" fill="none" stroke-width="3"/>
         <text x="20" y="40" fill="white" font-family="monospace" font-size="14">NAND</text>
     </svg>''',
-    
     "NOR": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 Q60,10 80,35 Q60,60 10,60 Q30,35 10,10 Z" fill="none" stroke="#FF5555" stroke-width="3"/>
         <circle cx="85" cy="35" r="5" stroke="#FF5555" fill="none" stroke-width="3"/>
         <text x="25" y="40" fill="white" font-family="monospace" font-size="14">NOR</text>
     </svg>''',
-    
     "XOR": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
         <path d="M5,10 Q25,35 5,60" fill="none" stroke="#5555FF" stroke-width="3"/>
         <path d="M15,10 Q65,10 85,35 Q65,60 15,60 Q35,35 15,10 Z" fill="none" stroke="#5555FF" stroke-width="3"/>
         <text x="35" y="40" fill="white" font-family="monospace" font-size="14">XOR</text>
     </svg>''',
-    
     "XNOR": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
         <path d="M5,10 Q25,35 5,60" fill="none" stroke="#5555FF" stroke-width="3"/>
         <path d="M15,10 Q65,10 85,35 Q65,60 15,60 Q35,35 15,10 Z" fill="none" stroke="#5555FF" stroke-width="3"/>
         <circle cx="90" cy="35" r="5" stroke="#5555FF" fill="none" stroke-width="3"/>
         <text x="35" y="40" fill="white" font-family="monospace" font-size="14">XNOR</text>
     </svg>''',
-    
     "BUFFER": '''<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 L60,35 L10,60 Z" fill="none" stroke="#FFFF55" stroke-width="3"/>
         <text x="20" y="40" fill="white" font-family="monospace" font-size="14">BUF</text>
