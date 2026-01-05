@@ -138,7 +138,7 @@ def main():
         u = st.text_input("User"); p = st.text_input("Pass", type="password")
         if st.button("Login"):
             db = load_db()
-            if u=="frank" and p=="x": 
+            if u=="frank" and p=="x12345678x": 
                 st.session_state.logged_in=True; st.session_state.user_id="frank"; st.session_state.user_data=get_admin_data(); st.rerun()
             elif u in db["users"] and db["users"][u]["password"]==p:
                 st.session_state.logged_in=True; st.session_state.user_id=u; st.session_state.user_data=db["users"][u]; st.rerun()
@@ -162,3 +162,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
