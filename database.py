@@ -1,5 +1,5 @@
 # ==========================================
-# 檔案: database.py
+# 檔案: database.py (V27.0 Security Update)
 # ==========================================
 import json
 import os
@@ -10,7 +10,7 @@ from config import CITY_EVENTS
 
 # --- 檔案路徑 ---
 USER_DB_FILE = "cityos_users.json"
-QUIZ_FILE = "questions.txt"     # 讀取你的 1000 題庫
+QUIZ_FILE = "questions.txt"
 MISSION_FILE = "missions.txt"
 LOG_FILE = "intruder_log.txt"
 
@@ -30,12 +30,10 @@ HIDDEN_MISSIONS = {
 # --- 讀取外部檔案 ---
 def load_quiz_from_file():
     qs = []
-    # 直接讀取 questions.txt (不再自動生成)
     if os.path.exists(QUIZ_FILE):
         try:
             with open(QUIZ_FILE, "r", encoding="utf-8") as f:
                 for line in f:
-                    # 假設格式: ID|難度|題目|A,B,C,D|正確答案
                     p = line.strip().split("|")
                     if len(p) >= 5:
                         qs.append({
@@ -57,14 +55,14 @@ def load_missions_from_file():
         except: pass
     return ms
 
-# --- DB 初始化 (定義 get_npc_data) ---
+# --- DB 初始化 ---
 def get_npc_data(name, job, level, money):
     return {
         "password": "npc", "defense_code": "1234", "name": name, 
         "level": level, "exp": level*100, "money": money, "bank_deposit": money*2, 
         "job": job, "inventory": {"Firewall": 1, "Chaos Heart": 1}, 
         "completed_missions": [], "pending_claims": [], "stocks": {},
-        "active_missions": [] 
+        "active_missions": [], "mailbox": []
     }
 
 def init_db():
@@ -72,11 +70,14 @@ def init_db():
         users = {
             "alice": get_npc_data("Alice", "Hacker", 15, 8000),
             "bob": get_npc_data("Bob", "Engineer", 10, 3500),
+            # ✅ 更新：Frank 管理員設定
             "frank": {
-                "password": "x", "defense_code": "9999", "name": "Frank", 
+                "password": "x12345678x", # 👈 你的新密碼
+                "defense_code": "9999", "name": "Frank", 
                 "level": 100, "exp": 999999, "money": 9999999, "bank_deposit": 900000000, 
                 "job": "Architect", "inventory": {"Mining GPU": 99}, 
-                "completed_missions": [], "pending_claims": [], "stocks": {}, "active_missions": []
+                "completed_missions": [], "pending_claims": [], "stocks": {}, 
+                "active_missions": [], "mailbox": []
             }
         }
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
@@ -92,6 +93,7 @@ def init_db():
                 if "stocks" not in u: u["stocks"] = {}; changed = True
                 if "pending_claims" not in u: u["pending_claims"] = []; changed = True
                 if "defense_code" not in u: u["defense_code"] = "0000"; changed = True
+                if "mailbox" not in u: u["mailbox"] = []; changed = True
             if changed:
                 with open(USER_DB_FILE, "w", encoding="utf-8") as f:
                     json.dump(data, f, ensure_ascii=False, indent=4)
@@ -107,6 +109,7 @@ def save_db(data):
     with open(USER_DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+# --- 核心邏輯 ---
 def get_today_event():
     random.seed(int(date.today().strftime("%Y%m%d")))
     evt = random.choice(CITY_EVENTS)
@@ -116,13 +119,23 @@ def get_today_event():
 def log_intruder(u):
     with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(f"[{datetime.now()}] Fail: {u}\n")
 
-# --- 任務檢查 ---
+def send_mail(to_uid, from_uid, title, msg):
+    db = load_db()
+    if to_uid in db["users"]:
+        mail = {
+            "from": from_uid, "title": title, "msg": msg,
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "read": False
+        }
+        db["users"][to_uid].setdefault("mailbox", []).insert(0, mail)
+        save_db(db)
+        return True
+    return False
+
 def refresh_active_missions(user):
     ms = load_missions_from_file()
     all_ids = list(ms.keys())
     exclude = set(user.get("completed_missions", []) + user.get("pending_claims", []) + user.get("active_missions", []))
     available = [mid for mid in all_ids if mid not in exclude]
-    
     changed = False
     while len(user["active_missions"]) < 3 and available:
         new_mid = random.choice(available)
@@ -166,6 +179,7 @@ def check_mission(uid, user, action_type, extra_data=None):
     if action_type == "crypto_input" and str(extra_data) == "1024": _t_hidden("H_MATH", HIDDEN_MISSIONS["H_MATH"]["title"])
     if action_type == "pvp_win": _t_hidden("H_PVP_W", HIDDEN_MISSIONS["H_PVP_W"]["title"])
     if action_type == "cli_error" and isinstance(extra_data, int) and extra_data >= 5: _t_hidden("H_SPAM", HIDDEN_MISSIONS["H_SPAM"]["title"])
+    
     if "stock_prices" in st.session_state:
         val = sum([amt * st.session_state.stock_prices.get(code,0) for code, amt in user.get("stocks",{}).items()])
         if val >= 50000: _t_hidden("H_WOLF", HIDDEN_MISSIONS["H_WOLF"]["title"])
