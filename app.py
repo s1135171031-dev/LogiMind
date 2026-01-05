@@ -15,53 +15,54 @@ from database import (
     HIDDEN_MISSIONS, get_npc_data, send_mail
 )
 
-st.set_page_config(page_title="CityOS V28.2", layout="wide", page_icon="🏙️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="CityOS V28.3", layout="wide", page_icon="🏙️", initial_sidebar_state="expanded")
 
-# --- 新增：系統啟動特效 ---
-def play_boot_sequence():
-    # 建立一個空區塊用來放動畫
-    placeholder = st.empty()
-    
-    # 步驟 1: 顯示文字終端機效果
-    with placeholder.container():
-        st.markdown("""
-        <style>
-        .boot-text { font-family: 'Courier New'; color: #00FF00; font-size: 20px; }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        msg_spot = st.empty()
-        bar = st.progress(0, text="Initializing CityOS Kernel...")
-        
-        steps = [
-            ("Loading User Profile...", 20),
-            ("Decrypting Assets...", 40),
-            ("Connecting to Neural Net...", 60),
-            ("Syncing Stock Market Data...", 80),
-            ("System Ready.", 100)
-        ]
-        
-        for text, percent in steps:
-            time.sleep(0.3) # 暫停 0.3 秒製造「讀取中」的感覺
-            msg_spot.markdown(f"<p class='boot-text'>> {text}</p>", unsafe_allow_html=True)
-            bar.progress(percent, text=text)
-            
-        time.sleep(0.5)
-    
-    # 清除動畫，準備顯示主畫面
-    placeholder.empty()
-
-# --- CSS 美化 ---
+# --- CSS 美化與防閃爍 ---
 st.markdown("""
 <style>
+    /* 強制深色背景，防止重新整理閃白光 */
+    .stApp { background-color: #0E1117; color: #FFFFFF; }
+    
     [data-testid="stSidebar"] { background-color: #0E1117; }
-    .stButton>button { border-radius: 8px; border: 1px solid #333; transition: all 0.3s; }
+    .stButton>button { border-radius: 8px; border: 1px solid #333; transition: all 0.3s; color: #EEE; }
     .stButton>button:hover { border-color: #00FF00; color: #00FF00; box-shadow: 0 0 10px rgba(0,255,0,0.2); }
     h1, h2, h3 { font-family: 'Courier New', monospace; }
+    
+    /* 載入畫面特效文字 */
+    .boot-text { font-family: 'Courier New'; color: #00FF00; font-size: 18px; margin-bottom: 5px; }
+    /* 進度條顏色 */
+    .stProgress > div > div > div > div { background-color: #00FF00; }
+    
     .unread-badge { color: #FF4B4B; font-weight: bold; }
     .log-text { font-size: 14px; color: #aaa; font-family: monospace; }
 </style>
 """, unsafe_allow_html=True)
+
+# --- 系統啟動特效 ---
+def play_boot_sequence():
+    placeholder = st.empty()
+    with placeholder.container():
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1,2,1])
+        with col2:
+            st.markdown("### 🟢 SYSTEM BOOT SEQUENCE INITIATED")
+            msg_spot = st.empty()
+            bar = st.progress(0, text="Checking Hardware...")
+            
+            steps = [
+                ("Loading User Profile...", 20),
+                ("Establishing Secure Connection...", 40),
+                ("Decrypting City Database...", 60),
+                ("Syncing Stock Market...", 80),
+                ("Access Granted.", 100)
+            ]
+            
+            for text, percent in steps:
+                time.sleep(0.2) # 特效速度
+                msg_spot.markdown(f"<p class='boot-text'>> {text}</p>", unsafe_allow_html=True)
+                bar.progress(percent, text=text)
+            time.sleep(0.5)
+    placeholder.empty()
 
 # --- 股市 ---
 def update_stock_market():
@@ -105,10 +106,10 @@ def page_dashboard(uid, user):
         with st.expander("📜 系統日誌", expanded=True):
             st.markdown("""
             <div class="log-text">
-            <b>[V28.2] Stability Update</b><br>
-            - System: Added Save/Load feature.<br>
-            - Visual: Logic gates now visible.<br>
-            - Crypto: Caesar cipher fixed.<br>
+            <b>[V28.3] Boot Update</b><br>
+            - System: Added boot sequence.<br>
+            - NPC: Passwords are now static.<br>
+            - UI: Fixed white flash on reload.<br>
             </div>
             """, unsafe_allow_html=True)
     with c_right:
@@ -298,12 +299,18 @@ def page_pvp(uid, user):
         has_chaos = t_user.get("inventory", {}).get("Chaos Heart", 0) > 0
         n_opt = 8 if has_chaos else 4
         if use_neck: n_opt = max(2, int(n_opt/2))
+        
+        # 這裡會讀取使用者的真實密碼 (固定值)
+        real = t_user.get("defense_code", "0000")
+        
         if "pvp_opts" not in st.session_state:
-            real = t_user.get("defense_code", "0000"); opts = set([real])
+            opts = set([real])
+            # 生成其他錯誤選項，這些還是會隨機，但正確答案 real 永遠不變
             while len(opts) < n_opt: opts.add(f"{random.randint(0,9999):04d}")
             l = list(opts); random.shuffle(l)
             st.session_state.pvp_opts = l; st.session_state.pvp_real = real
             st.session_state.pvp_neck = use_neck; st.session_state.pvp_chaos = has_chaos
+            
         st.write("### 破解中...")
         cols = st.columns(4)
         for i, code in enumerate(st.session_state.pvp_opts):
@@ -386,7 +393,7 @@ def main():
     update_stock_market()
 
     if not st.session_state.logged_in:
-        st.title("🏙️ CityOS V28.2 (Persistence)")
+        st.title("🏙️ CityOS V28.3 (Secure Boot)")
         with st.expander("💾 遊戲存檔管理", expanded=False):
             c1, c2 = st.columns(2)
             with c1:
@@ -410,22 +417,14 @@ def main():
         t1, t2 = st.tabs(["登入", "註冊"])
         with t1:
             u = st.text_input("帳號"); p = st.text_input("密碼", type="password")
-            # ... (原本的登入程式碼) ...
             if st.button("登入"):
                 db = load_db()
                 if u in db["users"] and db["users"][u]["password"]==p:
-                    # === 這裡插入啟動特效 ===
-                    play_boot_sequence() 
-                    # ======================
-                    
-                    st.session_state.logged_in=True
-                    st.session_state.uid=u
-                    st.session_state.user=db["users"][u]
-                    st.rerun()
-                else: 
-                    st.error("登入失敗")
-                    log_intruder(u)
-# ... (後面保持不變) ...
+                    # === 啟動特效 ===
+                    play_boot_sequence()
+                    # ==============
+                    st.session_state.logged_in=True; st.session_state.uid=u; st.session_state.user=db["users"][u]; st.rerun()
+                else: st.error("登入失敗"); log_intruder(u)
         with t2:
             nu = st.text_input("新帳號"); np = st.text_input("新密碼", type="password"); nn = st.text_input("暱稱")
             if st.button("註冊"):
@@ -464,4 +463,3 @@ def main():
     if st.sidebar.button("🚪 登出"): st.session_state.logged_in=False; st.rerun()
 
 if __name__ == "__main__": main()
-
