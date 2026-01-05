@@ -1,5 +1,5 @@
 # ==========================================
-# 檔案: app.py (CityOS V27.0 Ultimate)
+# 檔案: app.py (CityOS V28.0 Ultimate)
 # ==========================================
 import streamlit as st
 import random
@@ -14,7 +14,7 @@ from database import (
     HIDDEN_MISSIONS, get_npc_data, send_mail
 )
 
-st.set_page_config(page_title="CityOS V27.0", layout="wide", page_icon="🏙️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="CityOS V28.0", layout="wide", page_icon="🏙️", initial_sidebar_state="expanded")
 
 # --- CSS 美化 ---
 st.markdown("""
@@ -24,6 +24,7 @@ st.markdown("""
     .stButton>button:hover { border-color: #00FF00; color: #00FF00; box-shadow: 0 0 10px rgba(0,255,0,0.2); }
     h1, h2, h3 { font-family: 'Courier New', monospace; }
     .unread-badge { color: #FF4B4B; font-weight: bold; }
+    .log-text { font-size: 14px; color: #aaa; font-family: monospace; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -49,7 +50,7 @@ def update_stock_market():
         st.session_state.stock_history = history
         st.session_state.last_stock_update = now
 
-# --- 頁面功能模組 ---
+# --- 各功能頁面 ---
 
 def page_dashboard(uid, user):
     st.title("🏙️ CityOS 中央控制台")
@@ -64,6 +65,30 @@ def page_dashboard(uid, user):
             if evt['effect']: st.info(f"系統影響: {evt['effect']}")
     update_stock_market()
     
+    st.markdown("---")
+    
+    # V28: 新增日誌與指南
+    c_left, c_right = st.columns(2)
+    with c_left:
+        with st.expander("📜 系統更新日誌 (System Logs)", expanded=True):
+            st.markdown("""
+            <div class="log-text">
+            <b>[V28.0] Economy Patch</b><br>
+            - 修正通貨膨脹，下修獎勵。<br>
+            - 邏輯實驗室：增加輸出訊號顯示。<br>
+            - 安全性升級：註冊密碼強制 8 位以上。<br><br>
+            <b>[V27.0] Admin & Mail</b><br>
+            - 信箱系統、上帝模式、PVP 修復。<br>
+            </div>
+            """, unsafe_allow_html=True)
+    with c_right:
+        with st.expander("📘 新手指南"):
+            st.write("""
+            1. **賺錢**：每日測驗、任務看板、股票。
+            2. **PVP**：攻擊需要腳本，去黑市買。
+            3. **安全**：請設定 PVP 防禦密碼。
+            """)
+
     st.markdown("---")
     t1, t2 = st.tabs(["📊 監控", "⚙️ 安全"])
     with t1:
@@ -193,12 +218,18 @@ def page_missions(uid, user):
 
 def page_quiz(uid, user):
     st.title("📝 每日挑戰")
+    with st.expander("ℹ️ 獎勵說明 (Rewards)"):
+        st.table(pd.DataFrame({
+            "類別": ["每日挑戰", "基礎任務", "隱藏成就"],
+            "獎金": ["$50", "$100-$300", "$50-$1000"]
+        }))
+        
     today = time.strftime("%Y-%m-%d")
     if user.get("last_quiz_date") == today: st.warning("⛔ 今天已挑戰過。"); return
     
     if "quiz_state" not in st.session_state: st.session_state.quiz_state = "intro"
     if st.session_state.quiz_state == "intro":
-        if st.button("開始"):
+        if st.button("開始測驗"):
             qs = load_quiz_from_file()
             if qs: st.session_state.q_curr = random.choice(qs); st.session_state.quiz_state = "playing"; st.rerun()
             else: st.error("無題庫")
@@ -206,7 +237,7 @@ def page_quiz(uid, user):
         q = st.session_state.q_curr
         st.write(f"**Q: {q['q']}**"); ans = st.radio("Ans", q['options'])
         if st.button("送出"):
-            if ans == q['ans']: st.balloons(); st.success("✅ 正確！+$500"); user["money"]+=500; check_mission(uid, user, "quiz_done")
+            if ans == q['ans']: st.balloons(); st.success("✅ 正確！+$50"); user["money"]+=50; check_mission(uid, user, "quiz_done")
             else: st.error(f"❌ 錯誤。答案是 {q['ans']}")
             user["last_quiz_date"] = today; save_db({"users":load_db()["users"]|{uid:user}, "bbs":[]})
             del st.session_state.q_curr; del st.session_state.quiz_state; time.sleep(2); st.rerun()
@@ -214,24 +245,36 @@ def page_quiz(uid, user):
 def page_lab(uid, user):
     st.title("🔬 邏輯實驗室")
     t1, t2 = st.tabs(["基礎", "進階"])
+    
     with t1:
         g = st.selectbox("Gate", ["AND", "OR", "NOT"])
         c1, c2 = st.columns(2); a = c1.toggle(f"{g} A"); b = False
         if g!="NOT": b = c2.toggle(f"{g} B")
         st.markdown(SVG_LIB[g], unsafe_allow_html=True)
+        
+        # V28: 顯示輸出
+        res = 0
+        if g == "AND": res = 1 if (a and b) else 0
+        elif g == "OR": res = 1 if (a or b) else 0
+        elif g == "NOT": res = 0 if a else 1
+        st.metric("Output (輸出)", str(res), delta="High" if res==1 else "Low")
+
         if g=="AND" and a and b: check_mission(uid, user, "logic_state", "11")
+
     with t2:
         g2 = st.selectbox("Adv Gate", ["NAND", "NOR", "XOR", "XNOR", "BUFFER"])
         c1, c2 = st.columns(2); a2 = c1.toggle(f"{g2} A"); b2 = False
         if g2!="BUFFER": b2 = c2.toggle(f"{g2} B")
         st.markdown(SVG_LIB.get(g2, ""), unsafe_allow_html=True)
+        
         res = 0
         if g2=="NAND": res = 0 if (a2 and b2) else 1
         elif g2=="NOR": res = 0 if (a2 or b2) else 1
         elif g2=="XOR": res = 1 if a2!=b2 else 0
         elif g2=="XNOR": res = 1 if a2==b2 else 0
         elif g2=="BUFFER": res = 1 if a2 else 0
-        st.metric("Out", res)
+        st.metric("Output (輸出)", str(res), delta="High" if res==1 else "Low")
+        
         if res==1: check_mission(uid, user, "logic_use")
 
 def page_crypto(uid, user):
@@ -363,39 +406,29 @@ def page_leaderboard(uid, user):
 
 def page_admin(uid, user):
     st.title("💀 上帝模式 (Frank's God Mode)")
-    st.error("⚠️ 警告：資料庫操作不可逆。")
+    st.warning("⚠️ Admin Area")
     db = load_db(); all_users = db["users"]
 
-    with st.expander("⛈️ 天候與廣播"):
-        sel_evt = st.selectbox("強制事件", [e['name'] for e in CITY_EVENTS])
-        if st.button("切換事件"):
+    with st.expander("⛈️ Control"):
+        sel_evt = st.selectbox("Event", [e['name'] for e in CITY_EVENTS])
+        if st.button("Set Event"):
             for e in CITY_EVENTS:
                 if e['name'] == sel_evt: st.session_state.today_event = e; st.rerun()
         
-        st.write("📢 系統廣播")
-        bc_msg = st.text_input("廣播內容")
-        if st.button("發送全體信件"):
-            count = 0
-            for u in all_users:
-                send_mail(u, "System", "📢 系統廣播", bc_msg)
-                count+=1
-            st.success(f"已發送給 {count} 人")
+        bc_msg = st.text_input("Broadcast")
+        if st.button("Send All"):
+            for u in all_users: send_mail(u, "System", "📢 系統廣播", bc_msg)
+            st.success("Sent")
 
-    st.subheader("👁️ 玩家數據")
+    st.subheader("👁️ Data")
     st.dataframe(pd.DataFrame([
-        {"ID":k, "Pass":v['password'], "$":v['money'], "Bank":v.get('bank_deposit',0), "Items":str(v.get('inventory',{}))} 
+        {"ID":k, "Pass":v['password'], "$":v['money'], "Bank":v.get('bank_deposit',0)} 
         for k,v in all_users.items()
     ]))
 
-    st.subheader("✏️ 修改")
-    target_uid = st.selectbox("Target ID", list(all_users.keys()))
-    t_user = all_users[target_uid]
-    c1, c2 = st.columns(2)
-    nm = c1.number_input("Money", value=t_user['money'])
-    if c2.button("Save"):
-        all_users[target_uid]['money'] = nm; save_db(db); st.success("Saved"); time.sleep(1); st.rerun()
-        
-    if st.button("🗑️ Delete User", type="primary"):
+    st.subheader("✏️ Edit")
+    target_uid = st.selectbox("ID", list(all_users.keys()))
+    if st.button("Delete"):
         del db["users"][target_uid]; save_db(db); st.rerun()
 
 # --- Main ---
@@ -405,7 +438,7 @@ def main():
     update_stock_market()
 
     if not st.session_state.logged_in:
-        st.title("🏙️ CityOS V27.0")
+        st.title("🏙️ CityOS V28.0")
         t1, t2 = st.tabs(["登入", "註冊"])
         with t1:
             u = st.text_input("帳號"); p = st.text_input("密碼", type="password")
@@ -417,14 +450,15 @@ def main():
                 else: st.error("登入失敗"); log_intruder(u)
         with t2:
             nu = st.text_input("新帳號"); np = st.text_input("新密碼", type="password")
-            # ✅ 新增：密碼強度檢查
+            nn = st.text_input("暱稱")
             if st.button("註冊"):
+                # V28: 密碼強度限制 > 8
                 if len(np) <= 8:
                     st.error("❌ 密碼強度不足：長度必須大於 8 位元。")
-                else:
+                elif nu and nn:
                     db = load_db()
                     if nu not in db["users"]:
-                        db["users"][nu] = get_npc_data(nu, "Novice", 1, 1000)
+                        db["users"][nu] = get_npc_data(nn, "Novice", 1, 500)
                         db["users"][nu]["password"] = np
                         save_db(db); st.success("註冊成功！"); time.sleep(1)
                     else: st.error("帳號已存在")
@@ -433,12 +467,11 @@ def main():
     uid = st.session_state.uid
     user = st.session_state.user if uid=="frank" else load_db()["users"].get(uid, st.session_state.user)
 
-    # 側邊欄通知
     unread = len([m for m in user.get("mailbox",[]) if not m.get("read")])
-    noti = f" ({unread})" if unread > 0 else ""
+    noti = f"🔴{unread}" if unread > 0 else ""
     
     st.sidebar.title(f"🆔 {user['name']}")
-    st.sidebar.metric("💵 現金", f"${user['money']:,}")
+    st.sidebar.metric("💵", f"${user['money']:,}")
     
     menu = {
         "✨ 大廳": "dash", f"📧 信箱{noti}": "mail", "💹 股市": "stock", 
@@ -446,10 +479,7 @@ def main():
         "🔐 密碼": "cryp", "🛒 黑市": "shop", "🏦 銀行": "bank", 
         "⚔️ PVP": "pvp", "💻 CLI": "cli", "🏆 排名": "rank"
     }
-    
-    # ✅ 修改：只有 Frank 可以進入上帝模式
-    if uid == "frank":
-        menu["💀 上帝模式"] = "admin"
+    if uid == "frank": menu["💀 Admin"] = "admin"
 
     selection = st.sidebar.radio("導航", list(menu.keys()))
     pg = menu[selection]
