@@ -17,6 +17,40 @@ from database import (
 
 st.set_page_config(page_title="CityOS V28.2", layout="wide", page_icon="🏙️", initial_sidebar_state="expanded")
 
+# --- 新增：系統啟動特效 ---
+def play_boot_sequence():
+    # 建立一個空區塊用來放動畫
+    placeholder = st.empty()
+    
+    # 步驟 1: 顯示文字終端機效果
+    with placeholder.container():
+        st.markdown("""
+        <style>
+        .boot-text { font-family: 'Courier New'; color: #00FF00; font-size: 20px; }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        msg_spot = st.empty()
+        bar = st.progress(0, text="Initializing CityOS Kernel...")
+        
+        steps = [
+            ("Loading User Profile...", 20),
+            ("Decrypting Assets...", 40),
+            ("Connecting to Neural Net...", 60),
+            ("Syncing Stock Market Data...", 80),
+            ("System Ready.", 100)
+        ]
+        
+        for text, percent in steps:
+            time.sleep(0.3) # 暫停 0.3 秒製造「讀取中」的感覺
+            msg_spot.markdown(f"<p class='boot-text'>> {text}</p>", unsafe_allow_html=True)
+            bar.progress(percent, text=text)
+            
+        time.sleep(0.5)
+    
+    # 清除動畫，準備顯示主畫面
+    placeholder.empty()
+
 # --- CSS 美化 ---
 st.markdown("""
 <style>
@@ -376,11 +410,22 @@ def main():
         t1, t2 = st.tabs(["登入", "註冊"])
         with t1:
             u = st.text_input("帳號"); p = st.text_input("密碼", type="password")
+            # ... (原本的登入程式碼) ...
             if st.button("登入"):
                 db = load_db()
                 if u in db["users"] and db["users"][u]["password"]==p:
-                    st.session_state.logged_in=True; st.session_state.uid=u; st.session_state.user=db["users"][u]; st.rerun()
-                else: st.error("登入失敗"); log_intruder(u)
+                    # === 這裡插入啟動特效 ===
+                    play_boot_sequence() 
+                    # ======================
+                    
+                    st.session_state.logged_in=True
+                    st.session_state.uid=u
+                    st.session_state.user=db["users"][u]
+                    st.rerun()
+                else: 
+                    st.error("登入失敗")
+                    log_intruder(u)
+# ... (後面保持不變) ...
         with t2:
             nu = st.text_input("新帳號"); np = st.text_input("新密碼", type="password"); nn = st.text_input("暱稱")
             if st.button("註冊"):
@@ -419,3 +464,4 @@ def main():
     if st.sidebar.button("🚪 登出"): st.session_state.logged_in=False; st.rerun()
 
 if __name__ == "__main__": main()
+
