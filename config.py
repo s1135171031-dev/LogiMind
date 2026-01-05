@@ -5,25 +5,28 @@ import random
 
 # --- 城市每日事件 ---
 CITY_EVENTS = [
-    {"name": "牛市來臨", "desc": "加密貨幣市場暴漲，挖礦收益增加 50%。", "effect": "mining_boost"},
-    {"name": "太陽風暴", "desc": "強烈電磁干擾，駭客入侵成功率大幅下降 (PVP減益)。", "effect": "hack_nerf"},
+    {"name": "牛市來臨", "desc": "加密貨幣與股市齊漲，經濟活動熱絡。", "effect": "mining_boost"},
+    {"name": "太陽風暴", "desc": "強烈電磁干擾，駭客入侵成功率下降 (PVP減益)，科技股下跌。", "effect": "hack_nerf"},
     {"name": "黑色星期五", "desc": "黑市商人心情好，全場道具打 7 折。", "effect": "shop_discount"},
     {"name": "系統維護", "desc": "中央處理器降頻，無特殊加成。", "effect": None},
-    {"name": "零日漏洞", "desc": "發現新的系統漏洞，PVP 攻擊獎勵小幅提升。", "effect": "attack_boost"},
+    {"name": "零日漏洞", "desc": "發現新的系統漏洞，PVP 攻擊獎勵提升。", "effect": "attack_boost"},
 ]
 
 # --- 道具清單 ---
 ITEMS = {
-    # 產權
     "Mining GPU": {"price": 2000, "desc": "被動收入：每日登入挖掘 $100 (可疊加)。"},
-    
-    # 🛡️ 防禦道具 (PVP)
-    "Firewall": {"price": 500, "desc": "防禦消耗品：被入侵成功時，抵銷「雙倍爆擊」傷害。"},
-    "Chaos Heart": {"price": 1500, "desc": "PVP神器(消耗)：讓入侵者猜測的選項數量變為 2 倍。"},
-    
-    # ⚔️ 攻擊道具 (PVP)
-    "Clarity Necklace": {"price": 1200, "desc": "PVP神器(消耗)：讓你需要猜測的選項數量減半。"},
-    "Brute Force Script": {"price": 300, "desc": "攻擊消耗品：發動駭客攻擊的必要軟體。"}
+    "Firewall": {"price": 500, "desc": "防禦(消耗)：抵銷 PVP 失敗時的傷害。"},
+    "Chaos Heart": {"price": 1500, "desc": "防禦(消耗)：讓攻擊者選項加倍 (4變8)。"},
+    "Clarity Necklace": {"price": 1200, "desc": "攻擊(消耗)：讓你的選項減半 (4變2)。"},
+    "Brute Force Script": {"price": 300, "desc": "攻擊(消耗)：發動駭客攻擊的必備軟體。"}
+}
+
+# --- 股市設定 (V23 New) ---
+STOCKS_DATA = {
+    "CYBR": {"name": "賽博科技", "base": 150, "volatility": 0.05, "desc": "高科技晶片龍頭，價格穩定。"},
+    "ARMS": {"name": "荒坂軍工", "base": 300, "volatility": 0.15, "desc": "私人武裝部隊，波動極大。"},
+    "BIO":  {"name": "生化科技", "base": 80,  "volatility": 0.08, "desc": "研發長生藥，投機性強。"},
+    "ENGY": {"name": "核能矩陣", "base": 50,  "volatility": 0.02, "desc": "基礎電力，便宜且穩定。"}
 }
 
 # --- 邏輯閘 SVG ---
