@@ -1,7 +1,7 @@
 # ==========================================
-# 檔案: app.py (V31.3 Stable Matrix)
-# 修復: 按鈕文字看不見的問題、文字重疊排版崩壞的問題
-# 保留: 所有功能 + 駭客風格配色
+# 檔案: app.py (V31.4 Icon Overlap Fix)
+# 修復: 圖示變成文字字串導致重疊的問題
+# 保留: 駭客綠配色 + 預跑股市 + 完整功能
 # ==========================================
 import streamlit as st
 import random
@@ -10,33 +10,41 @@ import pandas as pd
 import numpy as np
 import base64
 import json
-from config import CITY_EVENTS, ITEMS, SVG_LIB, MORSE_CODE_DICT, STOCKS_DATA
-from database import (
-    load_db, save_db, check_mission, get_today_event, 
-    log_intruder, load_quiz_from_file, 
-    get_npc_data, send_mail
-)
+
+# --- 0. 防呆引用與初始化 ---
+# 為了避免 ImportError，這裡做一個簡單的檢查
+try:
+    from config import CITY_EVENTS, ITEMS, SVG_LIB, MORSE_CODE_DICT, STOCKS_DATA
+    from database import (
+        load_db, save_db, check_mission, get_today_event, 
+        log_intruder, load_quiz_from_file, 
+        get_npc_data, send_mail
+    )
+except ImportError:
+    # 如果使用者少放了檔案，這裡提供備用變數防止崩潰
+    st.error("⚠️ 偵測到缺少模組 (config.py 或 database.py)。請確保所有檔案都在同一目錄下。")
+    st.stop()
 
 # --- 1. 頁面基礎設定 ---
-st.set_page_config(page_title="CityOS V31.3", layout="wide", page_icon="📟", initial_sidebar_state="expanded")
+st.set_page_config(page_title="CityOS V31.4", layout="wide", page_icon="📟", initial_sidebar_state="expanded")
 
-# --- 2. CSS 美化 (修復版) ---
+# --- 2. CSS 美化 (V31.4 最終修復版) ---
 st.markdown("""
 <style>
-    /* 1. 基礎字體與背景 - 針對內容層級設定，不破壞佈局 div */
+    /* 1. 全局背景與預設字體 - 設定為 Courier New */
     .stApp {
         background-color: #0e1117;
         font-family: 'Courier New', monospace;
     }
-    
-    /* 2. 強制文字顏色為螢光綠，但排除輸入框內部以免看不見 */
-    h1, h2, h3, h4, h5, h6, p, li, span, .stMarkdown, label, .stMetricValue, .stMetricLabel {
+
+    /* 2. 精準針對「文字內容」變色，而不包含 icon 容器 */
+    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown, .stMetricValue, .stMetricLabel, input, textarea {
         color: #00ff41 !important;
         font-family: 'Courier New', monospace !important;
-        text-shadow: 0 0 2px rgba(0, 255, 65, 0.2); /* 微微發光 */
+        text-shadow: 0 0 2px rgba(0, 255, 65, 0.2);
     }
 
-    /* 3. 按鈕修復：預設黑底綠框，懸停變綠底黑字 */
+    /* 3. 按鈕樣式 */
     .stButton > button {
         background-color: #0e1117 !important;
         color: #00ff41 !important;
@@ -51,11 +59,8 @@ st.markdown("""
         color: #000000 !important;
         box-shadow: 0 0 10px #00ff41;
     }
-    .stButton > button:active {
-        color: #000000 !important;
-    }
 
-    /* 4. 輸入框修復：確保輸入時文字看得到 */
+    /* 4. 輸入框與下拉選單修正 */
     .stTextInput > div > div > input, 
     .stNumberInput > div > div > input,
     .stSelectbox > div > div > div,
@@ -63,24 +68,40 @@ st.markdown("""
         background-color: #1a1a1a !important;
         color: #00ff41 !important;
         border: 1px solid #333 !important;
-        font-family: 'Courier New', monospace !important;
+    }
+
+    /* 5. === 關鍵修復：圖示保護區 === */
+    /* 強制 Streamlit 的圖示使用 Material Icons 字體，而不是 Courier New */
+    /* 這會解決 "keyboard_arrow_right" 文字跑出來覆蓋畫面的問題 */
+    [data-testid="stIcon"], .material-icons, i {
+        font-family: 'Material Icons' !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+        font-variant: normal !important;
+        text-transform: none !important;
+        line-height: 1;
+        letter-spacing: normal !important;
+        -webkit-font-smoothing: antialiased;
+        color: #00ff41 !important; /* 圖示也讓它變綠 */
+        direction: ltr;
+        white-space: nowrap;
+        word-wrap: normal;
     }
     
-    /* 5. 側邊欄與分隔線 */
+    /* 修正 Expander 的箭頭重疊 */
+    .streamlit-expanderHeader {
+        font-family: 'Courier New', monospace !important;
+        color: #00ff41 !important;
+    }
+
+    /* 6. 其他裝飾 */
     [data-testid="stSidebar"] {
         background-color: #000000;
         border-right: 1px solid #00ff41;
     }
     hr { border-color: #00ff41 !important; opacity: 0.3; }
-    
-    /* 6. 表格修復 */
     [data-testid="stDataFrame"] { border: 1px solid #00ff41; }
-    
-    /* 7. 進度條 */
     .stProgress > div > div > div > div { background-color: #00ff41; }
-
-    /* 8. 修正文字重疊：增加行高 */
-    p, .stMarkdown { line-height: 1.6 !important; }
 
 </style>
 """, unsafe_allow_html=True)
@@ -98,11 +119,11 @@ def play_boot_sequence():
             bar = st.progress(0, text="Initializing...")
             
             steps = [
-                ("Fixing CSS Grid...", 20),
-                ("Restoring Visual Cortex...", 40),
+                ("Loading Icons Library...", 20),
+                ("Fixing Font Collision...", 40),
                 ("Decrypting User Data...", 60),
                 ("Simulating Market (30 ticks)...", 80),
-                ("System Stable.", 100)
+                ("System Visuals Stable.", 100)
             ]
             
             for text, percent in steps:
@@ -426,7 +447,7 @@ def page_cli(uid, user):
         "404 Brain Not Found.", "I'm calling the cyber-police.", "Go touch grass."
     ]
     
-    if "cli_h" not in st.session_state: st.session_state.cli_h = ["Kernel v31.3 loaded..."]
+    if "cli_h" not in st.session_state: st.session_state.cli_h = ["Kernel v31.4 loaded..."]
     for l in st.session_state.cli_h[-6:]: st.code(l)
     
     cmd = st.chat_input("user@cityos:~$")
@@ -472,7 +493,7 @@ def main():
     update_stock_market()
     
     if not st.session_state.logged_in:
-        st.title("🏙️ CityOS V31.3")
+        st.title("🏙️ CityOS V31.4")
         
         with st.expander("💾 DATA MANAGEMENT"):
             c1, c2 = st.columns(2)
