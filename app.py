@@ -1,5 +1,5 @@
 # ==========================================
-# 檔案: app.py (CityOS V28.0 Ultimate)
+# 檔案: app.py (V28.1 Bug Fixes)
 # ==========================================
 import streamlit as st
 import random
@@ -14,7 +14,7 @@ from database import (
     HIDDEN_MISSIONS, get_npc_data, send_mail
 )
 
-st.set_page_config(page_title="CityOS V28.0", layout="wide", page_icon="🏙️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="CityOS V28.1", layout="wide", page_icon="🏙️", initial_sidebar_state="expanded")
 
 # --- CSS 美化 ---
 st.markdown("""
@@ -28,7 +28,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 股市自動更新系統 ---
+# --- 股市 ---
 def update_stock_market():
     now = time.time()
     last_update = st.session_state.get("last_stock_update", 0)
@@ -50,7 +50,7 @@ def update_stock_market():
         st.session_state.stock_history = history
         st.session_state.last_stock_update = now
 
-# --- 各功能頁面 ---
+# --- 頁面 ---
 
 def page_dashboard(uid, user):
     st.title("🏙️ CityOS 中央控制台")
@@ -67,18 +67,15 @@ def page_dashboard(uid, user):
     
     st.markdown("---")
     
-    # V28: 新增日誌與指南
     c_left, c_right = st.columns(2)
     with c_left:
-        with st.expander("📜 系統更新日誌 (System Logs)", expanded=True):
+        with st.expander("📜 系統更新日誌 (Logs)", expanded=True):
             st.markdown("""
             <div class="log-text">
-            <b>[V28.0] Economy Patch</b><br>
-            - 修正通貨膨脹，下修獎勵。<br>
-            - 邏輯實驗室：增加輸出訊號顯示。<br>
-            - 安全性升級：註冊密碼強制 8 位以上。<br><br>
-            <b>[V27.0] Admin & Mail</b><br>
-            - 信箱系統、上帝模式、PVP 修復。<br>
+            <b>[V28.1] Bug Fixes</b><br>
+            - 凱薩密碼：修復亂碼問題 (Modulo Fix)。<br>
+            - 任務看板：修復空白問題 (Default Mission Fallback)。<br>
+            - 視覺優化：邏輯閘圖示 (SVG) 增強對比度。<br>
             </div>
             """, unsafe_allow_html=True)
     with c_right:
@@ -192,12 +189,16 @@ def page_stock_market(uid, user):
 def page_missions(uid, user):
     st.title("🎯 任務看板")
     ms = load_missions_from_file()
+    
+    # 領取獎勵區
     pending = user.get("pending_claims", [])
     if pending:
         st.success(f"🎁 有 {len(pending)} 個任務完成！")
         for mid in pending:
             m = ms.get(mid, HIDDEN_MISSIONS.get(mid))
-            if not m: continue
+            # Fallback: 如果任務ID找不到詳細資料（可能改了txt），給個預設顯示
+            if not m: m = {"title": "未知任務", "reward": 50} 
+            
             with st.container(border=True):
                 c1, c2 = st.columns([4, 1])
                 c1.write(f"**{m['title']}** - ${m['reward']}")
@@ -206,19 +207,21 @@ def page_missions(uid, user):
                     save_db({"users":load_db()["users"]|{uid:user}, "bbs":[]})
                     check_mission(uid, user, "none"); st.rerun()
     st.markdown("---")
+    
+    # 進行中任務
     active = user.get("active_missions", [])
-    if not active: check_mission(uid, user, "refresh")
+    if not active: check_mission(uid, user, "refresh"); st.rerun()
     else:
         cols = st.columns(3)
         for i, mid in enumerate(active):
-            if mid in ms:
-                m = ms[mid]
+            m = ms.get(mid)
+            if m:
                 with cols[i%3].container(border=True):
                     st.info(f"任務 {i+1}"); st.write(f"**{m['title']}**"); st.caption(m['desc']); st.write(f"報酬: ${m['reward']}")
 
 def page_quiz(uid, user):
     st.title("📝 每日挑戰")
-    with st.expander("ℹ️ 獎勵說明 (Rewards)"):
+    with st.expander("ℹ️ 獎勵說明"):
         st.table(pd.DataFrame({
             "類別": ["每日挑戰", "基礎任務", "隱藏成就"],
             "獎金": ["$50", "$100-$300", "$50-$1000"]
@@ -250,9 +253,10 @@ def page_lab(uid, user):
         g = st.selectbox("Gate", ["AND", "OR", "NOT"])
         c1, c2 = st.columns(2); a = c1.toggle(f"{g} A"); b = False
         if g!="NOT": b = c2.toggle(f"{g} B")
-        st.markdown(SVG_LIB[g], unsafe_allow_html=True)
         
-        # V28: 顯示輸出
+        # 顯示圖片，使用 html 來更好地控制 SVG 大小
+        st.html(f"<div style='width:200px;margin:auto'>{SVG_LIB[g]}</div>")
+        
         res = 0
         if g == "AND": res = 1 if (a and b) else 0
         elif g == "OR": res = 1 if (a or b) else 0
@@ -265,7 +269,7 @@ def page_lab(uid, user):
         g2 = st.selectbox("Adv Gate", ["NAND", "NOR", "XOR", "XNOR", "BUFFER"])
         c1, c2 = st.columns(2); a2 = c1.toggle(f"{g2} A"); b2 = False
         if g2!="BUFFER": b2 = c2.toggle(f"{g2} B")
-        st.markdown(SVG_LIB.get(g2, ""), unsafe_allow_html=True)
+        st.html(f"<div style='width:200px;margin:auto'>{SVG_LIB.get(g2, '')}</div>")
         
         res = 0
         if g2=="NAND": res = 0 if (a2 and b2) else 1
@@ -282,12 +286,26 @@ def page_crypto(uid, user):
     m = st.selectbox("Mode", ["Caesar", "Morse", "Base64", "Atbash"])
     txt = st.text_input("Input", "HELLO")
     check_mission(uid, user, "crypto_input", txt)
+    
+    res = ""
     if m=="Caesar":
         s = st.slider("Shift", 1, 25, 3)
-        res = "".join([chr(ord(c)+s) if c.isalpha() else c for c in txt.upper()])
+        # ✅ 關鍵修復：凱薩密碼迴圈邏輯
+        temp_res = []
+        for c in txt:
+            if c.isalpha():
+                base = ord('A') if c.isupper() else ord('a')
+                # (當前字符 - 基底 + 位移) % 26 + 基底 -> 確保在 0-25 之間循環
+                rotated = chr((ord(c) - base + s) % 26 + base)
+                temp_res.append(rotated)
+            else:
+                temp_res.append(c)
+        res = "".join(temp_res)
+        
     elif m=="Morse": res = " ".join([MORSE_CODE_DICT.get(c,c) for c in txt.upper()])
     elif m=="Base64": res = base64.b64encode(txt.encode()).decode()
     elif m=="Atbash": res = "".join([chr(ord('Z')-(ord(c)-ord('A'))) if 'A'<=c<='Z' else c for c in txt.upper()])
+    
     st.code(res)
 
 def page_shop(uid, user):
@@ -438,7 +456,7 @@ def main():
     update_stock_market()
 
     if not st.session_state.logged_in:
-        st.title("🏙️ CityOS V28.0")
+        st.title("🏙️ CityOS V28.1")
         t1, t2 = st.tabs(["登入", "註冊"])
         with t1:
             u = st.text_input("帳號"); p = st.text_input("密碼", type="password")
@@ -452,7 +470,6 @@ def main():
             nu = st.text_input("新帳號"); np = st.text_input("新密碼", type="password")
             nn = st.text_input("暱稱")
             if st.button("註冊"):
-                # V28: 密碼強度限制 > 8
                 if len(np) <= 8:
                     st.error("❌ 密碼強度不足：長度必須大於 8 位元。")
                 elif nu and nn:
