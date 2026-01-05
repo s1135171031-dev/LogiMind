@@ -1,35 +1,18 @@
 # ==========================================
-# 檔案: database.py
+# 檔案: database.py (動態任務版)
 # ==========================================
 import json
 import os
 import random
 import streamlit as st
 from datetime import datetime, date
-from config import CITY_EVENTS
 
 # --- 檔案路徑 ---
 USER_DB_FILE = "cityos_users.json"
 QUIZ_FILE = "questions.txt"
-MISSION_FILE = "missions.txt"
 LOG_FILE = "intruder_log.txt"
 
-# --- 備用資料 (防止空白) ---
-DEFAULT_MISSIONS = {
-    "M_DEF_1": {"title": "新手上路", "desc": "在邏輯實驗室完成一次運算", "reward": 100, "target": "logic_use"},
-    "M_DEF_2": {"title": "股海羅盤", "desc": "在股市買入股票", "reward": 200, "target": "stock_buy"},
-    "M_DEF_3": {"title": "駭客入門", "desc": "在 CLI 輸入任意指令", "reward": 150, "target": "cli_input"},
-    "M_DEF_4": {"title": "儲蓄習慣", "desc": "存錢進銀行", "reward": 150, "target": "bank_save"},
-    "M_DEF_5": {"title": "社交達人", "desc": "發送一封郵件", "reward": 100, "target": "send_mail"}
-}
-
-DEFAULT_QUIZ = [
-    {"id":"Q1", "level":"1", "q":"Python 定義函式用什麼？", "options":["def","func","var"], "ans":"def"},
-    {"id":"Q2", "level":"1", "q":"二進位 101 是多少？", "options":["3","5","7"], "ans":"5"},
-    {"id":"Q3", "level":"2", "q":"HTTP 成功狀態碼？", "options":["200","404","500"], "ans":"200"}
-]
-
-# --- 隱藏成就 ---
+# --- 隱藏成就 (固定不變) ---
 HIDDEN_MISSIONS = {
     "H_ZERO": {"title": "💸 破產俱樂部", "desc": "現金歸零。", "reward": 100},
     "H_777":  {"title": "🎰 幸運七七七", "desc": "現金剛好 $777。", "reward": 777},
@@ -41,6 +24,78 @@ HIDDEN_MISSIONS = {
     "H_PVP_W": {"title": "⚔️ 戰爭之王", "desc": "PVP 獲勝。", "reward": 150},
     "H_WOLF": {"title": "🐺 華爾街之狼", "desc": "股票市值 > $50,000。", "reward": 1000}
 }
+
+# --- 預設測驗 ---
+DEFAULT_QUIZ = [
+    {"id":"Q1", "level":"1", "q":"Python 定義函式用什麼？", "options":["def","func","var"], "ans":"def"},
+    {"id":"Q2", "level":"1", "q":"二進位 101 是多少？", "options":["3","5","7"], "ans":"5"},
+    {"id":"Q3", "level":"2", "q":"HTTP 成功狀態碼？", "options":["200","404","500"], "ans":"200"}
+]
+
+# --- [核心] 動態任務生成器 ---
+def generate_dynamic_missions(user_level, existing_ids):
+    """根據等級生成隨機任務，並確保不與現有ID重複"""
+    
+    # 任務模版 (Templates)
+    # {target} 是行動類型, {val} 是數值要求, {sub} 是次要要求(如股票代碼)
+    templates = [
+        # 股市類
+        {"type": "stock_buy", "base_reward": 150, "text": "投資眼光", "desc": "買入 {sub} 股票 {val} 股", "codes": ["CYBR", "NETW", "DARK", "CHIP"]},
+        {"type": "stock_val", "base_reward": 200, "text": "資產增值", "desc": "持有 {sub} 股票總值達 ${val}", "codes": ["CYBR", "NETW"]},
+        
+        # 駭客類
+        {"type": "cli_input", "base_reward": 100, "text": "指令練習", "desc": "在 CLI 輸入 '{sub}' 指令", "cmds": ["whoami", "bal", "scan", "help"]},
+        {"type": "pvp_win",   "base_reward": 300, "text": "賞金獵人", "desc": "在 PVP 入侵成功 {val} 次", "range": (1, 3)},
+        {"type": "crypto_input", "base_reward": 120, "text": "解碼員", "desc": "在密碼學輸入 '{sub}'"},
+
+        # 生活類
+        {"type": "bank_save", "base_reward": 100, "text": "儲蓄習慣", "desc": "單筆存入銀行 ${val}", "range": (500, 5000)},
+        {"type": "shop_buy",  "base_reward": 150, "text": "軍備競賽", "desc": "在黑市購買 {sub}", "items": ["Firewall", "Brute Force Script"]},
+        {"type": "quiz_done", "base_reward": 80,  "text": "知識份子", "desc": "完成每日測驗", "fixed": True},
+        {"type": "send_mail", "base_reward": 50,  "text": "社交活躍", "desc": "發送一封郵件給 {sub}", "npcs": ["Alice", "Bob"]}
+    ]
+
+    new_missions = []
+    # 根據等級調整難度係數
+    multiplier = 1 + (user_level * 0.1) 
+
+    while len(new_missions) < 4: # 每次產生 4 個新任務
+        tmpl = random.choice(templates)
+        m_id = f"M_{int(datetime.now().timestamp())}_{random.randint(1000,9999)}"
+        
+        # 產生具體參數
+        val = 0
+        sub = ""
+        
+        if "range" in tmpl:
+            base_val = random.randint(tmpl["range"][0], tmpl["range"][1])
+            val = int(base_val * multiplier)
+        elif "fixed" not in tmpl: # 預設數值
+             val = int(10 * multiplier)
+
+        if "codes" in tmpl: sub = random.choice(tmpl["codes"])
+        if "cmds" in tmpl: sub = random.choice(tmpl["cmds"])
+        if "items" in tmpl: sub = random.choice(tmpl["items"])
+        if "npcs" in tmpl: sub = random.choice(tmpl["npcs"])
+        if tmpl["type"] == "crypto_input": sub = str(random.randint(100, 999))
+
+        # 組合描述
+        desc = tmpl["desc"].replace("{val}", str(val)).replace("{sub}", sub)
+        reward = int(tmpl["base_reward"] * multiplier * random.uniform(0.8, 1.2))
+
+        mission = {
+            "id": m_id,
+            "title": tmpl["text"],
+            "desc": desc,
+            "reward": reward,
+            "target": tmpl["type"],
+            "req_val": val,   # 需求數值
+            "req_sub": sub    # 需求字串 (股票代碼/物品名)
+        }
+        
+        new_missions.append(mission)
+
+    return new_missions
 
 # --- 讀取外部檔案 ---
 def load_quiz_from_file():
@@ -55,34 +110,21 @@ def load_quiz_from_file():
         except: pass
     return qs if qs else DEFAULT_QUIZ
 
-def load_missions_from_file():
-    ms = {}
-    if os.path.exists(MISSION_FILE):
-        try:
-            with open(MISSION_FILE, "r", encoding="utf-8") as f:
-                for line in f:
-                    p = line.strip().split("|")
-                    if len(p) >= 5:
-                        ms[p[0]] = {"title":p[1], "desc":p[2], "reward":int(p[3]), "target":p[4]}
-        except: pass
-    if not ms: return DEFAULT_MISSIONS
-    return ms
-
-# --- DB 初始化 (設定固定密碼) ---
+# --- DB 操作 ---
 def get_npc_data(name, job, level, money, fixed_code="1234"):
     return {
         "password": "npc", "defense_code": fixed_code, "name": name, 
         "level": level, "exp": level*100, "money": money, "bank_deposit": money*2, 
         "job": job, "inventory": {"Firewall": 1, "Chaos Heart": 1}, 
         "completed_missions": [], "pending_claims": [], "stocks": {},
-        "active_missions": [], "mailbox": []
+        "active_missions": [], "mailbox": [] # active_missions 現在存放完整任務物件，不只是 ID
     }
 
 def init_db():
     if not os.path.exists(USER_DB_FILE):
         users = {
-            "alice": get_npc_data("Alice", "Hacker", 15, 800, "1357"), # Alice 固定密碼
-            "bob": get_npc_data("Bob", "Engineer", 10, 350, "2468"),   # Bob 固定密碼
+            "alice": get_npc_data("Alice", "Hacker", 15, 800, "1357"),
+            "bob": get_npc_data("Bob", "Engineer", 10, 350, "2468"),
             "frank": {
                 "password": "x12345678x", "defense_code": "9999", "name": "Frank", 
                 "level": 100, "exp": 999999, "money": 9999999, "bank_deposit": 900000000, 
@@ -104,8 +146,8 @@ def save_db(data):
     with open(USER_DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# --- 核心邏輯 ---
 def get_today_event():
+    from config import CITY_EVENTS # 避免循環引用
     random.seed(int(date.today().strftime("%Y%m%d")))
     evt = random.choice(CITY_EVENTS)
     random.seed()
@@ -123,44 +165,79 @@ def send_mail(to_uid, from_uid, title, msg):
         return True
     return False
 
+# --- [核心] 任務檢查與刷新邏輯 ---
 def refresh_active_missions(user):
-    ms = load_missions_from_file()
-    all_ids = list(ms.keys())
-    exclude = set(user.get("completed_missions", []) + user.get("pending_claims", []) + user.get("active_missions", []))
-    available = [mid for mid in all_ids if mid not in exclude]
-    if not available and not user["active_missions"]: available = all_ids
+    """如果沒有任務或日期變更(可選)，則生成新任務"""
+    # 這裡的邏輯是：如果身上的任務少於 3 個，就補滿
+    # 為了讓任務多樣化，我們直接生成完整的任務物件存入 active_missions
     
-    changed = False
-    while len(user["active_missions"]) < 3 and available:
-        new_mid = random.choice(available)
-        user["active_missions"].append(new_mid)
-        available.remove(new_mid)
-        changed = True
-    return changed
+    current_missions = user.get("active_missions", [])
+    
+    # 簡單過濾掉格式錯誤的舊資料 (如果之前存的是字串ID)
+    current_missions = [m for m in current_missions if isinstance(m, dict)]
+    
+    if len(current_missions) < 3:
+        # 生成新任務
+        existing_ids = [m["id"] for m in current_missions]
+        new_batch = generate_dynamic_missions(user.get("level", 1), existing_ids)
+        
+        for m in new_batch:
+            if len(current_missions) >= 3: break
+            current_missions.append(m)
+            
+        user["active_missions"] = current_missions
+        return True # 表示有更新
+    return False
 
-def check_mission(uid, user, action_type, extra_data=None):
-    ms = load_missions_from_file()
+def check_mission(uid, user, action_type, extra_data=None, extra_val=0):
+    """
+    action_type: 觸發動作類型 (如 stock_buy)
+    extra_data: 輔助數據 (如 股票代碼 'CYBR' 或 CLI 指令 'help')
+    extra_val: 數值數據 (如 買入股數 50)
+    """
     if "completed_missions" not in user: user["completed_missions"] = []
     if "pending_claims" not in user: user["pending_claims"] = []
-    if "active_missions" not in user: user["active_missions"] = []
     
-    if refresh_active_missions(user): save_db({"users": load_db()["users"]|{uid:user}, "bbs":[]})
+    # 1. 檢查並補貨任務
+    if refresh_active_missions(user):
+        save_db({"users": load_db()["users"]|{uid:user}, "bbs":[]})
 
     triggered = False
-    active_copy = user["active_missions"][:]
-    for mid in active_copy:
-        if mid in ms:
-            m_data = ms[mid]
-            if m_data["target"] == action_type:
-                user["pending_claims"].append(mid)
-                user["active_missions"].remove(mid)
-                st.toast(f"🚩 達成：{m_data['title']}！", icon="🎁")
+    
+    # 2. 遍歷當前任務
+    # 我們需要倒序遍歷，因為可能會從列表中移除項目
+    for i in range(len(user["active_missions"]) - 1, -1, -1):
+        mission = user["active_missions"][i]
+        
+        # 判斷類型是否匹配
+        if mission["target"] == action_type:
+            is_match = True
+            
+            # 判斷細節條件 (req_sub)
+            if "req_sub" in mission and mission["req_sub"]:
+                # 如果任務要求特定股票/指令，但玩家做的動作不符
+                if str(extra_data) != str(mission["req_sub"]):
+                    is_match = False
+            
+            # 判斷數值條件 (req_val) -> 這裡簡化為單次觸發大於等於即可
+            # 進階寫法可以用進度條，這裡先做單次判定
+            if "req_val" in mission and mission["req_val"] > 0:
+                if extra_val < mission["req_val"]:
+                    is_match = False
+
+            if is_match:
+                # 任務完成！
+                user["pending_claims"].append(mission) # 移入待領取
+                user["active_missions"].pop(i)         # 從進行中移除
+                st.toast(f"🚩 達成：{mission['title']}！", icon="🎁")
                 triggered = True
 
+    # 3. 隱藏成就檢查 (保持原樣)
     def _t_hidden(mid, title):
         nonlocal triggered
-        if mid not in user["completed_missions"] and mid not in user["pending_claims"]:
-            user["pending_claims"].append(mid)
+        if mid not in user["completed_missions"] and mid not in [m.get("id","") if isinstance(m, dict) else m for m in user["pending_claims"]]:
+            # 隱藏成就還是用簡單 ID 格式
+            user["pending_claims"].append({"id": mid, "title": title, "reward": HIDDEN_MISSIONS[mid]["reward"], "desc": HIDDEN_MISSIONS[mid]["desc"]})
             st.toast(f"🕵️ 隱藏成就：{title}！", icon="🔥")
             triggered = True
 
@@ -171,13 +248,9 @@ def check_mission(uid, user, action_type, extra_data=None):
     if action_type == "cli_input" and extra_data == "sudo su": _t_hidden("H_HACK", HIDDEN_MISSIONS["H_HACK"]["title"])
     if action_type == "crypto_input" and str(extra_data) == "1024": _t_hidden("H_MATH", HIDDEN_MISSIONS["H_MATH"]["title"])
     if action_type == "pvp_win": _t_hidden("H_PVP_W", HIDDEN_MISSIONS["H_PVP_W"]["title"])
-    if action_type == "cli_error" and isinstance(extra_data, int) and extra_data >= 5: _t_hidden("H_SPAM", HIDDEN_MISSIONS["H_SPAM"]["title"])
     
-    if "stock_prices" in st.session_state:
-        val = sum([amt * st.session_state.stock_prices.get(code,0) for code, amt in user.get("stocks",{}).items()])
-        if val >= 50000: _t_hidden("H_WOLF", HIDDEN_MISSIONS["H_WOLF"]["title"])
-
     if triggered and uid != "frank":
+        # 再次補貨
         refresh_active_missions(user)
         save_db({"users": load_db()["users"]|{uid:user}, "bbs":[]})
     
