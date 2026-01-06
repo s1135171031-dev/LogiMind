@@ -1,36 +1,36 @@
-# ==========================================
-# 檔案: config.py
-# 用途: 靜態資料設定
-# ==========================================
+# config.py
+# 用途: 存放遊戲常數、道具設定、圖片資源
 
-# 股票資料 (設定基本波動率)
-STOCKS_DATA = {
-    "CYBR": {"name": "Cyberdyne", "base": 120, "volatility": 0.05},
-    "ROBO": {"name": "US Robots", "base": 85,  "volatility": 0.04},
-    "AI":   {"name": "Skynet AI", "base": 300, "volatility": 0.08},
-    "NUKA": {"name": "Nuka Cola", "base": 15,  "volatility": 0.02},
-    "WEY":  {"name": "Weyland",   "base": 210, "volatility": 0.03}
-}
-
-# 商店道具
 ITEMS = {
-    "Brute Force Script": {"price": 200, "desc": "Allows 1 hack attempt (PVP)."},
-    "Firewall V1":        {"price": 500, "desc": "Reduces hack success rate against you."},
-    "RAM Upgrade":        {"price": 1000, "desc": "Speed up operations (Cosmetic)."},
-    "Encrypted Key":      {"price": 3000, "desc": "Mystery item."}
+    "Mining GPU": {"price": 2000, "desc": "基礎礦機，每日登入 +$100", "type": "passive"},
+    "Trojan Virus": {"price": 500, "desc": "PVP 消耗品: 攻擊必備", "type": "attack"},
+    "Firewall": {"price": 800, "desc": "PVP 消耗品: 抵擋一次攻擊", "type": "defense"},
+    "Brute Force Script": {"price": 1200, "desc": "PVP 道具: 提升攻擊成功率", "type": "tool"},
+    "Coffee": {"price": 50, "desc": "回復精力 (裝飾用)", "type": "consumable"}
 }
 
-# 隨機事件 (影響股市)
+# 股市設定 (基價與波動率)
+STOCKS_DATA = {
+    "CYBR": {"name": "CyberCorp", "base": 500, "volatility": 0.05},
+    "ROBO": {"name": "RoboDynamics", "base": 300, "volatility": 0.08},
+    "AI":   {"name": "Sentient AI", "base": 800, "volatility": 0.12},
+    "FOOD": {"name": "SynthFood", "base": 50, "volatility": 0.02},
+    "HACK": {"name": "ZeroDay Grp", "base": 150, "volatility": 0.20}
+}
+
+# 每日事件
 CITY_EVENTS = [
-    {"name": "Stable", "desc": "Market is normal.", "effect": "none"},
-    {"name": "Zero Day", "desc": "Massive cyber attack reported!", "effect": "crash"},
-    {"name": "AI Breakthrough", "desc": "New sentient AI discovered.", "effect": "tech_boom"},
-    {"name": "Whale Movement", "desc": "Anonymous trillionaire entering market.", "effect": "whale"},
+    {"id": "E01", "name": "平靜的一天", "desc": "各項指數正常。", "effect": "normal"},
+    {"id": "E02", "name": "牛市來臨", "desc": "科技股看漲，挖礦收益 +50%。", "effect": "tech_boom"},
+    {"id": "E03", "name": "黑色星期五", "desc": "黑市大特價，所有道具 7 折。", "effect": "shop_discount"},
+    {"id": "E04", "name": "太陽風暴", "desc": "通訊干擾，駭客攻擊成功率下降。", "effect": "hack_nerf"},
+    {"id": "E05", "name": "金融海嘯", "desc": "股市全面崩跌預警！", "effect": "crash"},
 ]
 
-# 邏輯閘 SVG 圖示
+# SVG 邏輯閘資源
 SVG_LIB = {
-    "AND": """<svg height="100" width="100"><path d="M10,10 L50,10 A40,40 0 0,1 50,90 L10,90 Z" fill="none" stroke="#00ff41" stroke-width="3"/><line x1="0" y1="30" x2="10" y2="30" stroke="#00ff41" /><line x1="0" y1="70" x2="10" y2="70" stroke="#00ff41" /><line x1="90" y1="50" x2="100" y2="50" stroke="#00ff41" /></svg>""",
-    "OR":  """<svg height="100" width="100"><path d="M10,10 Q60,10 90,50 Q60,90 10,90 Q30,50 10,10 Z" fill="none" stroke="#00ff41" stroke-width="3"/><line x1="0" y1="30" x2="10" y2="30" stroke="#00ff41" /><line x1="0" y1="70" x2="10" y2="70" stroke="#00ff41" /><line x1="90" y1="50" x2="100" y2="50" stroke="#00ff41" /></svg>""",
-    "NOT": """<svg height="100" width="100"><path d="M10,10 L90,50 L10,90 Z" fill="none" stroke="#00ff41" stroke-width="3"/><circle cx="95" cy="50" r="5" stroke="#00ff41" fill="none"/><line x1="0" y1="50" x2="10" y2="50" stroke="#00ff41" /></svg>"""
+    "AND": '''<svg width="150" height="80"><path d="M20,10 L70,10 C95,10 110,30 110,40 C110,50 95,70 70,70 L20,70 Z" fill="none" stroke="#00FF00" stroke-width="3"/><path d="M0,25 L20,25 M0,55 L20,55 M110,40 L140,40" stroke="#00FF00" stroke-width="3"/><text x="40" y="45" fill="white" font-family="monospace">AND</text></svg>''',
+    "OR": '''<svg width="150" height="80"><path d="M20,10 L60,10 Q90,40 60,70 L20,70 Q45,40 20,10 Z" fill="none" stroke="#00FF00" stroke-width="3"/><path d="M0,25 L25,25 M0,55 L25,55 M90,40 L120,40" stroke="#00FF00" stroke-width="3"/><text x="35" y="45" fill="white" font-family="monospace">OR</text></svg>''',
+    "XOR": '''<svg width="150" height="80"><path d="M35,10 L75,10 Q105,40 75,70 L35,70 Q60,40 35,10 Z" fill="none" stroke="#00FF00" stroke-width="3"/><path d="M15,10 Q40,40 15,70" fill="none" stroke="#00FF00" stroke-width="3"/><path d="M0,25 L25,25 M0,55 L25,55 M105,40 L135,40" stroke="#00FF00" stroke-width="3"/><text x="50" y="45" fill="white" font-family="monospace">XOR</text></svg>''',
+    "NOT": '''<svg width="150" height="80"><path d="M30,10 L30,70 L90,40 Z" fill="none" stroke="#00FF00" stroke-width="3"/><circle cx="96" cy="40" r="5" fill="none" stroke="#00FF00" stroke-width="2"/><path d="M0,40 L30,40 M102,40 L130,40" stroke="#00FF00" stroke-width="3"/><text x="40" y="45" fill="white" font-family="monospace">NOT</text></svg>'''
 }
