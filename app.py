@@ -1,7 +1,6 @@
 # ==========================================
 # 檔案: app.py
-# 用途: 主程式 (支援讀取 questions.txt)
-# 修改內容: 移除導致報錯的圖片標記，保留暴力波動設定
+# 用途: 系統核心 (包含瘋狂股市邏輯)
 # ==========================================
 import streamlit as st
 import random
@@ -24,9 +23,12 @@ def load_quiz_from_file():
     default_q = [{"q": "系統錯誤: 找不到 questions.txt", "options": ["重試", "略過"], "ans": "重試"}]
     
     if not os.path.exists("questions.txt"):
-        st.toast("⚠️ 找不到 questions.txt，請確認檔案位置！")
-        return default_q
-
+        # 如果檔案不存在，生成一個範例檔案
+        with open("questions.txt", "w", encoding="utf-8") as f:
+            f.write("Python是什麼?|程式語言,蛇,咖啡|程式語言\n")
+            f.write("CityOS的核心是?|數據,金錢,控制|數據\n")
+        st.toast("⚠️ 已自動建立範例 questions.txt")
+    
     try:
         with open("questions.txt", "r", encoding="utf-8") as f:
             for line in f:
@@ -38,7 +40,6 @@ def load_quiz_from_file():
                     q_text = parts[0].strip()
                     options = [o.strip() for o in parts[1].split(",")]
                     ans = parts[2].strip()
-                    
                     if len(options) >= 2:
                         questions.append({"q": q_text, "options": options, "ans": ans})
         
@@ -60,9 +61,8 @@ st.markdown("""
         font-family: 'Courier New', monospace !important;
         text-shadow: 0 0 2px rgba(0, 255, 65, 0.3);
     }
-    [data-testid="stIcon"], .material-icons, .st-emotion-cache-1wbqy5l, .e1b2p2ww0 {
+    [data-testid="stIcon"], .material-icons {
         font-family: 'Material Icons' !important;
-        font-style: normal !important; text-transform: none !important;
     }
     .stButton > button {
         background-color: #000 !important; color: #00ff41 !important;
@@ -73,7 +73,6 @@ st.markdown("""
         background-color: #111 !important; color: #00ff41 !important; border: 1px solid #333 !important;
     }
     [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 1px solid #00ff41; }
-    .js-plotly-plot .plotly .main-svg { background: rgba(0,0,0,0) !important; }
     header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -81,7 +80,7 @@ st.markdown("""
 # --- 系統初始化 ---
 init_db()
 
-# --- 股市運算引擎 (🔥維持：超暴力波動版) ---
+# --- 股市運算引擎 (🔥超暴力波動版) ---
 def update_stock_market():
     now = time.time()
     last_update = st.session_state.get("last_stock_update", 0)
@@ -93,7 +92,6 @@ def update_stock_market():
         for _ in range(30):
             next_p = {}
             for code, price in current_sim_prices.items():
-                # 初始模擬也加大波動
                 vol = STOCKS_DATA[code]["volatility"] * 5.0 
                 change = random.uniform(-vol, vol)
                 next_p[code] = max(10, int(price * (1 + change)))
@@ -103,7 +101,7 @@ def update_stock_market():
         st.session_state.stock_history = pd.DataFrame(history_list)
         st.session_state.last_stock_update = now
 
-    # 每 5 秒更新一次，但幅度很劇烈
+    # 每 5 秒更新一次
     if now - last_update > 5:
         prices = {}
         history = st.session_state.get("stock_history", pd.DataFrame())
@@ -112,26 +110,25 @@ def update_stock_market():
         for code, data in STOCKS_DATA.items():
             prev = st.session_state.stock_prices.get(code, data['base'])
             
-            # 🔥 波動係數維持 15.0 (十倍奉還)
+            # 🔥 波動係數 15.0 (劇烈)
             volatility = data['volatility'] * 15.0 
             
             # 🔥 事件影響力加倍
             if evt.get("effect") == "crash": 
-                change_pct = random.uniform(-0.60, -0.20) # 崩盤更慘
+                change_pct = random.uniform(-0.60, -0.20)
             elif evt.get("effect") == "tech_boom" and code in ["CYBR", "ROBO", "AI"]: 
-                change_pct = random.uniform(0.30, 0.80)   # 暴漲更狂
+                change_pct = random.uniform(0.30, 0.80)
             elif evt.get("effect") == "whale" and random.random() > 0.5: 
-                change_pct = random.uniform(-0.8, 0.8)    # 鯨魚大戶直接翻倍或腰斬
+                change_pct = random.uniform(-0.8, 0.8)
             else: 
                 change_pct = random.uniform(-volatility, volatility)
             
             new_price = prev * (1 + change_pct)
             
-            # 🔥 隨機雜訊維持 ±50
+            # 🔥 隨機雜訊 ±50
             random_jump = random.randint(-50, 50)
             new_price += random_jump
             
-            # 防止價格太極端
             if new_price > 2000: new_price -= random.uniform(50, 150) 
             elif new_price < 5: new_price = random.uniform(5, 15)     
             
@@ -167,7 +164,6 @@ def page_dashboard(uid, user):
     m3.metric("Stock Value", f"${stocks_val:,}")
     
     st.subheader("📉 Market Trends (Live)")
-    # 已修正：移除了這裡的錯誤圖片標記
     st.line_chart(st.session_state.stock_history, height=300)
 
 def page_stock(uid, user):
@@ -282,7 +278,6 @@ def page_lab(uid, user):
     i1 = c1.toggle("Input A")
     i2 = c2.toggle("Input B", disabled=(gate=="NOT"))
     
-    # 已修正：移除了這裡的錯誤圖片標記
     st.markdown(SVG_LIB.get(gate, "SVG Error"), unsafe_allow_html=True)
     out = False
     if gate == "AND": out = i1 and i2
