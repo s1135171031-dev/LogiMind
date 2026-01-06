@@ -17,7 +17,7 @@ def init_db():
         else:
             st.session_state.db = {"users": {}}
             # 建立預設管理員
-            create_user("admin", "admin", "SysAdmin")
+            create_user("frank", "x", "SysAdmin")
 
 def save_db():
     with open(DB_FILE, "w") as f:
