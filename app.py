@@ -1,5 +1,5 @@
 # app.py
-# 用途: 系統核心 (毒舌 UI 版)
+# 用途: 系統核心 (Toxic UI + Job System + 5-Col Quiz)
 
 import streamlit as st
 import random
@@ -16,7 +16,7 @@ except ImportError:
     st.error("⚠️ 檔案遺失！請確保 app.py, config.py, database.py 都在同目錄下。")
     st.stop()
 
-# --- 讀取題庫 (保持新格式支援) ---
+# --- 讀取題庫 (支援 ID|Level|Q|Opts|Ans 格式) ---
 def load_quiz_from_file():
     questions = []
     default_q = [{"q": "系統錯誤: 題庫損毀", "options": ["...", "???"], "ans": "..."}]
@@ -59,7 +59,7 @@ def load_quiz_from_file():
 # --- 頁面設定 ---
 st.set_page_config(page_title="CityOS V32.1 Toxic", layout="wide", page_icon="☣️", initial_sidebar_state="expanded")
 
-# --- CSS (維持原本風格) ---
+# --- CSS ---
 st.markdown("""
 <style>
     .stApp { background-color: #050505; color: #00ff41; }
@@ -258,7 +258,7 @@ def page_shop(uid, user):
                 else: st.error("餘額不足。窮鬼。")
 
 def page_quiz(uid, user):
-    st.title("📝 智力測驗")
+    st.title("📝 智力測驗 (賺取微薄薪水)")
     
     with st.expander("⚙️ 題庫"):
         if st.button("🔄 重新載入"):
@@ -390,9 +390,18 @@ def main():
     uid = st.session_state.uid
     user = get_user(uid)
     
+    # --- Sidebar 顯示職業 ---
     with st.sidebar:
         st.title(f"👤 {user['name']}")
+        
+        job_title = user.get("job", "Unknown")
+        st.caption(f"ID: {uid} | Class: {job_title}")
+        
         st.metric("資金", f"${user['money']:,}")
+        
+        if job_title == "Gamemaster":
+            st.warning("⚠️ 開發者模式")
+
         nav = st.radio("選單", ["儀表板", "股市", "任務", "黑市", "PVP", "CLI", "邏輯實驗室", "測驗"])
         if st.button("斷開連線"): st.session_state.logged_in = False; st.rerun()
 
