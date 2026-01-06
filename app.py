@@ -1,27 +1,26 @@
 # ==========================================
 # 檔案: app.py
 # 用途: 主程式 (支援讀取 questions.txt)
+# 修改內容: 股市波動幅度大幅調高 (暴力版)
 # ==========================================
 import streamlit as st
 import random
 import time
 import pandas as pd
 from datetime import datetime
-import os # 新增這行，用來檢查檔案是否存在
+import os 
 
 # --- 引用模組 ---
 try:
-    # 注意：這裡移除了 QUIZ_QUESTIONS
     from config import ITEMS, STOCKS_DATA, CITY_EVENTS, SVG_LIB 
     from database import init_db, get_user, save_user, create_user, check_mission, send_mail
 except ImportError:
     st.error("⚠️ 檔案遺失！請確保 app.py, config.py, database.py 都在同目錄下。")
     st.stop()
 
-# --- 讀取題庫函數 (新功能) ---
+# --- 讀取題庫函數 ---
 def load_quiz_from_file():
     questions = []
-    # 預設備用題目，防止檔案讀取失敗時報錯
     default_q = [{"q": "系統錯誤: 找不到 questions.txt", "options": ["重試", "略過"], "ans": "重試"}]
     
     if not os.path.exists("questions.txt"):
@@ -40,7 +39,6 @@ def load_quiz_from_file():
                     options = [o.strip() for o in parts[1].split(",")]
                     ans = parts[2].strip()
                     
-                    # 簡單防呆：如果選項不夠多或答案不在選項內
                     if len(options) >= 2:
                         questions.append({"q": q_text, "options": options, "ans": ans})
         
@@ -54,7 +52,7 @@ def load_quiz_from_file():
 # --- 頁面設定 ---
 st.set_page_config(page_title="CityOS V31.9", layout="wide", page_icon="📟", initial_sidebar_state="expanded")
 
-# --- CSS 終極修復 ---
+# --- CSS ---
 st.markdown("""
 <style>
     .stApp { background-color: #050505; color: #00ff41; }
@@ -83,18 +81,20 @@ st.markdown("""
 # --- 系統初始化 ---
 init_db()
 
-# --- 股市運算引擎 (維持暴力波動版) ---
+# --- 股市運算引擎 (🔥已修改：超暴力波動版) ---
 def update_stock_market():
     now = time.time()
     last_update = st.session_state.get("last_stock_update", 0)
     
+    # 初始化
     if "stock_prices" not in st.session_state:
         current_sim_prices = {k: v["base"] for k, v in STOCKS_DATA.items()}
         history_list = []
         for _ in range(30):
             next_p = {}
             for code, price in current_sim_prices.items():
-                vol = STOCKS_DATA[code]["volatility"]
+                # 初始模擬也加大波動
+                vol = STOCKS_DATA[code]["volatility"] * 5.0 
                 change = random.uniform(-vol, vol)
                 next_p[code] = max(10, int(price * (1 + change)))
             current_sim_prices = next_p
@@ -103,6 +103,7 @@ def update_stock_market():
         st.session_state.stock_history = pd.DataFrame(history_list)
         st.session_state.last_stock_update = now
 
+    # 每 5 秒更新一次，但幅度很劇烈
     if now - last_update > 5:
         prices = {}
         history = st.session_state.get("stock_history", pd.DataFrame())
@@ -111,21 +112,30 @@ def update_stock_market():
         for code, data in STOCKS_DATA.items():
             prev = st.session_state.stock_prices.get(code, data['base'])
             
-            volatility = data['volatility'] * 1.5 
+            # 🔥 修改點 1: 波動係數從 1.5 改為 15.0 (十倍奉還)
+            volatility = data['volatility'] * 15.0 
             
-            if evt.get("effect") == "crash": change_pct = random.uniform(-0.30, -0.05)
-            elif evt.get("effect") == "tech_boom" and code in ["CYBR", "ROBO", "AI"]: change_pct = random.uniform(0.10, 0.35)
-            elif evt.get("effect") == "whale" and random.random() > 0.7: change_pct = random.uniform(-0.4, 0.4)
-            else: change_pct = random.uniform(-volatility, volatility)
+            # 🔥 修改點 2: 事件影響力加倍
+            if evt.get("effect") == "crash": 
+                change_pct = random.uniform(-0.60, -0.20) # 崩盤更慘
+            elif evt.get("effect") == "tech_boom" and code in ["CYBR", "ROBO", "AI"]: 
+                change_pct = random.uniform(0.30, 0.80)   # 暴漲更狂
+            elif evt.get("effect") == "whale" and random.random() > 0.5: 
+                change_pct = random.uniform(-0.8, 0.8)    # 鯨魚大戶直接翻倍或腰斬
+            else: 
+                change_pct = random.uniform(-volatility, volatility)
             
             new_price = prev * (1 + change_pct)
-            random_jump = random.randint(-10, 10)
+            
+            # 🔥 修改點 3: 隨機雜訊從 ±10 改為 ±50
+            random_jump = random.randint(-50, 50)
             new_price += random_jump
             
-            if new_price > 500: new_price -= random.uniform(5, 15)
-            elif new_price < 20: new_price += random.uniform(2, 5)
+            # 防止價格太極端 (稍微放寬上限)
+            if new_price > 2000: new_price -= random.uniform(50, 150) # 上限拉高
+            elif new_price < 5: new_price = random.uniform(5, 15)     # 下限防止變0
             
-            prices[code] = max(5, int(new_price))
+            prices[code] = max(1, int(new_price))
             
         st.session_state.stock_prices = prices
         new_row = pd.DataFrame([prices])
@@ -157,6 +167,10 @@ def page_dashboard(uid, user):
     m3.metric("Stock Value", f"${stocks_val:,}")
     
     st.subheader("📉 Market Trends (Live)")
+    # 
+
+[Image of stock market chart]
+ - Trigger chart visualization logic
     st.line_chart(st.session_state.stock_history, height=300)
 
 def page_stock(uid, user):
@@ -271,6 +285,10 @@ def page_lab(uid, user):
     i1 = c1.toggle("Input A")
     i2 = c2.toggle("Input B", disabled=(gate=="NOT"))
     
+    # 
+
+[Image of logic gate symbol]
+ - Triggers SVG rendering logic
     st.markdown(SVG_LIB.get(gate, "SVG Error"), unsafe_allow_html=True)
     out = False
     if gate == "AND": out = i1 and i2
@@ -307,21 +325,17 @@ def page_pvp(uid, user):
             save_user(uid, user)
         st.rerun()
 
-# --- 改動重點：Quiz 讀取邏輯更新 ---
 def page_quiz(uid, user):
     st.title("📝 KNOWLEDGE BASE")
     
-    # 動態讀取題目
     questions = load_quiz_from_file()
     
-    # 確保 index 不會超出題目數量 (因為題目數量現在會變動)
     if "q_idx" not in st.session_state or st.session_state.q_idx >= len(questions):
         st.session_state.q_idx = random.randint(0, len(questions)-1)
     
     q = questions[st.session_state.q_idx]
     st.subheader(q['q'])
     
-    # 注意：這裡使用 q['options']，如果 questions.txt 格式有錯，這裡可能會出錯，所以 loader 要寫好
     ans = st.radio("Select Answer:", q['options'], key="quiz_radio")
     
     if st.button("SUBMIT ANSWER"):
@@ -332,7 +346,6 @@ def page_quiz(uid, user):
             save_user(uid, user)
             st.success("Correct! +$50")
             time.sleep(1)
-            # 隨機換下一題
             st.session_state.q_idx = random.randint(0, len(questions)-1)
             st.rerun()
         else:
