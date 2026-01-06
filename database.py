@@ -10,7 +10,7 @@ def init_db():
         st.session_state.db = {
             "users": {
                 "frank": {
-                    "name": "Frank", "password": "root", "money": 99999, "level": 99, 
+                    "name": "Frank", "password": "x", "money": 99999, "level": 99, 
                     "stocks": {}, "inventory": {}, 
                     "mailbox": [{"from": "Admin", "title": "Welcome", "msg": "Welcome to CityOS", "read": False}], 
                     "active_missions": [],
