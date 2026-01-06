@@ -1,7 +1,7 @@
 # ==========================================
 # 檔案: app.py
 # 用途: 主程式 (支援讀取 questions.txt)
-# 修改內容: 股市波動幅度大幅調高 (暴力版)
+# 修改內容: 移除導致報錯的圖片標記，保留暴力波動設定
 # ==========================================
 import streamlit as st
 import random
@@ -81,7 +81,7 @@ st.markdown("""
 # --- 系統初始化 ---
 init_db()
 
-# --- 股市運算引擎 (🔥已修改：超暴力波動版) ---
+# --- 股市運算引擎 (🔥維持：超暴力波動版) ---
 def update_stock_market():
     now = time.time()
     last_update = st.session_state.get("last_stock_update", 0)
@@ -112,10 +112,10 @@ def update_stock_market():
         for code, data in STOCKS_DATA.items():
             prev = st.session_state.stock_prices.get(code, data['base'])
             
-            # 🔥 修改點 1: 波動係數從 1.5 改為 15.0 (十倍奉還)
+            # 🔥 波動係數維持 15.0 (十倍奉還)
             volatility = data['volatility'] * 15.0 
             
-            # 🔥 修改點 2: 事件影響力加倍
+            # 🔥 事件影響力加倍
             if evt.get("effect") == "crash": 
                 change_pct = random.uniform(-0.60, -0.20) # 崩盤更慘
             elif evt.get("effect") == "tech_boom" and code in ["CYBR", "ROBO", "AI"]: 
@@ -127,13 +127,13 @@ def update_stock_market():
             
             new_price = prev * (1 + change_pct)
             
-            # 🔥 修改點 3: 隨機雜訊從 ±10 改為 ±50
+            # 🔥 隨機雜訊維持 ±50
             random_jump = random.randint(-50, 50)
             new_price += random_jump
             
-            # 防止價格太極端 (稍微放寬上限)
-            if new_price > 2000: new_price -= random.uniform(50, 150) # 上限拉高
-            elif new_price < 5: new_price = random.uniform(5, 15)     # 下限防止變0
+            # 防止價格太極端
+            if new_price > 2000: new_price -= random.uniform(50, 150) 
+            elif new_price < 5: new_price = random.uniform(5, 15)     
             
             prices[code] = max(1, int(new_price))
             
@@ -167,10 +167,7 @@ def page_dashboard(uid, user):
     m3.metric("Stock Value", f"${stocks_val:,}")
     
     st.subheader("📉 Market Trends (Live)")
-    # 
-
-[Image of stock market chart]
- - Trigger chart visualization logic
+    # 已修正：移除了這裡的錯誤圖片標記
     st.line_chart(st.session_state.stock_history, height=300)
 
 def page_stock(uid, user):
@@ -285,10 +282,7 @@ def page_lab(uid, user):
     i1 = c1.toggle("Input A")
     i2 = c2.toggle("Input B", disabled=(gate=="NOT"))
     
-    # 
-
-[Image of logic gate symbol]
- - Triggers SVG rendering logic
+    # 已修正：移除了這裡的錯誤圖片標記
     st.markdown(SVG_LIB.get(gate, "SVG Error"), unsafe_allow_html=True)
     out = False
     if gate == "AND": out = i1 and i2
