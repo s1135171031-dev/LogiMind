@@ -1,7 +1,7 @@
 # config.py
 # 用途: 遊戲常數配置 (毒舌版)
 
-# 道具描述變得更憤世嫉俗
+# 道具描述：極度諷刺
 ITEMS = {
     "Mining GPU": {
         "price": 2500, 
@@ -48,7 +48,7 @@ CITY_EVENTS = [
     {"id": "E05", "name": "市場崩盤", "desc": "看著那些富人的資產蒸發，是你今天唯一的樂趣。", "effect": "crash"},
 ]
 
-# SVG 資源保持不變
+# SVG 邏輯閘資源
 SVG_LIB = {
     "AND": '''<svg width="150" height="80"><path d="M20,10 L70,10 C95,10 110,30 110,40 C110,50 95,70 70,70 L20,70 Z" fill="none" stroke="#00FF00" stroke-width="3"/><path d="M0,25 L20,25 M0,55 L20,55 M110,40 L140,40" stroke="#00FF00" stroke-width="3"/><text x="40" y="45" fill="white" font-family="monospace">AND</text></svg>''',
     "OR": '''<svg width="150" height="80"><path d="M20,10 L60,10 Q90,40 60,70 L20,70 Q45,40 20,10 Z" fill="none" stroke="#00FF00" stroke-width="3"/><path d="M0,25 L25,25 M0,55 L25,55 M90,40 L120,40" stroke="#00FF00" stroke-width="3"/><text x="35" y="45" fill="white" font-family="monospace">OR</text></svg>''',
