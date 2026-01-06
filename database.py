@@ -1,5 +1,5 @@
 # database.py
-# 用途: 處理所有 JSON 檔案讀寫 (Users, Global Stocks)
+# 用途: 資料處理 (低獎勵、毒舌版)
 
 import json
 import os
@@ -11,13 +11,11 @@ from config import STOCKS_DATA
 USER_DB_FILE = "cityos_users.json"
 STOCK_DB_FILE = "cityos_stocks.json"
 
-# --- 初始化 ---
 def init_db():
-    # 1. 初始化使用者資料庫
     if not os.path.exists(USER_DB_FILE):
         users = {
             "admin": {
-                "password": "admin", "name": "Administrator", "money": 999999, 
+                "password": "admin", "name": "System OVERLORD", "money": 999999, 
                 "stocks": {}, "inventory": {}, "mailbox": [], "active_missions": [], "pending_claims": [],
                 "last_hack": 0
             }
@@ -25,17 +23,15 @@ def init_db():
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4)
             
-    # 2. 初始化全域股市資料庫 (🔥 重點修正：讓所有人共享股價)
     if not os.path.exists(STOCK_DB_FILE):
         stock_state = {
             "last_update": time.time(),
             "prices": {k: v["base"] for k, v in STOCKS_DATA.items()},
-            "history": [] # 簡單存最後幾筆歷史
+            "history": []
         }
         with open(STOCK_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(stock_state, f, indent=4)
 
-# --- 使用者操作 ---
 def get_all_users():
     try:
         with open(USER_DB_FILE, "r", encoding="utf-8") as f:
@@ -47,7 +43,6 @@ def get_user(uid):
     return users.get(uid)
 
 def save_user(uid, data):
-    # 讀取全部 -> 更新單一 -> 寫回 (避免覆蓋其他人的操作，雖然 JSON 仍有競爭風險，但比覆蓋全檔好)
     users = get_all_users()
     users[uid] = data
     with open(USER_DB_FILE, "w", encoding="utf-8") as f:
@@ -56,11 +51,32 @@ def save_user(uid, data):
 def create_user(uid, pwd, name):
     users = get_all_users()
     if uid in users: return False
+    
+    # 初始獎勵極低，讓玩家感到飢餓
+    # 任務文字充滿諷刺
     users[uid] = {
-        "password": pwd, "name": name, "money": 1000, 
+        "password": pwd, "name": name, "money": 500, # 初始資金也變少
         "stocks": {}, "inventory": {}, 
-        "mailbox": [{"from":"System","title":"Welcome","msg":"Welcome to CityOS!","time":str(datetime.now())}],
-        "active_missions": [{"title":"First Step","desc":"Buy something in shop","reward":500,"type":"shop_buy"}],
+        "mailbox": [{
+            "from": "System",
+            "title": "入籍通知",
+            "msg": "又一個浪費空氣的底層公民加入了 CityOS。別指望系統會同情你，活下去，或者死在路邊。",
+            "time": str(datetime.now())
+        }],
+        "active_missions": [
+            {
+                "title": "消費主義奴隸", 
+                "desc": "去商店隨便買個垃圾。證明你對經濟有貢獻。", 
+                "reward": 100, # 低獎勵
+                "type": "shop_buy"
+            },
+            {
+                "title": "用點腦子", 
+                "desc": "去知識庫做對一題。雖然我不抱期望。", 
+                "reward": 50,  # 極低獎勵
+                "type": "quiz_done"
+            }
+        ],
         "pending_claims": [],
         "last_hack": 0
     }
@@ -68,7 +84,6 @@ def create_user(uid, pwd, name):
         json.dump(users, f, indent=4, ensure_ascii=False)
     return True
 
-# --- 股市操作 (全域) ---
 def get_global_stock_state():
     try:
         with open(STOCK_DB_FILE, "r", encoding="utf-8") as f:
@@ -79,7 +94,6 @@ def save_global_stock_state(state):
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=4)
 
-# --- 輔助功能 ---
 def send_mail(to_uid, from_uid, title, msg):
     users = get_all_users()
     if to_uid not in users: return False
@@ -97,7 +111,6 @@ def send_mail(to_uid, from_uid, title, msg):
     return True
 
 def check_mission(uid, user, action_type):
-    # 簡單的任務觸發器
     updated = False
     new_missions = []
     
@@ -109,6 +122,19 @@ def check_mission(uid, user, action_type):
             new_missions.append(m)
             
     user["active_missions"] = new_missions
+    
+    # 如果任務被解完了，隨機生成一個新的低報酬任務 (50-200元)
+    if updated and len(user["active_missions"]) < 2:
+        reward = random.randint(50, 200)
+        task_pool = [
+            {"title": "乖乖納稅", "desc": "再去買個東西。錢不花掉就會貶值，懂嗎？", "type": "shop_buy"},
+            {"title": "鍵盤俠", "desc": "在終端機隨便打個指令。假裝你是駭客。", "type": "cli_input"},
+            {"title": "賭徒心態", "desc": "去股市買張廢紙(股票)。", "type": "stock_buy"}
+        ]
+        new_task = random.choice(task_pool)
+        new_task["reward"] = reward
+        user["active_missions"].append(new_task)
+
     if updated:
         save_user(uid, user)
         return True
