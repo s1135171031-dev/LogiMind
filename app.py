@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 from config import ITEMS, STOCKS_DATA, SVG_LIB, LEVEL_TITLES
 
-# 🔥 這裡是最重要的修正，寫在同一行或分行但不加註解
+# 🔥 這裡是最重要的修正，寫在同一行，解決 SyntaxError
 from database import init_db, get_user, save_user, create_user, get_global_stock_state, save_global_stock_state, rebuild_market, check_mission, send_mail, get_all_users, apply_environmental_hazard, add_exp
 
 st.set_page_config(page_title="CityOS Hazard", layout="wide", page_icon="☣️")
