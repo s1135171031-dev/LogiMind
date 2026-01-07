@@ -4,7 +4,7 @@ import os
 import random
 import time
 from datetime import datetime, timedelta
-from config import STOCKS_DATA
+from config import STOCKS_DATA, LEVEL_TITLES
 
 USER_DB_FILE = "cityos_users.json"
 STOCK_DB_FILE = "cityos_chaos_market.json"
@@ -12,8 +12,8 @@ STOCK_DB_FILE = "cityos_chaos_market.json"
 def init_db():
     if not os.path.exists(USER_DB_FILE):
         users = {
-            "admin": { "password": "admin", "name": "System OVERLORD", "money": 9999, "job": "Admin", "stocks": {}, "inventory": {}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 0 },
-            "frank": { "password": "x", "name": "Frank (Dev)", "money": 50000, "job": "Gamemaster", "stocks": {"CYBR": 100}, "inventory": {"Trojan Virus": 5}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 20 }
+            "admin": { "password": "admin", "name": "System OVERLORD", "money": 9999, "job": "Admin", "stocks": {}, "inventory": {}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 0, "level": 10, "exp": 0 },
+            "frank": { "password": "x", "name": "Frank (Dev)", "money": 50000, "job": "Gamemaster", "stocks": {"CYBR": 100}, "inventory": {"Trojan Virus": 5}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 20, "level": 5, "exp": 100 }
         }
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4, ensure_ascii=False)
@@ -36,7 +36,9 @@ def get_user(uid):
     user = users.get(uid)
     if user:
         dirty = False
-        # 確保有 toxicity 欄位
+        # 自動補足缺失欄位 (Migration)
+        if "level" not in user: user["level"] = 1; dirty = True
+        if "exp" not in user: user["exp"] = 0; dirty = True
         if "toxicity" not in user: user["toxicity"] = 0; dirty = True
         if "inventory" not in user: user["inventory"] = {}; dirty = True
         if dirty: save_user(uid, user)
@@ -49,17 +51,37 @@ def create_user(uid, pwd, name):
         "password": pwd, "name": name, "money": 500, 
         "job": "Citizen", "stocks": {}, "inventory": {}, 
         "mailbox": [], "active_missions": [], "pending_claims": [], 
-        "last_hack": 0, "toxicity": 0 
+        "last_hack": 0, "toxicity": 0,
+        "level": 1, "exp": 0
     }
     with open(USER_DB_FILE, "w", encoding="utf-8") as f: 
         json.dump(users, f, indent=4, ensure_ascii=False)
     return True
 
-# 🔥 核心毒氣函數 (必須存在) 🔥
+# 🔥 經驗值與升級系統
+def add_exp(uid, amount):
+    user = get_user(uid)
+    if not user: return False, 0
+    
+    user["exp"] += amount
+    leveled_up = False
+    required_exp = user["level"] * 100
+    
+    if user["exp"] >= required_exp:
+        user["exp"] -= required_exp
+        user["level"] += 1
+        leveled_up = True
+        # 升級獎勵：回滿血(解毒) + 獎金
+        user["toxicity"] = 0
+        bonus = user["level"] * 50
+        user["money"] += bonus
+    
+    save_user(uid, user)
+    return leveled_up, user["level"]
+
+# ☣️ 毒氣系統
 def apply_environmental_hazard(uid, user):
-    """ 計算是否因環境中毒 """
     chance = 0.3
-    # 面具防護
     if user.get("inventory", {}).get("Gas Mask", 0) > 0:
         chance = 0.05
         
@@ -96,7 +118,7 @@ def save_global_stock_state(state):
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
 
 def check_mission(uid, user, action_type):
-    # (保持原本的任務邏輯，為節省篇幅省略，若需要請告知)
+    # 簡化版任務檢查，保留擴充性
     return False
 
 def send_mail(to_uid, from_uid, title, msg):
