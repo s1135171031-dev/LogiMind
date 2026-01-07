@@ -4,23 +4,22 @@ import os
 import random
 import time
 from datetime import datetime, timedelta
-from config import STOCKS_DATA, LEVEL_TITLES
+from config import STOCKS_DATA
 
 USER_DB_FILE = "cityos_users.json"
 STOCK_DB_FILE = "cityos_chaos_market.json"
 
 def init_db():
-    # 若檔案不存在，初始化預設資料
     if not os.path.exists(USER_DB_FILE):
         users = {
-            # 🔥 這裡設定了你的管理員帳號
+            # 👑 管理員帳號
             "frank": { 
                 "password": "x", 
                 "name": "System OVERLORD", 
                 "money": 99999, 
                 "job": "Admin", 
                 "stocks": {}, 
-                "inventory": {"Trojan Virus": 10, "Gas Mask": 1}, 
+                "inventory": {"Trojan Virus": 50, "Gas Mask": 1}, 
                 "mailbox": [], 
                 "active_missions": [], 
                 "pending_claims": [], 
@@ -51,7 +50,6 @@ def get_user(uid):
     users = get_all_users()
     user = users.get(uid)
     if user:
-        # 自動修復缺少的欄位
         dirty = False
         if "level" not in user: user["level"] = 1; dirty = True
         if "exp" not in user: user["exp"] = 0; dirty = True
@@ -74,35 +72,30 @@ def create_user(uid, pwd, name):
         json.dump(users, f, indent=4, ensure_ascii=False)
     return True
 
-# 🔥 經驗值與升級系統
 def add_exp(uid, amount):
     user = get_user(uid)
     if not user: return False, 0
-    
     user["exp"] += amount
     leveled_up = False
     required_exp = user["level"] * 100
-    
     if user["exp"] >= required_exp:
         user["exp"] -= required_exp
         user["level"] += 1
         leveled_up = True
-        user["toxicity"] = 0 # 升級解毒
-        bonus = user["level"] * 100
-        user["money"] += bonus
-    
+        user["toxicity"] = 0
+        user["money"] += user["level"] * 100
     save_user(uid, user)
     return leveled_up, user["level"]
 
-# ☣️ 毒氣系統
 def apply_environmental_hazard(uid, user):
-    chance = 0.3
+    chance = 0.2
+    # 這裡的邏輯是：有防毒面具會保護你，但如果你持有高危物品(如興奮劑)會增加風險
     if user.get("inventory", {}).get("Gas Mask", 0) > 0:
-        chance = 0.05
+        chance = 0.02
         
     is_poisoned = False
     if random.random() < chance:
-        dmg = random.randint(2, 8)
+        dmg = random.randint(1, 5)
         user["toxicity"] = min(100, user["toxicity"] + dmg)
         is_poisoned = True
         save_user(uid, user)
@@ -124,23 +117,10 @@ def rebuild_market():
     state = { "last_update": time.time(), "prices": current_prices, "history": history }
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
 
-# 🔥 修正後的讀取函式 (防止 SyntaxError)
 def get_global_stock_state():
     try:
-        with open(STOCK_DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return None
+        with open(STOCK_DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
+    except: return None
 
 def save_global_stock_state(state):
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
-
-def check_mission(uid, user, action_type):
-    return False
-
-def send_mail(to_uid, from_uid, title, msg):
-    users = get_all_users()
-    if to_uid in users:
-        users[to_uid].setdefault("mailbox", []).append({"from": from_uid, "title": title, "msg": msg, "time": datetime.now().strftime("%Y-%m-%d %H:%M")})
-        save_user(to_uid, users[to_uid]); return True
-    return False
