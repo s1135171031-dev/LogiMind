@@ -40,7 +40,7 @@ LEVEL_TITLES = {
     10: "AI Singularity (奇異點)"
 }
 
-# --- 邏輯閘 SVG 圖示庫 (🔥 已修正高度為 70) ---
+# --- 邏輯閘 SVG 圖示庫 (高度已修正為 70) ---
 SVG_LIB = {
     "AND": '<svg width="100" height="70"><path d="M10,10 L40,10 A25,25 0 0,1 40,60 L10,60 Z" fill="none" stroke="#00ff41" stroke-width="2"/><line x1="0" y1="20" x2="10" y2="20" stroke="#00ff41"/><line x1="0" y1="50" x2="10" y2="50" stroke="#00ff41"/><line x1="65" y1="35" x2="100" y2="35" stroke="#00ff41"/></svg>',
     "OR": '<svg width="100" height="70"><path d="M10,10 Q40,10 55,35 Q40,60 10,60 Q25,35 10,10" fill="none" stroke="#00ff41" stroke-width="2"/><line x1="0" y1="20" x2="15" y2="20" stroke="#00ff41"/><line x1="0" y1="50" x2="15" y2="50" stroke="#00ff41"/><line x1="55" y1="35" x2="100" y2="35" stroke="#00ff41"/></svg>',
