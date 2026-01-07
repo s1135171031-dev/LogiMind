@@ -1,5 +1,5 @@
 # database.py
-# 用途: 資料處理 (新增強制重置股市功能)
+# 用途: 資料處理 (已修改存檔名稱，強制重新生成狂暴股市)
 
 import json
 import os
@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from config import STOCKS_DATA
 
 USER_DB_FILE = "cityos_users.json"
-STOCK_DB_FILE = "cityos_stocks.json"
+# 🔥 修改這裡：改了檔名，系統就會以為是第一次執行，強制生成新數據
+STOCK_DB_FILE = "cityos_stocks_chaos.json" 
 
 def init_db():
     # 1. 初始化使用者
@@ -34,11 +35,11 @@ def init_db():
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4, ensure_ascii=False)
             
-    # 2. 如果沒有股市檔案，建立一個
+    # 2. 如果沒有新的狂暴股市檔案，建立一個
     if not os.path.exists(STOCK_DB_FILE):
         rebuild_market()
 
-# 🔥 新增這個函數：強制重置股市邏輯
+# 🔥 強制重置股市邏輯 (波動調得非常大)
 def rebuild_market():
     print("🔥 正在引發金融海嘯 (重置股市)...")
     current_prices = {k: v["base"] for k, v in STOCKS_DATA.items()}
@@ -50,16 +51,16 @@ def rebuild_market():
         for code, price in current_prices.items():
             base_vol = STOCKS_DATA[code]["volatility"]
             
-            # 1. 基礎波動放大 4 倍
-            change = random.uniform(-base_vol * 4, base_vol * 4)
+            # 1. 基礎波動放大 5 倍 (讓線條鋸齒狀更明顯)
+            change = random.uniform(-base_vol * 5, base_vol * 5)
             
-            # 2. 黑天鵝事件 (20% 機率)
-            if random.random() < 0.2: 
-                # 暴漲暴跌 (-50% ~ +50%)
-                change += random.choice([-0.5, 0.5])
+            # 2. 增加極端事件機率 (30% 機率暴漲暴跌)
+            if random.random() < 0.3: 
+                # 暴漲暴跌 (-40% ~ +60%)
+                change += random.choice([-0.4, 0.6])
             
             new_price = int(price * (1 + change))
-            new_price = max(10, min(8000, new_price)) # 放寬上限
+            new_price = max(10, min(9999, new_price)) 
             
             current_prices[code] = new_price
             row[code] = new_price
@@ -79,7 +80,8 @@ def rebuild_market():
     
     return True
 
-# --- 以下保持不變 ---
+# --- 以下標準存取函數保持不變 ---
+
 def get_all_users():
     try:
         with open(USER_DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
