@@ -1,5 +1,5 @@
 # app.py
-# 用途: 系統核心 (Toxic UI + Job System + 5-Col Quiz)
+# 用途: 系統核心 (極速股市 + 毒舌 UI + 職業顯示)
 
 import streamlit as st
 import random
@@ -16,19 +16,14 @@ except ImportError:
     st.error("⚠️ 檔案遺失！請確保 app.py, config.py, database.py 都在同目錄下。")
     st.stop()
 
-# --- 讀取題庫 (支援 ID|Level|Q|Opts|Ans 格式) ---
+# --- 讀取題庫 ---
 def load_quiz_from_file():
     questions = []
     default_q = [{"q": "系統錯誤: 題庫損毀", "options": ["...", "???"], "ans": "..."}]
     file_path = "questions.txt"
 
     if not os.path.exists(file_path):
-        try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write("# ID|Level|題目|選項|答案\n")
-                f.write("LOGIC-001|1|Python的作者是誰?|吉多,伊隆馬斯克,賈伯斯|吉多\n")
-                f.write("LOGIC-002|1|CityOS的核心是什麼?|數據,金錢,控制|數據\n")
-        except: return default_q
+        return default_q
 
     lines = []
     try:
@@ -96,6 +91,7 @@ def update_stock_market():
     now = time.time()
     last_update = global_state.get("last_update", 0)
     
+    # 🔥 這裡改成 1 秒刷新一次
     if now - last_update > 1:
         evt = st.session_state.today_event
         new_prices = {}
@@ -148,6 +144,12 @@ def page_dashboard(uid, user):
 
 def page_stock(uid, user):
     st.title("💹 韭菜交易所")
+    
+    # 🔥 自動刷新開關
+    col_ref, _ = st.columns([1, 3])
+    with col_ref:
+        auto_refresh = st.toggle("開啟焦慮模式 (即時刷新)", value=False)
+    
     update_stock_market()
     prices = st.session_state.stock_prices
     
@@ -155,7 +157,12 @@ def page_stock(uid, user):
     with t1:
         code = st.selectbox("選擇哪支垃圾股", list(STOCKS_DATA.keys()))
         curr = prices.get(code, 0)
-        st.metric(f"{STOCKS_DATA[code]['name']}", f"${curr}")
+        
+        # 顯示漲跌幅
+        base_price = STOCKS_DATA[code]['base']
+        delta = curr - base_price
+        st.metric(f"{STOCKS_DATA[code]['name']}", f"${curr}", delta=delta)
+        
         qty = st.number_input("數量", 1, 1000, 10, key="buy_qty")
         cost = qty * curr
         if st.button(f"買進 (浪費 ${cost:,})"):
@@ -182,6 +189,11 @@ def page_stock(uid, user):
                 save_user(uid, user)
                 st.success("賣掉了。希望你沒虧太多。"); time.sleep(0.5); st.rerun()
         else: st.info("你沒有股票。就像你沒有未來一樣。")
+        
+    # 🔥 自動刷新邏輯
+    if auto_refresh:
+        time.sleep(1)
+        st.rerun()
 
 def page_pvp(uid, user):
     st.title("⚔️ 互害社會 (PVP)")
@@ -283,7 +295,6 @@ def page_quiz(uid, user):
     with st.form("quiz_form"):
         user_ans = st.radio("選一個吧:", current_q['options'], key=f"q_{st.session_state.q_idx}")
         if st.form_submit_button("送出"):
-            # 獎勵強制設定為 50
             reward = 50
             if user_ans == current_q['ans']:
                 st.balloons()
@@ -313,7 +324,6 @@ def page_cli(uid, user):
         base = cmd.split()[0].lower()
         resp = ""
         
-        # 毒舌回應邏輯
         if base == "help": 
             resp = "不會用嗎？真沒用。試試: bal, whoami, clear, date, scan"
         elif base == "bal": 
@@ -416,4 +426,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
