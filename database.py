@@ -22,10 +22,8 @@ def init_db():
         rebuild_market()
 
 def rebuild_market():
-    """ 修正版：生成穩定的鋸齒狀歷史數據 (不會暴衝到幾千塊) """
-    print("🔥 SYSTEM: 重建市場 (修正版)...")
-    
-    # 這裡不讀取舊價格，而是每次都從 config 的 base 重算
+    """ 生成穩定的鋸齒狀歷史數據 (不會暴衝到幾千塊) """
+    print("🔥 SYSTEM: 重建市場...")
     current_prices = {} 
     history = []
     
@@ -33,16 +31,11 @@ def rebuild_market():
         row = {}
         for code, data in STOCKS_DATA.items():
             base_price = data["base"]
-            
-            # 修正演算法：圍繞著基準價上下 50% 跳動，而不是無限累加
-            # 這樣 $10 的股票頂多跳到 $15，不會變成 $5000
+            # 圍繞基準價波動，避免無限滾雪球
             fluctuation = random.uniform(0.5, 1.5) 
             new_price = int(base_price * fluctuation)
-            
-            # 加一點隨機雜訊
             jitter = random.randint(-5, 5)
             new_price += jitter
-            
             new_price = max(1, new_price)
             current_prices[code] = new_price
             row[code] = new_price
@@ -56,7 +49,7 @@ def rebuild_market():
         json.dump(state, f, indent=4)
     return True
 
-# --- 以下代碼保持不變 ---
+# --- 存取函數 ---
 
 def get_all_users():
     try:
@@ -77,7 +70,8 @@ def create_user(uid, pwd, name):
     users[uid] = { 
         "password": pwd, "name": name, "money": 500, 
         "job": "Citizen", "stocks": {}, "inventory": {}, 
-        "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0
+        "mailbox": [], "active_missions": [{"title": "新手", "desc": "去黑市買東西。", "reward": 100, "type": "shop_buy"}], 
+        "pending_claims": [], "last_hack": 0
     }
     with open(USER_DB_FILE, "w", encoding="utf-8") as f: 
         json.dump(users, f, indent=4, ensure_ascii=False)
