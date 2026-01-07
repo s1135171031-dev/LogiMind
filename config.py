@@ -12,7 +12,9 @@ ITEMS = {
     "Firewall": {"price": 1000, "desc": "防止被別人駭入。"},
     # ☣️ 毒氣系統道具
     "Anti-Rad Pill": {"price": 200, "desc": "醫療用：消除 30 點中毒指數。", "type": "cure", "value": 30},
-    "Gas Mask": {"price": 1500, "desc": "裝備：持有時，大幅降低中毒機率。"}
+    "Gas Mask": {"price": 1500, "desc": "裝備：持有時，大幅降低中毒機率。"},
+    # 📚 教育道具
+    "Python Manual": {"price": 500, "desc": "古老的程式語言手冊，據說能提升智力。"}
 }
 
 STOCKS_DATA = {
