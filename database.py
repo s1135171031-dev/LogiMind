@@ -13,7 +13,6 @@ def init_db():
     if not os.path.exists(USER_DB_FILE):
         users = {
             "admin": { "password": "admin", "name": "System OVERLORD", "money": 9999, "job": "Admin", "stocks": {}, "inventory": {}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 0, "level": 10, "exp": 0 },
-            "frank": { "password": "x", "name": "Frank (Dev)", "money": 50000, "job": "Gamemaster", "stocks": {"CYBR": 100}, "inventory": {"Trojan Virus": 5}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 20, "level": 5, "exp": 100 }
         }
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4, ensure_ascii=False)
@@ -36,7 +35,6 @@ def get_user(uid):
     user = users.get(uid)
     if user:
         dirty = False
-        # 自動補足缺失欄位 (Migration)
         if "level" not in user: user["level"] = 1; dirty = True
         if "exp" not in user: user["exp"] = 0; dirty = True
         if "toxicity" not in user: user["toxicity"] = 0; dirty = True
@@ -71,9 +69,9 @@ def add_exp(uid, amount):
         user["exp"] -= required_exp
         user["level"] += 1
         leveled_up = True
-        # 升級獎勵：回滿血(解毒) + 獎金
+        # 升級獎勵
         user["toxicity"] = 0
-        bonus = user["level"] * 50
+        bonus = user["level"] * 100
         user["money"] += bonus
     
     save_user(uid, user)
@@ -91,7 +89,6 @@ def apply_environmental_hazard(uid, user):
         user["toxicity"] = min(100, user["toxicity"] + dmg)
         is_poisoned = True
         save_user(uid, user)
-        
     return is_poisoned
 
 def rebuild_market():
@@ -110,6 +107,7 @@ def rebuild_market():
     state = { "last_update": time.time(), "prices": current_prices, "history": history }
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
 
+# 🔥 修正後的讀取函式
 def get_global_stock_state():
     try:
         with open(STOCK_DB_FILE, "r", encoding="utf-8") as f:
@@ -121,7 +119,6 @@ def save_global_stock_state(state):
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
 
 def check_mission(uid, user, action_type):
-    # 簡化版任務檢查，保留擴充性
     return False
 
 def send_mail(to_uid, from_uid, title, msg):
