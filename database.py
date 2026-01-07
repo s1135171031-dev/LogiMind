@@ -12,7 +12,7 @@ STOCK_DB_FILE = "cityos_chaos_market.json"
 def init_db():
     if not os.path.exists(USER_DB_FILE):
         users = {
-            "admin": { "password": "admin", "name": "System OVERLORD", "money": 9999, "job": "Admin", "stocks": {}, "inventory": {}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 0, "level": 10, "exp": 0 },
+            "frank": { "password": "x", "name": "System OVERLORD", "money": 9999, "job": "Admin", "stocks": {}, "inventory": {}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 0, "level": 10, "exp": 0 },
         }
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4, ensure_ascii=False)
