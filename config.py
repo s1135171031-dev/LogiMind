@@ -16,13 +16,13 @@ ITEMS = {
 # 股市清單 (代碼: {名稱, 基準價, 波動率})
 # 注意：即使這裡波動率寫得很低，database.py 也會強制讓它們發瘋
 STOCKS_DATA = {
-    "CYBR": {"name": "CyberCorp", "base": 120, "volatility": 0.15},
-    "NEO":  {"name": "Neo-Tokyo Real Estate", "base": 500, "volatility": 0.05},
-    "SLUM": {"name": "Slum Recyclers", "base": 50, "volatility": 0.30},
-    "AI":   {"name": "Skynet AI", "base": 300, "volatility": 0.20},
-    "MED":  {"name": "BioLife (Organ Harvesting)", "base": 800, "volatility": 0.08},
-    "GOV":  {"name": "City Bond (Fake)", "base": 100, "volatility": 0.01}, # 就算是債券也會崩盤
-    "COIN": {"name": "DogeDark", "base": 10, "volatility": 0.50}
+    "CYBR": {"name": "CyberCorp", "base": 1200, "volatility": 0.15},
+    "NEO":  {"name": "Neo-Tokyo Real Estate", "base": 5000, "volatility": 0.05},
+    "SLUM": {"name": "Slum Recyclers", "base": 500, "volatility": 0.30},
+    "AI":   {"name": "Skynet AI", "base": 3000, "volatility": 0.20},
+    "MED":  {"name": "BioLife (Organ Harvesting)", "base": 2800, "volatility": 0.08},
+    "GOV":  {"name": "City Bond (Fake)", "base": 1700, "volatility": 0.01}, # 就算是債券也會崩盤
+    "COIN": {"name": "DogeDark", "base": 910, "volatility": 0.50}
 }
 
 # 隨機城市事件
