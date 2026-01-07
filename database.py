@@ -22,20 +22,25 @@ def init_db():
         rebuild_market()
 
 def rebuild_market():
-    """ 生成 60 筆 低價位但高波動 的歷史數據 """
-    print("🔥 SYSTEM: 重建低價位暴動市場...")
-    current_prices = {k: v["base"] for k, v in STOCKS_DATA.items()}
+    """ 修正版：生成穩定的鋸齒狀歷史數據 (不會暴衝到幾千塊) """
+    print("🔥 SYSTEM: 重建市場 (修正版)...")
+    
+    # 這裡不讀取舊價格，而是每次都從 config 的 base 重算
+    current_prices = {} 
     history = []
     
     for i in range(60):
         row = {}
-        for code, price in current_prices.items():
-            # 暴力演算法：直接乘以 0.5 ~ 1.8 倍
-            multiplier = random.uniform(0.5, 1.8)
-            new_price = int(price * multiplier)
+        for code, data in STOCKS_DATA.items():
+            base_price = data["base"]
             
-            # 強制加減隨機數，確保低價股也會動
-            jitter = random.randint(-10, 10)
+            # 修正演算法：圍繞著基準價上下 50% 跳動，而不是無限累加
+            # 這樣 $10 的股票頂多跳到 $15，不會變成 $5000
+            fluctuation = random.uniform(0.5, 1.5) 
+            new_price = int(base_price * fluctuation)
+            
+            # 加一點隨機雜訊
+            jitter = random.randint(-5, 5)
             new_price += jitter
             
             new_price = max(1, new_price)
@@ -51,7 +56,7 @@ def rebuild_market():
         json.dump(state, f, indent=4)
     return True
 
-# --- 使用者與功能函數 ---
+# --- 以下代碼保持不變 ---
 
 def get_all_users():
     try:
