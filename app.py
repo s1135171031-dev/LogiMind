@@ -96,7 +96,7 @@ def update_stock_market():
     now = time.time()
     last_update = global_state.get("last_update", 0)
     
-    if now - last_update > 5:
+    if now - last_update > 1:
         evt = st.session_state.today_event
         new_prices = {}
         for code, data in STOCKS_DATA.items():
@@ -416,3 +416,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
