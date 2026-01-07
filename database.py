@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from config import STOCKS_DATA
 
 USER_DB_FILE = "cityos_users.json"
-STOCK_DB_FILE = "cityos_full_chaos.json" # 檔名更新
+STOCK_DB_FILE = "cityos_full_chaos.json"
 
 def init_db():
     if not os.path.exists(USER_DB_FILE):
@@ -48,18 +48,24 @@ def rebuild_market():
         json.dump(state, f, indent=4)
     return True
 
-# --- 使用者與功能函數 ---
+# --- 使用者與功能函數 (修正排版錯誤) ---
 
 def get_all_users():
     try:
-        with open(USER_DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-    except: return {}
+        # 修正：try 和 with 必須分行
+        with open(USER_DB_FILE, "r", encoding="utf-8") as f: 
+            return json.load(f)
+    except: 
+        return {}
 
-def get_user(uid): return get_all_users().get(uid)
+def get_user(uid): 
+    return get_all_users().get(uid)
 
 def save_user(uid, data):
-    users = get_all_users(); users[uid] = data
-    with open(USER_DB_FILE, "w", encoding="utf-8") as f: json.dump(users, f, indent=4, ensure_ascii=False)
+    users = get_all_users()
+    users[uid] = data
+    with open(USER_DB_FILE, "w", encoding="utf-8") as f: 
+        json.dump(users, f, indent=4, ensure_ascii=False)
 
 def create_user(uid, pwd, name):
     users = get_all_users()
@@ -71,15 +77,21 @@ def create_user(uid, pwd, name):
         "active_missions": [{"title": "消費主義", "desc": "去黑市買東西。", "reward": 200, "type": "shop_buy"}],
         "pending_claims": [], "last_hack": 0
     }
-    with open(USER_DB_FILE, "w", encoding="utf-8") as f: json.dump(users, f, indent=4, ensure_ascii=False)
+    with open(USER_DB_FILE, "w", encoding="utf-8") as f: 
+        json.dump(users, f, indent=4, ensure_ascii=False)
     return True
 
 def get_global_stock_state():
-    try: with open(STOCK_DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-    except: return None
+    try: 
+        # 修正：try 和 with 必須分行
+        with open(STOCK_DB_FILE, "r", encoding="utf-8") as f: 
+            return json.load(f)
+    except: 
+        return None
 
 def save_global_stock_state(state):
-    with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
+    with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: 
+        json.dump(state, f, indent=4)
 
 def send_mail(to_uid, from_uid, title, msg):
     users = get_all_users()
@@ -111,5 +123,7 @@ def check_mission(uid, user, action_type):
         user["active_missions"].append(t)
         save_user(uid, user)
         return True
-    if updated: save_user(uid, user); return True
+    if updated: 
+        save_user(uid, user)
+        return True
     return False
