@@ -1,125 +1,124 @@
 # database.py
+import sqlite3
 import json
 import os
-import random
-import time
-from datetime import datetime, timedelta
-from config import STOCKS_DATA
+from datetime import datetime
 
-USER_DB_FILE = "cityos_users.json"
-STOCK_DB_FILE = "cityos_chaos_market.json"
+# 定義檔案名稱
+DB_FILE = "cityos.db"
+STOCK_FILE = "stock_state.json"
+LOG_FILE = "city_logs.json"
 
 def init_db():
-    # 初始化使用者資料庫
-    if not os.path.exists(USER_DB_FILE):
-        users = {
-            "frank": { 
-                "password": "x", 
-                "name": "System OVERLORD", 
-                "money": 99999, 
-                "job": "Admin", 
-                "stocks": {}, 
-                "inventory": {"Trojan Virus": 50, "Gas Mask": 1}, 
-                "mailbox": [], 
-                "active_missions": [], 
-                "last_hack": 0, 
-                "toxicity": 0, 
-                "level": 10, 
-                "exp": 0 
-            },
-        }
-        with open(USER_DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(users, f, indent=4, ensure_ascii=False)
+    """初始化使用者資料庫"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    # 建立 users 表格，儲存 JSON 格式的庫存與股票
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (id TEXT PRIMARY KEY, password TEXT, name TEXT, 
+                  level INTEGER, exp INTEGER, money INTEGER, 
+                  toxicity INTEGER, inventory TEXT, stocks TEXT)''')
+    conn.commit()
+    conn.close()
+
+def get_user(user_id):
+    """讀取使用者資料"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
     
-    # 初始化股市
-    if not os.path.exists(STOCK_DB_FILE):
-        rebuild_market()
+    if row:
+        return {
+            "id": row[0], "password": row[1], "name": row[2],
+            "level": row[3], "exp": row[4], "money": row[5],
+            "toxicity": row[6],
+            "inventory": json.loads(row[7]) if row[7] else {},
+            "stocks": json.loads(row[8]) if row[8] else {}
+        }
+    return None
 
-def get_all_users():
-    try:
-        with open(USER_DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-    except: return {}
-
-def save_user(uid, data):
-    users = get_all_users()
-    users[uid] = data
-    with open(USER_DB_FILE, "w", encoding="utf-8") as f: 
-        json.dump(users, f, indent=4, ensure_ascii=False)
-
-def get_user(uid):
-    users = get_all_users()
-    user = users.get(uid)
-    if user:
-        # 資料結構自動修復 (防止舊帳號缺欄位報錯)
-        dirty = False
-        if "level" not in user: user["level"] = 1; dirty = True
-        if "exp" not in user: user["exp"] = 0; dirty = True
-        if "toxicity" not in user: user["toxicity"] = 0; dirty = True
-        if "inventory" not in user: user["inventory"] = {}; dirty = True
-        if dirty: save_user(uid, user)
-    return user
-
-def create_user(uid, pwd, name):
-    users = get_all_users()
-    if uid in users: return False
-    users[uid] = { 
-        "password": pwd, "name": name, "money": 500, 
-        "job": "Citizen", "stocks": {}, "inventory": {}, 
-        "mailbox": [], "active_missions": [],
-        "last_hack": 0, "toxicity": 0,
-        "level": 1, "exp": 0
-    }
-    with open(USER_DB_FILE, "w", encoding="utf-8") as f: 
-        json.dump(users, f, indent=4, ensure_ascii=False)
+def create_user(user_id, password, name):
+    """建立新使用者"""
+    if get_user(user_id): return False
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              (user_id, password, name, 1, 0, 1000, 0, "{}", "{}"))
+    conn.commit()
+    conn.close()
     return True
 
-def add_exp(uid, amount):
-    user = get_user(uid)
-    if not user: return False, 0
-    user["exp"] += amount
-    leveled_up = False
-    required_exp = user["level"] * 100
-    if user["exp"] >= required_exp:
-        user["exp"] -= required_exp
-        user["level"] += 1
-        leveled_up = True
-        user["toxicity"] = 0 # 升級稍微回血
-        user["money"] += user["level"] * 100 # 升級獎金
-    save_user(uid, user)
-    return leveled_up, user["level"]
+def save_user(user_id, data):
+    """儲存使用者狀態"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''UPDATE users SET 
+                 money=?, toxicity=?, inventory=?, stocks=?, level=?, exp=?
+                 WHERE id=?''',
+              (data['money'], data['toxicity'], 
+               json.dumps(data['inventory']), json.dumps(data['stocks']), 
+               data['level'], data['exp'], user_id))
+    conn.commit()
+    conn.close()
 
-def apply_environmental_hazard(uid, user):
-    chance = 0.2
-    if user.get("inventory", {}).get("Gas Mask", 0) > 0:
-        chance = 0.02
-        
-    is_poisoned = False
-    if random.random() < chance:
-        dmg = random.randint(1, 5)
-        user["toxicity"] = min(100, user["toxicity"] + dmg)
-        is_poisoned = True
-        save_user(uid, user)
-    return is_poisoned
+def get_all_users():
+    """取得所有使用者ID (用於PVP)"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id FROM users")
+    users = [row[0] for row in c.fetchall()]
+    conn.close()
+    return users
 
-def rebuild_market():
-    history = []
-    for i in range(60):
-        row = {}
-        for code, data in STOCKS_DATA.items():
-            base_price = data["base"]
-            fluctuation = random.uniform(0.5, 1.5) 
-            new_price = int(base_price * fluctuation) + random.randint(-5, 5)
-            row[code] = max(1, new_price)
-        past_time = datetime.now() - timedelta(seconds=(60-i)*2)
-        row["_time"] = past_time.strftime("%H:%M:%S")
-        history.append(row)
-    state = { "last_update": time.time(), "prices": history[-1], "history": history }
-    with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
-
+# --- 股市系統 ---
 def get_global_stock_state():
+    if not os.path.exists(STOCK_FILE):
+        return {"prices": {}, "history": [], "last_update": 0}
     try:
-        with open(STOCK_DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-    except: return None
+        with open(STOCK_FILE, "r") as f: return json.load(f)
+    except: return {"prices": {}, "history": [], "last_update": 0}
 
 def save_global_stock_state(state):
-    with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
+    with open(STOCK_FILE, "w") as f: json.dump(state, f)
+
+# --- 廣播系統 (New) ---
+def add_log(message):
+    logs = get_logs()
+    time_str = datetime.now().strftime("%H:%M")
+    logs.insert(0, f"[{time_str}] {message}") 
+    if len(logs) > 30: logs = logs[:30]
+    try:
+        with open(LOG_FILE, "w", encoding="utf-8") as f:
+            json.dump(logs, f, ensure_ascii=False)
+    except: pass
+
+def get_logs():
+    if not os.path.exists(LOG_FILE): return []
+    try:
+        with open(LOG_FILE, "r", encoding="utf-8") as f: return json.load(f)
+    except: return []
+
+# --- 輔助功能 ---
+def apply_environmental_hazard(uid, user):
+    """隨機環境傷害"""
+    import random
+    if random.random() < 0.1: # 10% 機率
+        dmg = random.randint(1, 5)
+        user['toxicity'] = min(100, user.get('toxicity', 0) + dmg)
+        save_user(uid, user)
+        return True
+    return False
+
+def add_exp(uid, amount):
+    """增加經驗值與升級"""
+    user = get_user(uid)
+    if user:
+        user['exp'] += amount
+        req = user['level'] * 100
+        if user['exp'] >= req:
+            user['exp'] -= req
+            user['level'] += 1
+            add_log(f"🆙 {user['name']} 晉升到了等級 {user['level']}！")
+        save_user(uid, user)
