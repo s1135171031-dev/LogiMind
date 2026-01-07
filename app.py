@@ -6,10 +6,12 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 from config import ITEMS, STOCKS_DATA, SVG_LIB
+
+# 🔥 確保這裡引入了 apply_environmental_hazard
 from database import (init_db, get_user, save_user, create_user, 
                       get_global_stock_state, save_global_stock_state, 
                       rebuild_market, check_mission, send_mail, get_all_users,
-                      apply_environmental_hazard) # 記得引入新函數
+                      apply_environmental_hazard)
 
 st.set_page_config(page_title="CityOS Hazard", layout="wide", page_icon="☣️")
 st.markdown("""
@@ -18,20 +20,13 @@ st.markdown("""
     div.stButton > button { background-color: #000; border: 1px solid #00ff41; color: #00ff41; }
     div.stButton > button:hover { background-color: #00ff41; color: #000; }
     .js-plotly-plot .plotly .main-svg { background: rgba(0,0,0,0) !important; }
-    /* 中毒條顏色 */
     .stProgress > div > div > div > div { background-color: #ff3333; }
 </style>
 """, unsafe_allow_html=True)
 
 init_db()
 
-# ... (QUIZ_DB 和 render_k_line 保持不變) ...
-QUIZ_DB = [
-    {"q": "AND 閘：輸入 1, 1 輸出？", "options": ["0", "1"], "ans": "1"},
-    {"q": "二進位 1010 是？", "options": ["8", "10", "12"], "ans": "10"},
-    {"q": "Python 列表符號？", "options": ["{}", "[]", "()"], "ans": "[]"},
-    {"q": "最強的密碼？", "options": ["123456", "password", "X#9v!m2"], "ans": "X#9v!m2"}
-]
+# --- 輔助函數 ---
 def update_stock_market():
     global_state = get_global_stock_state()
     if not global_state: return
@@ -70,7 +65,7 @@ def render_k_line(symbol):
     fig.update_layout(title=f"{symbol} K-Line", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'), xaxis_rangeslider_visible=False, margin=dict(l=0, r=0, t=30, b=0), height=350)
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 頁面邏輯 ---
+# --- 頁面功能區 ---
 
 def page_dashboard(uid, user):
     st.title(f"🏙️ 儀表板: {user['name']}")
@@ -85,14 +80,6 @@ def page_dashboard(uid, user):
         st.subheader("市場總覽")
         df = st.session_state.stock_history.drop(columns=["_time"], errors="ignore")
         st.line_chart(df, height=200)
-    if user.get("mailbox"):
-        with st.expander(f"📩 訊息 ({len(user['mailbox'])})"):
-            for mail in user['mailbox'][::-1]:
-                st.info(f"[{mail['time']}] {mail['from']}: {mail['title']} - {mail['msg']}")
-
-# ... (Stock, Missions, PVP, CLI, Lab, Quiz 頁面保持不變，直接複製即可) ...
-# 為了節省篇幅，請確保 page_stock, page_missions, page_pvp, page_cli, page_lab, page_quiz 都在這裡
-# 這些頁面不需要改動，只需改動 page_shop 和 main
 
 def page_stock(uid, user):
     st.title("📉 專業交易所"); auto = st.toggle("⚡ 自動刷新", value=True); update_stock_market(); prices = st.session_state.stock_prices
@@ -115,6 +102,113 @@ def page_stock(uid, user):
                 if own>=sqty: user['money']+=income; user['stocks'][selected_stock]-=sqty; save_user(uid,user); st.success("OK"); st.rerun()
     with c1: render_k_line(selected_stock)
     if auto: time.sleep(1); st.rerun()
+
+# 🔥 新版：邏輯電路設計 (取代舊的 page_lab)
+def page_lab(uid, user):
+    st.title("🔌 邏輯電路設計 (Circuit Designer)")
+    st.caption("CityOS 硬體實驗室：請使用邏輯閘設計電路。")
+
+    st.subheader("1. 輸入訊號 (Inputs)")
+    col_i1, col_i2, col_i3, col_i4 = st.columns(4)
+    with col_i1: in_A = st.toggle("A", value=True)
+    with col_i2: in_B = st.toggle("B", value=False)
+    with col_i3: in_C = st.toggle("C", value=True)
+    with col_i4: in_D = st.toggle("D", value=False)
+    
+    st.markdown("---")
+    st.subheader("2. 第一級處理 (Layer 1)")
+    c1, c2 = st.columns(2)
+    
+    # 邏輯閘清單 (從 config.py 的 SVG_LIB 讀取)
+    gate_options = list(SVG_LIB.keys())
+
+    with c1:
+        st.write("處理訊號 A & B")
+        gate_L = st.selectbox("左側邏輯閘", gate_options, key="gl")
+        res_L = False
+        if gate_L == "AND": res_L = in_A and in_B
+        elif gate_L == "OR": res_L = in_A or in_B
+        elif gate_L == "XOR": res_L = in_A != in_B
+        elif gate_L == "NAND": res_L = not (in_A and in_B)
+        elif gate_L == "NOR": res_L = not (in_A or in_B)
+        elif gate_L == "XNOR": res_L = in_A == in_B
+        elif gate_L == "NOT": res_L = not in_A # NOT只取第一個輸入
+        st.info(f"L 輸出: {int(res_L)}")
+
+    with c2:
+        st.write("處理訊號 C & D")
+        gate_R = st.selectbox("右側邏輯閘", gate_options, key="gr")
+        res_R = False
+        if gate_R == "AND": res_R = in_C and in_D
+        elif gate_R == "OR": res_R = in_C or in_D
+        elif gate_R == "XOR": res_R = in_C != in_D
+        elif gate_R == "NAND": res_R = not (in_C and in_D)
+        elif gate_R == "NOR": res_R = not (in_C or in_D)
+        elif gate_R == "XNOR": res_R = in_C == in_D
+        elif gate_R == "NOT": res_R = not in_C
+        st.info(f"R 輸出: {int(res_R)}")
+
+    st.markdown("⬇️")
+    st.subheader("3. 最終輸出 (Master Output)")
+    col_main, col_res = st.columns([2, 1])
+    
+    with col_main:
+        st.write("L 與 R 的最終運算")
+        gate_M = st.selectbox("核心邏輯閘", gate_options, key="gm")
+        final_res = False
+        if gate_M == "AND": final_res = res_L and res_R
+        elif gate_M == "OR": final_res = res_L or res_R
+        elif gate_M == "XOR": final_res = res_L != res_R
+        elif gate_M == "NAND": final_res = not (res_L and res_R)
+        elif gate_M == "NOR": final_res = not (res_L or res_R)
+        elif gate_M == "XNOR": final_res = res_L == res_R
+        elif gate_M == "NOT": final_res = not res_L
+
+    with col_res:
+        st.write("## 結果")
+        if final_res:
+            st.success("HIGH (1)")
+            st.markdown("💡", unsafe_allow_html=True)
+        else:
+            st.error("LOW (0)")
+            st.markdown("⚫", unsafe_allow_html=True)
+
+    st.divider()
+    if st.button("💾 上傳設計圖"):
+        st.toast("設計圖已上傳至雲端伺服器！")
+        check_mission(uid, user, "cli_input") # 當作完成一次技術操作
+        save_user(uid, user)
+
+def page_shop(uid, user):
+    st.title("🛒 黑市 & 背包")
+    t1, t2 = st.tabs(["購買", "使用/查看"])
+    with t1:
+        for k, v in ITEMS.items():
+            with st.expander(f"{k} (${v['price']})"):
+                st.write(v['desc'])
+                if st.button(f"購買 {k}"):
+                    if user['money'] >= v['price']:
+                        user['money'] -= v['price']
+                        user.setdefault('inventory', {})[k] = user['inventory'].get(k, 0) + 1
+                        check_mission(uid, user, "shop_buy")
+                        save_user(uid, user)
+                        st.success("購買成功")
+                        st.rerun()
+                    else: st.error("資金不足")
+    with t2:
+        st.write(f"🎒 背包: {user.get('inventory', {})}")
+        if user.get("inventory", {}).get("Anti-Rad Pill", 0) > 0:
+            st.divider()
+            st.write("💉 醫療用品")
+            if st.button("吞下 Anti-Rad Pill (解毒)"):
+                user["inventory"]["Anti-Rad Pill"] -= 1
+                if user["inventory"]["Anti-Rad Pill"] <= 0: del user["inventory"]["Anti-Rad Pill"]
+                old_tox = user.get("toxicity", 0)
+                user["toxicity"] = max(0, old_tox - 30)
+                check_mission(uid, user, "use_item")
+                save_user(uid, user)
+                st.success(f"毒素清除！ ({old_tox}% -> {user['toxicity']}%)")
+                st.rerun()
 
 def page_missions(uid, user):
     st.title("🎯 任務板")
@@ -140,54 +234,7 @@ def page_cli(uid, user):
     st.title("💻 CLI"); cmd=st.text_input(f"{uid}@cityos:~$")
     if cmd: check_mission(uid,user,"cli_input"); st.code("OK" if cmd in ["ls","bal","date"] else "Error")
 
-def page_lab(uid, user):
-    st.title("🔬 Lab"); gate=st.selectbox("Gate", list(SVG_LIB.keys())); c1,c2=st.columns(2); i1=c1.checkbox("A"); i2=c2.checkbox("B", disabled=(gate=="NOT")); st.markdown(SVG_LIB[gate], unsafe_allow_html=True)
-
-def page_quiz(uid, user):
-    st.title("📝 Quiz"); q=QUIZ_DB[st.session_state.get('q_idx',0)]; st.write(q['q']); ans=st.radio("Ans",q['options'],key="q"); 
-    if st.button("Submit"): 
-        if ans==q['ans']: user['money']+=20; st.success("Correct")
-        else: user['money']=max(0,user['money']-5); st.error("Wrong")
-        st.session_state.q_idx=(st.session_state.get('q_idx',0)+1)%len(QUIZ_DB); save_user(uid,user); time.sleep(0.5); st.rerun()
-
-# 🔥 修改：黑市頁面 (增加使用物品功能)
-def page_shop(uid, user):
-    st.title("🛒 黑市 & 背包")
-    
-    t1, t2 = st.tabs(["購買", "使用/查看"])
-    
-    with t1:
-        for k, v in ITEMS.items():
-            with st.expander(f"{k} (${v['price']})"):
-                st.write(v['desc'])
-                if st.button(f"購買 {k}"):
-                    if user['money'] >= v['price']:
-                        user['money'] -= v['price']
-                        user.setdefault('inventory', {})[k] = user['inventory'].get(k, 0) + 1
-                        check_mission(uid, user, "shop_buy")
-                        save_user(uid, user)
-                        st.success("購買成功")
-                        st.rerun()
-                    else: st.error("資金不足")
-    
-    with t2:
-        st.write(f"🎒 背包內容: {user.get('inventory', {})}")
-        # 如果有解毒劑，顯示使用按鈕
-        if user.get("inventory", {}).get("Anti-Rad Pill", 0) > 0:
-            st.divider()
-            st.write("💉 醫療用品")
-            if st.button("吞下 Anti-Rad Pill (解毒)"):
-                user["inventory"]["Anti-Rad Pill"] -= 1
-                if user["inventory"]["Anti-Rad Pill"] <= 0: del user["inventory"]["Anti-Rad Pill"]
-                # 解毒邏輯
-                old_tox = user.get("toxicity", 0)
-                user["toxicity"] = max(0, old_tox - 30)
-                check_mission(uid, user, "use_item")
-                save_user(uid, user)
-                st.success(f"毒素清除！ ({old_tox}% -> {user['toxicity']}%)")
-                st.rerun()
-
-# 🔥 修改：Main (增加中毒檢查與顯示)
+# --- 主程式 ---
 def main():
     if "logged_in" not in st.session_state: st.session_state.logged_in = False
     if not st.session_state.logged_in:
@@ -204,15 +251,15 @@ def main():
 
     uid = st.session_state.uid; user = get_user(uid)
     
-    # ☣️ 每次操作都有機率吸入毒氣
+    # ☣️ 毒氣模擬 (這裡呼叫 database 裡的函數)
     if apply_environmental_hazard(uid, user):
         st.toast("⚠️ 警報：檢測到有害氣體吸入！", icon="☣️")
         
-    # ☠️ 中毒過深懲罰
+    # ☠️ 毒發懲罰
     if user["toxicity"] >= 100:
         st.error("☠️ 身體崩潰！緊急送醫急救... (-$200)")
         user["money"] = max(0, user["money"] - 200)
-        user["toxicity"] = 50 # 救回來一半
+        user["toxicity"] = 50 
         save_user(uid, user)
         time.sleep(2)
         st.rerun()
@@ -221,33 +268,28 @@ def main():
         st.title(f"{user['name']}")
         st.write(f"💵 ${user['money']}")
         
-        # ☣️ 顯示中毒條
+        # 顯示中毒狀況
         tox = user.get("toxicity", 0)
         st.write(f"☣️ 中毒指數: {tox}%")
         st.progress(tox / 100)
-        if tox > 80: st.caption("⚠️ 命在旦夕！快吃藥！")
-        elif tox > 50: st.caption("⚠️ 身體不適...")
+        if tox > 80: st.caption("⚠️ 命在旦夕！")
         
-        # 顯示是否有面具
         if user.get("inventory", {}).get("Gas Mask", 0) > 0:
-            st.success("😷 防毒面具: 裝備中")
+            st.success("😷 面具: 裝備中")
         else:
-            st.warning("😶 無防護: 高風險")
+            st.warning("😶 無防護")
 
-        nav = st.radio("MENU", ["儀表板", "交易所", "任務", "黑市", "PVP", "CLI", "邏輯", "測驗"])
+        nav = st.radio("MENU", ["儀表板", "交易所", "任務", "黑市", "PVP", "CLI", "邏輯設計"])
         st.divider()
         if st.button("LOGOUT"): st.session_state.logged_in = False; st.rerun()
-        if user.get("job") == "Gamemaster":
-            if st.button("💥 RESET"): rebuild_market(); st.rerun()
 
     if nav == "儀表板": page_dashboard(uid, user)
     elif nav == "交易所": page_stock(uid, user)
     elif nav == "任務": page_missions(uid, user)
-    elif nav == "黑市": page_shop(uid, user) # 記得用新的 page_shop
+    elif nav == "黑市": page_shop(uid, user)
     elif nav == "PVP": page_pvp(uid, user)
     elif nav == "CLI": page_cli(uid, user)
-    elif nav == "邏輯": page_lab(uid, user)
-    elif nav == "測驗": page_quiz(uid, user)
+    elif nav == "邏輯設計": page_lab(uid, user)
 
 if __name__ == "__main__":
     main()
