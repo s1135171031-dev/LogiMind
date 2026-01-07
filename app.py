@@ -4,11 +4,12 @@ import random
 import time
 import pandas as pd
 import base64
+import hashlib
 import plotly.graph_objects as go
 from datetime import datetime
 from config import ITEMS, STOCKS_DATA, SVG_LIB, LEVEL_TITLES
 
-# 單一長行引入，避免 SyntaxError
+# 🔥 修正引用語法，避免 SyntaxError
 from database import init_db, get_user, save_user, create_user, get_global_stock_state, save_global_stock_state, rebuild_market, check_mission, send_mail, get_all_users, apply_environmental_hazard, add_exp
 
 st.set_page_config(page_title="CityOS Edu-Core", layout="wide", page_icon="☣️")
@@ -125,153 +126,125 @@ def page_lab(uid, user):
         leveled, _ = add_exp(uid, 10); st.toast("測試成功 (+10 XP)")
         if leveled: st.balloons()
 
+# 🔐 雙向密碼學模組
 def page_crypto(uid, user):
-    st.title("🔐 密碼學實驗室")
-    st.caption("資訊安全教育：學習字元編碼與基礎加密。")
+    st.title("🔐 密碼學終端機 (Crypto)")
+    st.caption("雙向轉換：加密與解密工具箱。")
+    tab1, tab2, tab3 = st.tabs(["🏛️ 凱撒密碼", "📦 Base64", "🧩 每日挑戰"])
+
+    with tab1:
+        st.info("Shift Cipher: 將字母依照位移量搬移。")
+        shift = st.slider("位移量 (Key)", 1, 25, 3)
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("### 🔒 加密")
+            pt = st.text_area("明文", "ATTACK", height=70)
+            if pt:
+                et = "".join([chr((ord(c)-65+shift)%26+65) if c.isupper() else chr((ord(c)-97+shift)%26+97) if c.islower() else c for c in pt])
+                st.code(et)
+        with c2:
+            st.markdown("### 🔓 解密")
+            ct = st.text_area("密文", "", height=70)
+            if ct:
+                dt = "".join([chr((ord(c)-65-shift)%26+65) if c.isupper() else chr((ord(c)-97-shift)%26+97) if c.islower() else c for c in ct])
+                st.success(dt)
+
+    with tab2:
+        st.info("Base64: 二進位轉文字編碼。")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("### ➡️ 編碼")
+            txt = st.text_input("輸入文字", "Hello")
+            if txt: st.code(base64.b64encode(txt.encode()).decode())
+        with c2:
+            st.markdown("### ⬅️ 解碼")
+            b64 = st.text_input("輸入Base64", "")
+            if b64:
+                try: st.success(base64.b64decode(b64).decode())
+                except: st.error("無效格式")
+
+    with tab3:
+        if "caesar_ans" not in st.session_state:
+            w = random.choice(["LINUX", "CODE", "JAVA", "RUBY"]); s = random.randint(1,5)
+            st.session_state.caesar_target = w; st.session_state.caesar_shift = s
+            st.session_state.caesar_q = "".join([chr(ord(c)+s) for c in w])
+        st.write(f"攔截訊息: **{st.session_state.caesar_q}** (Shift: {st.session_state.caesar_shift})")
+        ans = st.text_input("答案 (大寫)", key="cg_in")
+        if st.button("驗證"):
+            if ans == st.session_state.caesar_target:
+                add_exp(uid, 20); del st.session_state["caesar_ans"]; st.success("✅ 成功!"); st.rerun()
+            else: st.error("❌ 錯誤")
+
+# 🛡️ 雜湊實驗室
+def page_hashing(uid, user):
+    st.title("🛡️ 雜湊實驗室 (Hash)")
+    st.caption("單向函數演示：為什麼密碼不能雙向還原？")
+    col1, col2 = st.columns(2)
+    with col1:
+        pwd = st.text_input("輸入任意文字", "password123")
+    with col2:
+        sha = hashlib.sha256(pwd.encode()).hexdigest()
+        st.markdown("**SHA-256 (單向指紋):**"); st.code(sha)
     
-    st.subheader("1. 凱撒密碼 (Caesar Cipher)")
-    if "caesar_ans" not in st.session_state:
-        words = ["CYBER", "HACKER", "PYTHON", "SECURE", "DATA"]
-        word = random.choice(words); shift = random.randint(1, 5)
-        st.session_state.caesar_target = word
-        st.session_state.caesar_q = "".join([chr(ord(c)+shift) for c in word])
-        st.session_state.caesar_shift = shift
-        st.session_state.caesar_ans = "WAITING"
-
-    st.write(f"密文: **{st.session_state.caesar_q}** (偏移量: {st.session_state.caesar_shift})")
-    ans = st.text_input("解密結果 (大寫)", key="c_in")
-    if st.button("驗證解碼"):
-        if ans == st.session_state.caesar_target:
-            add_exp(uid, 20); del st.session_state["caesar_ans"]; st.success("✅ 破解成功！ (+20 XP)"); st.rerun()
-        else: st.error("❌ 錯誤")
-
     st.markdown("---")
-    st.subheader("2. Base64 編碼器")
-    msg = st.text_input("輸入文字進行編碼:", "Hello CityOS")
-    if msg:
-        b64 = base64.b64encode(msg.encode()).decode()
-        st.code(b64)
+    check = st.text_input("嘗試撞庫 (猜密碼):")
+    if check:
+        if hashlib.sha256(check.encode()).hexdigest() == sha: st.success("✅ 匹配成功")
+        else: st.error("❌ 指紋不符")
 
 def page_binary(uid, user):
     st.title("🔢 進制駭客")
-    st.caption("計算機結構：熟悉 0/1 與十六進位。")
-    
     if "bin_target" not in st.session_state: st.session_state.bin_target = random.randint(1, 64)
     target = st.session_state.bin_target
-    
     mode = st.radio("模式", ["二進位 (Binary)", "十六進位 (Hex)"])
-    st.metric("目標數字 (十進位)", target)
-    
+    st.metric("目標 (十進位)", target)
     ans = st.text_input("輸入答案")
     if st.button("提交"):
         correct = bin(target)[2:] if "Binary" in mode else hex(target)[2:].upper()
         if ans.lower() == correct.lower():
-            add_exp(uid, 15); st.session_state.bin_target = random.randint(1, 100); st.success("✅ 正確！ (+15 XP)"); st.rerun()
-        else: st.error(f"❌ 錯誤，正確答案是 {correct}")
+            add_exp(uid, 15); st.session_state.bin_target = random.randint(1, 100); st.success("✅ 正確!"); st.rerun()
+        else: st.error(f"❌ 錯誤，答案是 {correct}")
 
-# 🐧 新增：Linux 終端機模擬
 def page_linux(uid, user):
     st.title("🐧 Linux Terminal")
-    st.caption("作業系統教育：學習基礎 Shell 指令 (ls, cd, cat, pwd)。")
-
-    if "fs_state" not in st.session_state:
-        st.session_state.fs_state = {
-            "pwd": "/home/user",
-            "fs": {
-                "/home/user": ["notes.txt", "secret_folder"],
-                "/home/user/secret_folder": ["flag.txt"],
-                "/var/log": ["syslog"]
-            },
-            "files": {
-                "notes.txt": "Remember to buy milk.",
-                "flag.txt": "CTF_FLAG{L1NUX_M4ST3R}",
-                "syslog": "Error: Kernel panic."
-            }
-        }
-    
-    st.code(f"{uid}@cityos:{st.session_state.fs_state['pwd']}$", language="bash")
-    cmd = st.text_input("輸入指令", key="linux_cmd")
-    
-    if st.button("執行 (Run)"):
-        args = cmd.split()
+    st.caption("指令：ls, cd, cat, pwd")
+    if "fs" not in st.session_state:
+        st.session_state.fs = {"pwd": "/home/user", "files": {"/home/user": ["flag.txt"], "/": ["home", "var"]}, "data": {"flag.txt": "CTF{LINUX_OP}"}}
+    st.code(f"{uid}@cityos:{st.session_state.fs['pwd']}$", language="bash")
+    cmd = st.text_input("Command", key="lin_cmd")
+    if st.button("Run"):
+        args = cmd.split(); pwd = st.session_state.fs['pwd']
         if not args: return
-        base_cmd = args[0]
-        state = st.session_state.fs_state
-        pwd = state['pwd']
-        
-        if base_cmd == "ls":
-            files = state['fs'].get(pwd, [])
-            st.success("  ".join(files))
-        elif base_cmd == "pwd":
-            st.info(pwd)
-        elif base_cmd == "cd":
-            if len(args) < 2: st.error("Usage: cd <dir>"); return
-            target = args[1]
-            if target == "..":
-                new_pwd = "/".join(pwd.split("/")[:-1])
-                if new_pwd == "": new_pwd = "/"
-                state['pwd'] = new_pwd
-            else:
-                new_path = (pwd + "/" + target).replace("//", "/")
-                if new_path in state['fs']: state['pwd'] = new_path
-                else: st.error(f"cd: {target}: No such directory")
-        elif base_cmd == "cat":
-            if len(args) < 2: st.error("Usage: cat <file>"); return
-            fname = args[1]
-            # 簡化版：只在當前目錄找檔案
-            if fname in state['fs'].get(pwd, []):
-                content = state['files'].get(fname, "")
-                st.code(content)
-                if "CTF_FLAG" in content:
-                    st.balloons()
-                    add_exp(uid, 50)
-                    st.success("🎉 找到 Flag！ (+50 XP)")
-            else: st.error(f"cat: {fname}: No such file")
-        else:
-            st.warning("Command not found. Try: ls, cd, cat, pwd")
+        if args[0]=="ls": st.write(st.session_state.fs['files'].get(pwd, []))
+        elif args[0]=="pwd": st.info(pwd)
+        elif args[0]=="cat" and len(args)>1: st.code(st.session_state.fs['data'].get(args[1], "No such file"))
+        elif args[0]=="cd" and len(args)>1: st.session_state.fs['pwd'] = args[1] # 簡化版
 
-# 🐍 新增：Python 除錯室
 def page_debug(uid, user):
     st.title("🐍 Python Debugger")
-    st.caption("軟體工程：修復損壞的程式碼 (Syntax Error)。")
-    
-    challenges = [
-        {"q": "print('Hello World", "a": "print('Hello World')", "hint": "缺少右括號"},
-        {"q": "if x = 10:", "a": "if x == 10:", "hint": "比較運算子應該是雙等號"},
-        {"q": "def my_func()\n  print('Hi')", "a": "def my_func():", "hint": "函式定義缺少冒號 (只需寫第一行)"}
-    ]
-    
-    choice = st.radio("選擇題目", [0, 1, 2], format_func=lambda x: f"題目 {x+1}")
-    q = challenges[choice]
-    
-    st.code(q["q"], language="python")
-    st.info(f"提示: {q['hint']}")
-    
-    ans = st.text_input("修正後的程式碼 (單行)", key="debug_in")
-    if st.button("提交修正"):
-        # 簡單的比對邏輯 (去空白)
-        if ans.replace(" ", "") == q["a"].replace(" ", "") or ans.strip() == q["a"]:
-            st.success("✅ 修復成功！編譯通過。 (+20 XP)")
-            add_exp(uid, 20)
-        else:
-            st.error("❌ 依然報錯 (SyntaxError)")
+    q = {"q": "print('Hello", "a": "print('Hello')", "hint": "缺少右括號"}
+    st.code(q["q"], language="python"); st.info(q["hint"])
+    ans = st.text_input("修正程式碼")
+    if st.button("Fix"):
+        if ans.replace(" ","") == q["a"].replace(" ",""): add_exp(uid, 20); st.success("✅ Fixed!"); st.rerun()
+        else: st.error("Still broken")
 
 def page_shop(uid, user):
     st.title("🛒 黑市"); t1, t2 = st.tabs(["買", "背包"])
     with t1:
         for k, v in ITEMS.items():
-            if st.button(f"買 {k} (${v['price']}) - {v['desc']}"):
+            if st.button(f"買 {k} (${v['price']})"):
                 if user['money'] >= v['price']:
                     user['money'] -= v['price']; user.setdefault('inventory', {})[k] = user['inventory'].get(k, 0) + 1; save_user(uid, user); st.success(f"已購買 {k}"); st.rerun()
                 else: st.error("沒錢")
     with t2:
         st.write(user.get('inventory', {}))
         if user.get("inventory", {}).get("Anti-Rad Pill", 0) > 0:
-            if st.button("💊 服用輻射藥丸 (解毒)"):
+            if st.button("💊 服用輻射藥丸"):
                 user["inventory"]["Anti-Rad Pill"] -= 1; user["toxicity"] = max(0, user.get("toxicity",0)-30); save_user(uid, user); st.rerun()
 
 def page_pvp(uid, user):
-    st.title("⚔️ PVP"); targets = [u for u in get_all_users() if u!=uid and u!="admin"]
+    st.title("⚔️ PVP"); targets = [u for u in get_all_users() if u!=uid and u!="frank"]
     if not targets: st.write("無人可打"); return
     t = st.selectbox("目標", targets)
     if st.button("駭入攻擊 (需病毒)"):
@@ -312,7 +285,7 @@ def main():
         nav = st.radio("導航", [
             "儀表板", "交易所", "黑市", "PVP", 
             "--- 教育模組 ---",
-            "邏輯電路 (Logic)", "密碼學 (Crypto)", 
+            "邏輯電路 (Logic)", "密碼學 (Crypto)", "雜湊實驗室 (Hash)",
             "進制駭客 (Binary)", "Linux 終端機", "Python 除錯室"
         ])
         if st.button("登出"): st.session_state.logged_in=False; st.rerun()
@@ -323,6 +296,7 @@ def main():
     elif nav == "PVP": page_pvp(uid, user)
     elif nav == "邏輯電路 (Logic)": page_lab(uid, user)
     elif nav == "密碼學 (Crypto)": page_crypto(uid, user)
+    elif nav == "雜湊實驗室 (Hash)": page_hashing(uid, user)
     elif nav == "進制駭客 (Binary)": page_binary(uid, user)
     elif nav == "Linux 終端機": page_linux(uid, user)
     elif nav == "Python 除錯室": page_debug(uid, user)
