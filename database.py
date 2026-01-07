@@ -111,8 +111,11 @@ def rebuild_market():
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
 
 def get_global_stock_state():
-    try: with open(STOCK_DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-    except: return None
+    try:
+        with open(STOCK_DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return None
 
 def save_global_stock_state(state):
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
