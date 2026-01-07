@@ -10,12 +10,29 @@ USER_DB_FILE = "cityos_users.json"
 STOCK_DB_FILE = "cityos_chaos_market.json"
 
 def init_db():
+    # 若檔案不存在，初始化預設資料
     if not os.path.exists(USER_DB_FILE):
         users = {
-            "frank": { "password": "x", "name": "System OVERLORD", "money": 9999, "job": "Admin", "stocks": {}, "inventory": {}, "mailbox": [], "active_missions": [], "pending_claims": [], "last_hack": 0, "toxicity": 0, "level": 10, "exp": 0 },
+            # 🔥 這裡設定了你的管理員帳號
+            "frank": { 
+                "password": "x", 
+                "name": "System OVERLORD", 
+                "money": 99999, 
+                "job": "Admin", 
+                "stocks": {}, 
+                "inventory": {"Trojan Virus": 10, "Gas Mask": 1}, 
+                "mailbox": [], 
+                "active_missions": [], 
+                "pending_claims": [], 
+                "last_hack": 0, 
+                "toxicity": 0, 
+                "level": 10, 
+                "exp": 0 
+            },
         }
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4, ensure_ascii=False)
+    
     if not os.path.exists(STOCK_DB_FILE):
         rebuild_market()
 
@@ -34,6 +51,7 @@ def get_user(uid):
     users = get_all_users()
     user = users.get(uid)
     if user:
+        # 自動修復缺少的欄位
         dirty = False
         if "level" not in user: user["level"] = 1; dirty = True
         if "exp" not in user: user["exp"] = 0; dirty = True
@@ -69,8 +87,7 @@ def add_exp(uid, amount):
         user["exp"] -= required_exp
         user["level"] += 1
         leveled_up = True
-        # 升級獎勵
-        user["toxicity"] = 0
+        user["toxicity"] = 0 # 升級解毒
         bonus = user["level"] * 100
         user["money"] += bonus
     
@@ -107,7 +124,7 @@ def rebuild_market():
     state = { "last_update": time.time(), "prices": current_prices, "history": history }
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
 
-# 🔥 修正後的讀取函式
+# 🔥 修正後的讀取函式 (防止 SyntaxError)
 def get_global_stock_state():
     try:
         with open(STOCK_DB_FILE, "r", encoding="utf-8") as f:
