@@ -32,11 +32,11 @@ ITEMS = {
 
 # 股市設定
 STOCKS_DATA = {
-    "CYBR": {"name": "CyberCorp", "base": 500, "volatility": 0.05},
-    "ROBO": {"name": "RoboDynamics", "base": 300, "volatility": 0.08},
-    "AI":   {"name": "Sentient AI", "base": 800, "volatility": 0.12},
-    "FOOD": {"name": "SynthFood", "base": 50, "volatility": 0.02},
-    "HACK": {"name": "ZeroDay Grp", "base": 150, "volatility": 0.20}
+    "CYBR": {"name": "CyberCorp", "base": 500, "volatility": 0.1},
+    "ROBO": {"name": "RoboDynamics", "base": 300, "volatility": 0.1},
+    "AI":   {"name": "Sentient AI", "base": 800, "volatility": 0.1},
+    "FOOD": {"name": "SynthFood", "base": 50, "volatility": 0.01},
+    "HACK": {"name": "ZeroDay Grp", "base": 150, "volatility": 0.1}
 }
 
 # 每日事件 (充滿絕望感)
