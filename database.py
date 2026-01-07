@@ -10,9 +10,9 @@ USER_DB_FILE = "cityos_users.json"
 STOCK_DB_FILE = "cityos_chaos_market.json"
 
 def init_db():
+    # 初始化使用者資料庫
     if not os.path.exists(USER_DB_FILE):
         users = {
-            # 👑 管理員帳號
             "frank": { 
                 "password": "x", 
                 "name": "System OVERLORD", 
@@ -22,7 +22,6 @@ def init_db():
                 "inventory": {"Trojan Virus": 50, "Gas Mask": 1}, 
                 "mailbox": [], 
                 "active_missions": [], 
-                "pending_claims": [], 
                 "last_hack": 0, 
                 "toxicity": 0, 
                 "level": 10, 
@@ -32,6 +31,7 @@ def init_db():
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4, ensure_ascii=False)
     
+    # 初始化股市
     if not os.path.exists(STOCK_DB_FILE):
         rebuild_market()
 
@@ -50,6 +50,7 @@ def get_user(uid):
     users = get_all_users()
     user = users.get(uid)
     if user:
+        # 資料結構自動修復 (防止舊帳號缺欄位報錯)
         dirty = False
         if "level" not in user: user["level"] = 1; dirty = True
         if "exp" not in user: user["exp"] = 0; dirty = True
@@ -64,7 +65,7 @@ def create_user(uid, pwd, name):
     users[uid] = { 
         "password": pwd, "name": name, "money": 500, 
         "job": "Citizen", "stocks": {}, "inventory": {}, 
-        "mailbox": [], "active_missions": [], "pending_claims": [], 
+        "mailbox": [], "active_missions": [],
         "last_hack": 0, "toxicity": 0,
         "level": 1, "exp": 0
     }
@@ -82,14 +83,13 @@ def add_exp(uid, amount):
         user["exp"] -= required_exp
         user["level"] += 1
         leveled_up = True
-        user["toxicity"] = 0
-        user["money"] += user["level"] * 100
+        user["toxicity"] = 0 # 升級稍微回血
+        user["money"] += user["level"] * 100 # 升級獎金
     save_user(uid, user)
     return leveled_up, user["level"]
 
 def apply_environmental_hazard(uid, user):
     chance = 0.2
-    # 這裡的邏輯是：有防毒面具會保護你，但如果你持有高危物品(如興奮劑)會增加風險
     if user.get("inventory", {}).get("Gas Mask", 0) > 0:
         chance = 0.02
         
@@ -102,7 +102,6 @@ def apply_environmental_hazard(uid, user):
     return is_poisoned
 
 def rebuild_market():
-    current_prices = {} 
     history = []
     for i in range(60):
         row = {}
@@ -114,7 +113,7 @@ def rebuild_market():
         past_time = datetime.now() - timedelta(seconds=(60-i)*2)
         row["_time"] = past_time.strftime("%H:%M:%S")
         history.append(row)
-    state = { "last_update": time.time(), "prices": current_prices, "history": history }
+    state = { "last_update": time.time(), "prices": history[-1], "history": history }
     with open(STOCK_DB_FILE, "w", encoding="utf-8") as f: json.dump(state, f, indent=4)
 
 def get_global_stock_state():
