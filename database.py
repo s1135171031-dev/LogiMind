@@ -1,18 +1,18 @@
 # database.py
-# 用途: 資料處理 (含超級帳號 Frank 與職業欄位)
+# 用途: 資料處理 (含 Frank 帳號、職業系統、股市預載歷史)
 
 import json
 import os
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import STOCKS_DATA
 
 USER_DB_FILE = "cityos_users.json"
 STOCK_DB_FILE = "cityos_stocks.json"
 
 def init_db():
-    # 1. 初始化使用者資料庫 (包含 Frank)
+    # 1. 初始化使用者資料庫
     if not os.path.exists(USER_DB_FILE):
         users = {
             "admin": {
@@ -21,30 +21,51 @@ def init_db():
                 "stocks": {}, "inventory": {}, "mailbox": [], "active_missions": [], "pending_claims": [],
                 "last_hack": 0
             },
-            # --- 🔥 你的專屬超級帳號 ---
             "frank": {
-                "password": "x",          # 密碼
-                "name": "Frank (Dev)",    # 顯示名稱
-                "money": 999999999,       # 接近無限的錢
-                "job": "Gamemaster",      # 特殊職業: GM
+                "password": "x",
+                "name": "Frank (Dev)",
+                "money": 999999999,
+                "job": "Gamemaster",
                 "stocks": { "CYBR": 1000, "AI": 1000 }, 
                 "inventory": { "Trojan Virus": 99, "Firewall": 99, "Brute Force Script": 99, "Mining GPU": 10 }, 
                 "mailbox": [{"from":"System", "title":"Dev Access", "msg":"Developer mode activated.", "time":str(datetime.now())}],
-                "active_missions": [], 
-                "pending_claims": [],
-                "last_hack": 0
+                "active_missions": [], "pending_claims": [], "last_hack": 0
             }
         }
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4, ensure_ascii=False)
             
-    # 2. 初始化全域股市
+    # 2. 初始化全域股市 (🔥 這裡新增了預先生成歷史數據的邏輯)
     if not os.path.exists(STOCK_DB_FILE):
+        print("正在生成歷史股市數據...")
+        
+        # 初始價格
+        current_prices = {k: v["base"] for k, v in STOCKS_DATA.items()}
+        history = []
+        
+        # 🔥 預先模擬 30 次波動，讓圖表一開始就有資料
+        for i in range(30):
+            row = {}
+            for code, price in current_prices.items():
+                vol = STOCKS_DATA[code]["volatility"]
+                change = random.uniform(-vol, vol) # 這裡用簡單波動，不套用事件
+                new_price = int(price * (1 + change))
+                new_price = max(5, min(3000, new_price))
+                
+                current_prices[code] = new_price # 更新當前價格供下一輪使用
+                row[code] = new_price
+            
+            # 偽造時間戳記 (從過去到現在)
+            past_time = datetime.now() - timedelta(seconds=(30-i)*2)
+            row["_time"] = past_time.strftime("%H:%M:%S")
+            history.append(row)
+
         stock_state = {
             "last_update": time.time(),
-            "prices": {k: v["base"] for k, v in STOCKS_DATA.items()},
-            "history": []
+            "prices": current_prices, # 使用模擬後的最新價格
+            "history": history
         }
+        
         with open(STOCK_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(stock_state, f, indent=4)
 
@@ -67,12 +88,11 @@ def create_user(uid, pwd, name):
     users = get_all_users()
     if uid in users: return False
     
-    # 一般玩家註冊 (低起始資金、毒舌信件)
     users[uid] = {
         "password": pwd, 
         "name": name, 
         "money": 500, 
-        "job": "Citizen", # 預設職業
+        "job": "Citizen",
         "stocks": {}, "inventory": {}, 
         "mailbox": [{
             "from": "System",
@@ -110,17 +130,13 @@ def send_mail(to_uid, from_uid, title, msg):
 def check_mission(uid, user, action_type):
     updated = False
     new_missions = []
-    
     for m in user.get("active_missions", []):
         if m.get("type") == action_type:
             user.setdefault("pending_claims", []).append(m)
             updated = True
-        else:
-            new_missions.append(m)
-            
+        else: new_missions.append(m)
     user["active_missions"] = new_missions
     
-    # 循環生成低報酬任務 (50-200元)
     if updated and len(user["active_missions"]) < 2:
         reward = random.randint(50, 200)
         task_pool = [
