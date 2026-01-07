@@ -1,25 +1,25 @@
 # config.py
-# 城市設定檔：包含物品、股票、事件、以及邏輯實驗室圖形
+# 城市設定檔
 
 ITEMS = {
-    "Nutri-Paste": {"price": 20, "desc": "像是嘔吐物的營養膏。"},
-    "Stim-Pack": {"price": 150, "desc": "非法興奮劑，手會抖。"},
-    "Data Chip": {"price": 300, "desc": "從垃圾堆撿來的晶片。"},
-    "VR Headset": {"price": 800, "desc": "逃避現實的最佳工具。"},
-    "Cyber-Arm": {"price": 2500, "desc": "比肉體強，但會漏油。"},
-    "GPU (Mining)": {"price": 5000, "desc": "現在比人命還值錢。"},
-    "Trojan Virus": {"price": 1500, "desc": "PVP 專用：駭入別人的帳戶。"},
-    "Firewall": {"price": 2000, "desc": "防止被別人駭入。"}
+    "Nutri-Paste": {"price": 10, "desc": "像是嘔吐物的營養膏。"},
+    "Stim-Pack": {"price": 50, "desc": "非法興奮劑，手會抖。"},
+    "Data Chip": {"price": 100, "desc": "從垃圾堆撿來的晶片。"},
+    "VR Headset": {"price": 300, "desc": "逃避現實的最佳工具。"},
+    "Cyber-Arm": {"price": 1200, "desc": "比肉體強，但會漏油。"},
+    "GPU (Mining)": {"price": 2500, "desc": "現在比人命還值錢。"},
+    "Trojan Virus": {"price": 800, "desc": "PVP 專用：駭入別人的帳戶。"},
+    "Firewall": {"price": 1000, "desc": "防止被別人駭入。"}
 }
 
-# 綠線風格：高波動率設定
+# 🔥 修改：價格改小 (10~150)，波動率全部調到最高
 STOCKS_DATA = {
-    "CYBR": {"name": "CyberCorp", "base": 1200, "volatility": 0.5},
-    "NEO":  {"name": "Neo-Tokyo", "base": 5000, "volatility": 0.4},
-    "SLUM": {"name": "Slum Ind.", "base": 50, "volatility": 1.2},
-    "AI":   {"name": "Skynet", "base": 3000, "volatility": 0.6},
-    "BOND": {"name": "City Bond", "base": 100, "volatility": 0.3},
-    "DOGE": {"name": "MemeCoin", "base": 10, "volatility": 1.5}
+    "CYBR": {"name": "CyberCorp", "base": 80, "volatility": 2.0},
+    "NEO":  {"name": "Neo-Tokyo", "base": 120, "volatility": 2.0},
+    "SLUM": {"name": "Slum Ind.", "base": 15, "volatility": 3.0}, # 垃圾股
+    "AI":   {"name": "Skynet", "base": 60, "volatility": 2.0},
+    "BOND": {"name": "City Bond", "base": 30, "volatility": 1.5},
+    "DOGE": {"name": "MemeCoin", "base": 5, "volatility": 5.0}   # 價格極低但跳動極大
 }
 
 CITY_EVENTS = [
@@ -30,7 +30,6 @@ CITY_EVENTS = [
     {"name": "Normal Day", "effect": "none", "desc": "平淡無奇的絕望一天。"}
 ]
 
-# 邏輯實驗室的 SVG 圖示
 SVG_LIB = {
     "AND": '<svg width="100" height="50"><path d="M10,10 L40,10 A25,25 0 0,1 40,60 L10,60 Z" fill="none" stroke="#00ff41" stroke-width="2"/><line x1="0" y1="20" x2="10" y2="20" stroke="#00ff41"/><line x1="0" y1="50" x2="10" y2="50" stroke="#00ff41"/><line x1="65" y1="35" x2="100" y2="35" stroke="#00ff41"/></svg>',
     "OR": '<svg width="100" height="50"><path d="M10,10 Q40,10 55,35 Q40,60 10,60 Q25,35 10,10" fill="none" stroke="#00ff41" stroke-width="2"/><line x1="0" y1="20" x2="15" y2="20" stroke="#00ff41"/><line x1="0" y1="50" x2="15" y2="50" stroke="#00ff41"/><line x1="55" y1="35" x2="100" y2="35" stroke="#00ff41"/></svg>',
