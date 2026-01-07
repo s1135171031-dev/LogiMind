@@ -8,23 +8,80 @@ import hashlib
 import plotly.graph_objects as go
 from datetime import datetime
 from config import ITEMS, STOCKS_DATA, SVG_LIB, LEVEL_TITLES
-
-# 🔥 修正引用語法，避免 SyntaxError
-from database import init_db, get_user, save_user, create_user, get_global_stock_state, save_global_stock_state, rebuild_market, check_mission, send_mail, get_all_users, apply_environmental_hazard, add_exp
+from database import init_db, get_user, save_user, create_user, get_global_stock_state, save_global_stock_state, rebuild_market, get_all_users, apply_environmental_hazard, add_exp
 
 st.set_page_config(page_title="CityOS Edu-Core", layout="wide", page_icon="☣️")
+
+# CSS: 駭客風格 + 特效基礎
 st.markdown("""
 <style>
     .stApp { background-color: #050505; color: #00ff41; font-family: monospace; }
     div.stButton > button { background-color: #000; border: 1px solid #00ff41; color: #00ff41; }
     div.stButton > button:hover { background-color: #00ff41; color: #000; }
     .js-plotly-plot .plotly .main-svg { background: rgba(0,0,0,0) !important; }
-    .stProgress > div > div > div > div { background-color: #ff3333; }
     code { color: #e6db74; }
+    /* 讓吐司訊息也黑化 */
+    div[data-baseweb="toast"] { background-color: #333 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 init_db()
+
+# --- 🌀 沉浸式特效引擎 (Immersive Engine) ---
+def apply_immersion_effects(user):
+    styles = []
+    inv = user.get("inventory", {})
+    
+    # 1. 💉 Stim-Pack 副作用：手抖 (畫面劇烈高頻震動)
+    # 只要背包裡有，就會因為「藥物洩漏」導致手抖
+    if inv.get("Stim-Pack", 0) > 0:
+        styles.append("""
+            @keyframes shake {
+                0% { transform: translate(1px, 1px) rotate(0deg); }
+                10% { transform: translate(-1px, -2px) rotate(-1deg); }
+                20% { transform: translate(-3px, 0px) rotate(1deg); }
+                30% { transform: translate(3px, 2px) rotate(0deg); }
+                40% { transform: translate(1px, -1px) rotate(1deg); }
+                50% { transform: translate(-1px, 2px) rotate(-1deg); }
+                60% { transform: translate(-3px, 1px) rotate(0deg); }
+                70% { transform: translate(3px, 1px) rotate(-1deg); }
+                80% { transform: translate(-1px, -1px) rotate(1deg); }
+                90% { transform: translate(1px, 2px) rotate(0deg); }
+                100% { transform: translate(1px, -2px) rotate(-1deg); }
+            }
+            .stApp { animation: shake 0.5s infinite; }
+        """)
+
+    # 2. 🤢 Nutri-Paste / 毒氣中毒：暈眩 (畫面流體扭曲 + 變色)
+    # 持有營養膏 或 中毒指數高
+    is_dizzy = user.get("toxicity", 0) > 30 or inv.get("Nutri-Paste", 0) > 0
+    if is_dizzy:
+        styles.append("""
+            @keyframes dizzy {
+                0% { filter: hue-rotate(0deg) blur(0px); transform: scale(1); }
+                25% { filter: hue-rotate(45deg) blur(1px); transform: scale(1.02) skewX(2deg); }
+                50% { filter: hue-rotate(0deg) blur(2px); transform: scale(1) skewY(-2deg); }
+                75% { filter: hue-rotate(-45deg) blur(1px); transform: scale(1.02) skewX(-2deg); }
+                100% { filter: hue-rotate(0deg) blur(0px); transform: scale(1); }
+            }
+            .stApp { animation: dizzy 8s infinite ease-in-out; }
+            h1, h2, h3, p { text-shadow: 2px 2px 5px #ff00ff; }
+        """)
+
+    # 3. 🤖 Cyber-Arm：機械故障 (CRT 掃描線)
+    if inv.get("Cyber-Arm", 0) > 0:
+        styles.append("""
+            .stApp::before {
+                content: " "; display: block; position: fixed;
+                top: 0; left: 0; bottom: 0; right: 0;
+                background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+                z-index: 9999; background-size: 100% 2px, 3px 100%; pointer-events: none;
+            }
+        """)
+
+    if styles:
+        css_code = "<style>" + "\n".join(styles) + "</style>"
+        st.markdown(css_code, unsafe_allow_html=True)
 
 # --- 輔助函數 ---
 def update_stock_market():
@@ -65,7 +122,7 @@ def render_k_line(symbol):
     fig.update_layout(title=f"{symbol} K-Line", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'), xaxis_rangeslider_visible=False, margin=dict(l=0, r=0, t=30, b=0), height=350)
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 功能模組 ---
+# --- 頁面模組 ---
 
 def page_dashboard(uid, user):
     st.title(f"🏙️ 儀表板: {user['name']}")
@@ -105,201 +162,187 @@ def page_stock(uid, user):
     with c1: render_k_line(selected_stock)
     if auto: time.sleep(1); st.rerun()
 
-def page_lab(uid, user):
-    st.title("🔌 邏輯電路 (Logic Gates)")
-    st.caption("硬體教育：學習 AND/OR/NOT 邏輯閘運作原理。")
-    col_i1, col_i2 = st.columns(2)
-    with col_i1: in_A = st.toggle("Input A", True)
-    with col_i2: in_B = st.toggle("Input B", False)
-    st.markdown("---")
-    gate = st.selectbox("選擇邏輯閘", list(SVG_LIB.keys()))
-    res = False
-    if gate == "AND": res = in_A and in_B
-    elif gate == "OR": res = in_A or in_B
-    elif gate == "XOR": res = in_A != in_B
-    elif gate == "NOT": res = not in_A
-    elif gate == "NAND": res = not (in_A and in_B)
-    elif gate == "NOR": res = not (in_A or in_B)
-    st.markdown(SVG_LIB[gate], unsafe_allow_html=True)
-    st.info(f"Output: {int(res)}")
-    if st.button("提交測試"): 
-        leveled, _ = add_exp(uid, 10); st.toast("測試成功 (+10 XP)")
-        if leveled: st.balloons()
+def page_shop(uid, user):
+    st.title("🛒 地下黑市 (Dark Market)")
+    st.caption("副作用警告：部分商品可能導致視覺神經失調。")
+    t1, t2 = st.tabs(["購買", "背包"])
+    
+    with t1:
+        for k, v in ITEMS.items():
+            col_a, col_b = st.columns([3, 1])
+            with col_a:
+                st.markdown(f"**{k}** (${v['price']})")
+                st.caption(v['desc'])
+            with col_b:
+                if st.button(f"購買", key=f"buy_{k}"):
+                    if user['money'] >= v['price']:
+                        user['money'] -= v['price']
+                        user.setdefault('inventory', {})[k] = user['inventory'].get(k, 0) + 1
+                        save_user(uid, user)
+                        st.toast(f"已購買 {k}！小心副作用...", icon="🛍️")
+                        st.rerun()
+                    else: st.error("資金不足")
+            st.markdown("---")
 
-# 🔐 雙向密碼學模組
+    with t2:
+        st.subheader("背包內容")
+        inv = user.get('inventory', {})
+        if not inv: st.write("背包是空的。")
+        
+        for item_name, count in inv.items():
+            if count > 0:
+                c1, c2 = st.columns([3, 1])
+                c1.write(f"📦 **{item_name}** x {count}")
+                
+                # 特殊道具的使用邏輯
+                if item_name == "Anti-Rad Pill":
+                    if c2.button("💊 服用 (解毒+清除副作用)", key="use_pill"):
+                        user["inventory"]["Anti-Rad Pill"] -= 1
+                        user["toxicity"] = 0
+                        # 強制清除導致副作用的道具
+                        if user["inventory"].get("Nutri-Paste", 0) > 0:
+                            user["inventory"]["Nutri-Paste"] -= 1
+                            st.toast("已清除體內殘留的營養膏毒素。", icon="🤮")
+                        if user["inventory"].get("Stim-Pack", 0) > 0:
+                            user["inventory"]["Stim-Pack"] -= 1
+                            st.toast("已中和血液中的興奮劑。", icon="💉")
+                        save_user(uid, user)
+                        st.success("身體狀態已重置！")
+                        time.sleep(1)
+                        st.rerun()
+                elif item_name in ["Nutri-Paste", "Stim-Pack"]:
+                    c2.caption("持有即觸發被動效果")
+
 def page_crypto(uid, user):
-    st.title("🔐 密碼學終端機 (Crypto)")
-    st.caption("雙向轉換：加密與解密工具箱。")
+    st.title("🔐 密碼學終端機")
     tab1, tab2, tab3 = st.tabs(["🏛️ 凱撒密碼", "📦 Base64", "🧩 每日挑戰"])
-
     with tab1:
-        st.info("Shift Cipher: 將字母依照位移量搬移。")
-        shift = st.slider("位移量 (Key)", 1, 25, 3)
+        shift = st.slider("Key (Shift)", 1, 25, 3)
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("### 🔒 加密")
-            pt = st.text_area("明文", "ATTACK", height=70)
-            if pt:
-                et = "".join([chr((ord(c)-65+shift)%26+65) if c.isupper() else chr((ord(c)-97+shift)%26+97) if c.islower() else c for c in pt])
-                st.code(et)
+            pt = st.text_area("明文", "ATTACK")
+            if pt: st.code("".join([chr((ord(c)-65+shift)%26+65) if c.isupper() else chr((ord(c)-97+shift)%26+97) if c.islower() else c for c in pt]))
         with c2:
-            st.markdown("### 🔓 解密")
-            ct = st.text_area("密文", "", height=70)
-            if ct:
-                dt = "".join([chr((ord(c)-65-shift)%26+65) if c.isupper() else chr((ord(c)-97-shift)%26+97) if c.islower() else c for c in ct])
-                st.success(dt)
-
+            ct = st.text_area("密文", "")
+            if ct: st.success("".join([chr((ord(c)-65-shift)%26+65) if c.isupper() else chr((ord(c)-97-shift)%26+97) if c.islower() else c for c in ct]))
     with tab2:
-        st.info("Base64: 二進位轉文字編碼。")
         c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("### ➡️ 編碼")
-            txt = st.text_input("輸入文字", "Hello")
+        with c1: 
+            txt = st.text_input("文字->Base64", "Hello")
             if txt: st.code(base64.b64encode(txt.encode()).decode())
         with c2:
-            st.markdown("### ⬅️ 解碼")
-            b64 = st.text_input("輸入Base64", "")
+            b64 = st.text_input("Base64->文字", "")
             if b64:
                 try: st.success(base64.b64decode(b64).decode())
-                except: st.error("無效格式")
-
+                except: st.error("Invalid")
     with tab3:
         if "caesar_ans" not in st.session_state:
             w = random.choice(["LINUX", "CODE", "JAVA", "RUBY"]); s = random.randint(1,5)
             st.session_state.caesar_target = w; st.session_state.caesar_shift = s
             st.session_state.caesar_q = "".join([chr(ord(c)+s) for c in w])
-        st.write(f"攔截訊息: **{st.session_state.caesar_q}** (Shift: {st.session_state.caesar_shift})")
+        st.write(f"攔截訊息: **{st.session_state.caesar_q}** (Key: {st.session_state.caesar_shift})")
         ans = st.text_input("答案 (大寫)", key="cg_in")
         if st.button("驗證"):
             if ans == st.session_state.caesar_target:
-                add_exp(uid, 20); del st.session_state["caesar_ans"]; st.success("✅ 成功!"); st.rerun()
-            else: st.error("❌ 錯誤")
+                add_exp(uid, 20); del st.session_state["caesar_ans"]; st.success("✅ Success (+20XP)"); st.rerun()
+            else: st.error("❌ Fail")
 
-# 🛡️ 雜湊實驗室
 def page_hashing(uid, user):
-    st.title("🛡️ 雜湊實驗室 (Hash)")
-    st.caption("單向函數演示：為什麼密碼不能雙向還原？")
-    col1, col2 = st.columns(2)
-    with col1:
-        pwd = st.text_input("輸入任意文字", "password123")
-    with col2:
-        sha = hashlib.sha256(pwd.encode()).hexdigest()
-        st.markdown("**SHA-256 (單向指紋):**"); st.code(sha)
-    
-    st.markdown("---")
-    check = st.text_input("嘗試撞庫 (猜密碼):")
-    if check:
-        if hashlib.sha256(check.encode()).hexdigest() == sha: st.success("✅ 匹配成功")
-        else: st.error("❌ 指紋不符")
+    st.title("🛡️ 雜湊實驗室")
+    c1, c2 = st.columns(2)
+    with c1: pwd = st.text_input("明文輸入", "123456")
+    with c2: st.markdown("SHA-256:"); st.code(hashlib.sha256(pwd.encode()).hexdigest())
 
-def page_binary(uid, user):
-    st.title("🔢 進制駭客")
-    if "bin_target" not in st.session_state: st.session_state.bin_target = random.randint(1, 64)
-    target = st.session_state.bin_target
-    mode = st.radio("模式", ["二進位 (Binary)", "十六進位 (Hex)"])
-    st.metric("目標 (十進位)", target)
-    ans = st.text_input("輸入答案")
-    if st.button("提交"):
-        correct = bin(target)[2:] if "Binary" in mode else hex(target)[2:].upper()
-        if ans.lower() == correct.lower():
-            add_exp(uid, 15); st.session_state.bin_target = random.randint(1, 100); st.success("✅ 正確!"); st.rerun()
-        else: st.error(f"❌ 錯誤，答案是 {correct}")
+def page_lab(uid, user):
+    st.title("🔌 邏輯電路")
+    c1, c2 = st.columns(2)
+    with c1: a = st.toggle("A", True)
+    with c2: b = st.toggle("B", False)
+    gate = st.selectbox("Gate", list(SVG_LIB.keys()))
+    st.markdown(SVG_LIB[gate], unsafe_allow_html=True)
 
 def page_linux(uid, user):
     st.title("🐧 Linux Terminal")
-    st.caption("指令：ls, cd, cat, pwd")
-    if "fs" not in st.session_state:
-        st.session_state.fs = {"pwd": "/home/user", "files": {"/home/user": ["flag.txt"], "/": ["home", "var"]}, "data": {"flag.txt": "CTF{LINUX_OP}"}}
-    st.code(f"{uid}@cityos:{st.session_state.fs['pwd']}$", language="bash")
-    cmd = st.text_input("Command", key="lin_cmd")
-    if st.button("Run"):
-        args = cmd.split(); pwd = st.session_state.fs['pwd']
-        if not args: return
-        if args[0]=="ls": st.write(st.session_state.fs['files'].get(pwd, []))
-        elif args[0]=="pwd": st.info(pwd)
-        elif args[0]=="cat" and len(args)>1: st.code(st.session_state.fs['data'].get(args[1], "No such file"))
-        elif args[0]=="cd" and len(args)>1: st.session_state.fs['pwd'] = args[1] # 簡化版
+    st.code(f"{uid}@cityos:~ $", language="bash")
+    cmd = st.text_input("Command")
+    if st.button("Exec"):
+        if cmd == "ls": st.write("flag.txt  secrets  bin")
+        elif cmd == "pwd": st.write("/home/runner")
+        else: st.write("Permission Denied.")
+
+def page_binary(uid, user):
+    st.title("🔢 Binary Hacker")
+    t = random.randint(1, 32)
+    st.metric("Target", t)
+    ans = st.text_input("Binary (e.g. 1010)")
+    if st.button("Submit"):
+        if ans == bin(t)[2:]: add_exp(uid, 15); st.success("Correct!")
+        else: st.error(f"Wrong. Ans: {bin(t)[2:]}")
 
 def page_debug(uid, user):
-    st.title("🐍 Python Debugger")
-    q = {"q": "print('Hello", "a": "print('Hello')", "hint": "缺少右括號"}
-    st.code(q["q"], language="python"); st.info(q["hint"])
-    ans = st.text_input("修正程式碼")
-    if st.button("Fix"):
-        if ans.replace(" ","") == q["a"].replace(" ",""): add_exp(uid, 20); st.success("✅ Fixed!"); st.rerun()
-        else: st.error("Still broken")
-
-def page_shop(uid, user):
-    st.title("🛒 黑市"); t1, t2 = st.tabs(["買", "背包"])
-    with t1:
-        for k, v in ITEMS.items():
-            if st.button(f"買 {k} (${v['price']})"):
-                if user['money'] >= v['price']:
-                    user['money'] -= v['price']; user.setdefault('inventory', {})[k] = user['inventory'].get(k, 0) + 1; save_user(uid, user); st.success(f"已購買 {k}"); st.rerun()
-                else: st.error("沒錢")
-    with t2:
-        st.write(user.get('inventory', {}))
-        if user.get("inventory", {}).get("Anti-Rad Pill", 0) > 0:
-            if st.button("💊 服用輻射藥丸"):
-                user["inventory"]["Anti-Rad Pill"] -= 1; user["toxicity"] = max(0, user.get("toxicity",0)-30); save_user(uid, user); st.rerun()
+    st.title("🐍 Python Debug")
+    st.code("print('Hello World'", language="python")
+    st.info("Error: SyntaxError")
+    ans = st.text_input("Fix it:")
+    if st.button("Run Fix"):
+        if ans.replace(" ","") == "print('HelloWorld')": add_exp(uid, 15); st.success("Fixed!")
 
 def page_pvp(uid, user):
-    st.title("⚔️ PVP"); targets = [u for u in get_all_users() if u!=uid and u!="frank"]
-    if not targets: st.write("無人可打"); return
-    t = st.selectbox("目標", targets)
-    if st.button("駭入攻擊 (需病毒)"):
+    st.title("⚔️ PVP")
+    targets = [u for u in get_all_users() if u!=uid and u!="frank"]
+    if not targets: st.write("No targets."); return
+    t = st.selectbox("Target", targets)
+    if st.button("Hack"):
         if user.get("inventory",{}).get("Trojan Virus",0) > 0:
             user["inventory"]["Trojan Virus"]-=1; vic = get_user(t); loot = 100
-            vic["money"] -= loot; user["money"] += loot; save_user(t, vic); save_user(uid, user)
-            st.success(f"攻擊成功！搶奪 ${loot}"); st.rerun()
-        else: st.error("缺少 Trojan Virus")
+            vic["money"] -= loot; user["money"] += loot
+            save_user(t, vic); save_user(uid, user)
+            st.success(f"Stole ${loot}"); st.rerun()
+        else: st.error("Need Virus")
 
 # --- 主程式 ---
 def main():
     if "logged_in" not in st.session_state: st.session_state.logged_in = False
     if not st.session_state.logged_in:
-        st.title("CITY_OS // EDU_CORE"); c1,c2=st.tabs(["登入","註冊"]); 
+        st.title("CITY_OS // LOGIN"); c1,c2=st.tabs(["Login","Register"])
         with c1: 
             u=st.text_input("ID"); p=st.text_input("PW",type="password")
-            if st.button("LOGIN"): 
+            if st.button("ENTER"): 
                 if get_user(u) and get_user(u)['password']==p: st.session_state.logged_in=True; st.session_state.uid=u; st.rerun()
         with c2:
-            nu=st.text_input("NID"); np=st.text_input("NPW",type="password"); nn=st.text_input("Name")
-            if st.button("REG"): 
-                if create_user(nu,np,nn): st.success("OK"); st.rerun()
+            nu=st.text_input("New ID"); np=st.text_input("New PW",type="password"); nn=st.text_input("Name")
+            if st.button("JOIN"): 
+                if create_user(nu,np,nn): st.success("Created"); st.rerun()
         return
 
     uid = st.session_state.uid; user = get_user(uid)
     
-    # 環境災害判定
-    if apply_environmental_hazard(uid, user): st.toast("⚠️ 警告：吸入有毒氣體！", icon="☣️")
-    if user.get("toxicity", 0) >= 100: st.error("☠️ 毒發身亡... 緊急重生 (-$200)"); user["money"]-=200; user["toxicity"]=50; save_user(uid,user); time.sleep(2); st.rerun()
+    # 🔥 啟動特效 (在所有UI渲染前)
+    apply_immersion_effects(user)
+
+    if apply_environmental_hazard(uid, user): st.toast("⚠️ 吸入毒氣...", icon="☣️")
+    if user.get("toxicity", 0) >= 100: 
+        st.error("☠️ 毒發身亡... 重生扣除 $200"); user["money"]-=200; user["toxicity"]=50; save_user(uid,user); time.sleep(2); st.rerun()
 
     with st.sidebar:
         st.title(f"👤 {user['name']}")
         st.caption(f"🆔 {LEVEL_TITLES.get(user['level'], 'Unknown')}")
-        st.progress(user['exp'] / (user['level']*100)); st.write(f"Lv.{user['level']} (XP: {user['exp']})")
+        st.progress(user['exp'] / (user['level']*100))
         st.metric("Credits", f"${user['money']}")
         st.metric("Toxicity", f"{user['toxicity']}%", delta_color="inverse")
-        
-        nav = st.radio("導航", [
-            "儀表板", "交易所", "黑市", "PVP", 
-            "--- 教育模組 ---",
-            "邏輯電路 (Logic)", "密碼學 (Crypto)", "雜湊實驗室 (Hash)",
-            "進制駭客 (Binary)", "Linux 終端機", "Python 除錯室"
-        ])
-        if st.button("登出"): st.session_state.logged_in=False; st.rerun()
+        nav = st.radio("System", ["Dashboard", "Exchange", "Dark Market", "PVP", "Logic Gates", "Crypto", "Hash Lab", "Binary", "Linux", "Python Debug"])
+        if st.button("Logout"): st.session_state.logged_in=False; st.rerun()
 
-    if nav == "儀表板": page_dashboard(uid, user)
-    elif nav == "交易所": page_stock(uid, user)
-    elif nav == "黑市": page_shop(uid, user)
+    if nav == "Dashboard": page_dashboard(uid, user)
+    elif nav == "Exchange": page_stock(uid, user)
+    elif nav == "Dark Market": page_shop(uid, user)
     elif nav == "PVP": page_pvp(uid, user)
-    elif nav == "邏輯電路 (Logic)": page_lab(uid, user)
-    elif nav == "密碼學 (Crypto)": page_crypto(uid, user)
-    elif nav == "雜湊實驗室 (Hash)": page_hashing(uid, user)
-    elif nav == "進制駭客 (Binary)": page_binary(uid, user)
-    elif nav == "Linux 終端機": page_linux(uid, user)
-    elif nav == "Python 除錯室": page_debug(uid, user)
+    elif nav == "Logic Gates": page_lab(uid, user)
+    elif nav == "Crypto": page_crypto(uid, user)
+    elif nav == "Hash Lab": page_hashing(uid, user)
+    elif nav == "Binary": page_binary(uid, user)
+    elif nav == "Linux": page_linux(uid, user)
+    elif nav == "Python Debug": page_debug(uid, user)
 
 if __name__ == "__main__":
     main()
