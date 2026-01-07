@@ -3,18 +3,21 @@ import streamlit as st
 import random
 import time
 import pandas as pd
+import plotly.graph_objects as go # 引入專業圖表庫
 from datetime import datetime
 from config import ITEMS, STOCKS_DATA, SVG_LIB
 from database import (init_db, get_user, save_user, create_user, 
                       get_global_stock_state, save_global_stock_state, 
                       rebuild_market, check_mission, send_mail, get_all_users)
 
-st.set_page_config(page_title="CityOS Low-Price Chaos", layout="wide", page_icon="📉")
+st.set_page_config(page_title="CityOS Pro Market", layout="wide", page_icon="📉")
 st.markdown("""
 <style>
     .stApp { background-color: #050505; color: #00ff41; font-family: monospace; }
     div.stButton > button { background-color: #000; border: 1px solid #00ff41; color: #00ff41; }
     div.stButton > button:hover { background-color: #00ff41; color: #000; }
+    /* 調整 Plotly 圖表背景 */
+    .js-plotly-plot .plotly .main-svg { background: rgba(0,0,0,0) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -27,32 +30,25 @@ QUIZ_DB = [
     {"q": "最強的密碼？", "options": ["123456", "password", "X#9v!m2"], "ans": "X#9v!m2"}
 ]
 
-# --- 核心：暴動演算法 (Low Price, High Jump) ---
+# --- 核心邏輯 ---
 def update_stock_market():
     global_state = get_global_stock_state()
     if not global_state: return
 
     now = time.time()
-    if now - global_state.get("last_update", 0) > 0.5:
+    # 稍微加快更新頻率 (0.5s -> 0.3s) 讓圖表更順暢
+    if now - global_state.get("last_update", 0) > 0.3:
         new_prices = {}
         for code, data in STOCKS_DATA.items():
             prev = global_state["prices"].get(code, data["base"])
             
-            # 🔥🔥🔥 強制全體暴動演算法 🔥🔥🔥
-            # 1. 決定方向：暴漲或暴跌 (50% 機率)
+            # 隨機漲跌邏輯
             direction = random.choice([-1, 1])
+            change_pct = random.uniform(0.01, 0.05) # 改小一點，讓 K 線比較好看
+            jitter = random.randint(1, 5) * direction
             
-            # 2. 決定幅度：至少跳動 10% ~ 50%
-            change_pct = random.uniform(0.1, 0.5)
-            
-            # 3. 強制位移 (Jitter)：即使股價只有 10 元，也要讓它跳 ±5 元
-            jitter = random.randint(2, 15) * direction
-            
-            # 計算新價格
-            # 邏輯：原價 * (1 ± 幅度) + 強制位移
             new_p = int(prev * (1 + (direction * change_pct))) + jitter
-            
-            new_p = max(1, new_p) # 最低 1 元
+            new_p = max(1, new_p)
             new_prices[code] = new_p
 
         global_state["prices"] = new_prices
@@ -68,6 +64,53 @@ def update_stock_market():
     st.session_state.stock_prices = global_state["prices"]
     st.session_state.stock_history = pd.DataFrame(global_state["history"])
 
+# --- 🔥 新增：K 線圖繪製引擎 ---
+def render_k_line(symbol):
+    """
+    將單純的價格歷史轉換為 OHLC (開高低收) 格式並繪製專業 K 線圖
+    """
+    if "stock_history" not in st.session_state or st.session_state.stock_history.empty:
+        st.write("等待市場數據...")
+        return
+
+    df = st.session_state.stock_history.copy()
+    if symbol not in df.columns: return
+
+    # 數據處理：因為原本只有「價格」，我們模擬出「開高低收」
+    # Close = 當前價格
+    # Open = 前一秒價格
+    df['Close'] = df[symbol]
+    df['Open'] = df[symbol].shift(1).fillna(df[symbol]) # Open 等於上一筆的 Close
+    
+    # 模擬 High 和 Low (加一點隨機波動讓圖好看)
+    # 這裡用 apply 是為了製造視覺效果，讓它看起來像真實股市
+    import numpy as np
+    df['High'] = df[['Open', 'Close']].max(axis=1) + np.random.randint(0, 5, len(df))
+    df['Low'] = df[['Open', 'Close']].min(axis=1) - np.random.randint(0, 5, len(df))
+    
+    # 繪製圖表
+    fig = go.Figure(data=[go.Candlestick(
+        x=df['_time'],
+        open=df['Open'],
+        high=df['High'],
+        low=df['Low'],
+        close=df['Close'],
+        increasing_line_color='#00ff41', # 漲：駭客綠
+        decreasing_line_color='#ff3333'  # 跌：警報紅
+    )])
+
+    fig.update_layout(
+        title=f"{symbol} 實時走勢",
+        paper_bgcolor='rgba(0,0,0,0)', # 透明背景
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#00ff41'),
+        xaxis_rangeslider_visible=False, # 隱藏下方滑桿
+        margin=dict(l=0, r=0, t=30, b=0),
+        height=350
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+
 # --- 頁面功能 ---
 
 def page_dashboard(uid, user):
@@ -82,9 +125,11 @@ def page_dashboard(uid, user):
     c2.metric("現金", f"${user['money']:,}")
     c3.metric("持股價值", f"${stock_val:,}")
     
+    # 儀表板顯示總覽 (多重線圖)
     if "stock_history" in st.session_state and not st.session_state.stock_history.empty:
-        chart = st.session_state.stock_history.drop(columns=["_time"], errors="ignore")
-        st.line_chart(chart, height=300)
+        st.subheader("市場總覽")
+        df = st.session_state.stock_history.drop(columns=["_time"], errors="ignore")
+        st.line_chart(df, height=250)
     
     if user.get("mailbox"):
         with st.expander(f"📩 訊息 ({len(user['mailbox'])})"):
@@ -92,46 +137,63 @@ def page_dashboard(uid, user):
                 st.info(f"[{mail['time']}] {mail['from']}: {mail['title']} - {mail['msg']}")
 
 def page_stock(uid, user):
-    st.title("📉 混亂低價交易所")
+    st.title("📉 專業交易所 (Pro Trade)")
     auto = st.toggle("⚡ 自動刷新", value=True)
     update_stock_market()
     
     prices = st.session_state.stock_prices
+    
+    # 頂部跑馬燈
     cols = st.columns(len(STOCKS_DATA))
     for i, (k, v) in enumerate(prices.items()):
-        # 顯示時加上隨機符號，增加緊張感
-        cols[i].metric(k, f"${v}", delta=random.choice(["💥", "🔥", "🚀", "📉"]))
+        cols[i].metric(k, f"${v}")
+
+    # 交易核心區
+    c1, c2 = st.columns([2, 1])
+    
+    with c2:
+        st.subheader("下單面板")
+        selected_stock = st.selectbox("選擇股票", list(STOCKS_DATA.keys()))
         
-    t1, t2 = st.tabs(["買進", "賣出"])
-    with t1:
-        b_code = st.selectbox("買入", list(STOCKS_DATA.keys()))
-        qty = st.number_input("股數", 1, 1000, 10)
-        cost = prices.get(b_code, 0) * qty
-        if st.button(f"下單 (-${cost})"):
-            if user['money'] >= cost:
-                user['money'] -= cost
-                user.setdefault('stocks', {})[b_code] = user['stocks'].get(b_code, 0) + qty
-                check_mission(uid, user, "stock_buy")
-                save_user(uid, user)
-                st.success("成交！")
-                st.rerun()
-            else: st.error("沒錢！")
-    with t2:
-        if user.get('stocks'):
-            s_code = st.selectbox("賣出", list(user['stocks'].keys()))
-            own = user['stocks'][s_code]
+        current_price = prices.get(selected_stock, 0)
+        st.metric(f"當前價格: {selected_stock}", f"${current_price}")
+        
+        tab_buy, tab_sell = st.tabs(["買進", "賣出"])
+        with tab_buy:
+            qty = st.number_input("買入股數", 1, 1000, 10, key="b_qty")
+            cost = current_price * qty
+            st.write(f"總價: ${cost}")
+            if st.button("BUY", type="primary"):
+                if user['money'] >= cost:
+                    user['money'] -= cost
+                    user.setdefault('stocks', {})[selected_stock] = user['stocks'].get(selected_stock, 0) + qty
+                    check_mission(uid, user, "stock_buy")
+                    save_user(uid, user)
+                    st.success("成交！")
+                    st.rerun()
+                else: st.error("資金不足")
+        
+        with tab_sell:
+            own = user.get('stocks', {}).get(selected_stock, 0)
             st.write(f"持有: {own} 股")
-            s_qty = st.number_input("賣出量", 1, own, own)
-            income = prices.get(s_code, 0) * s_qty
-            if st.button(f"拋售 (+${income})"):
-                user['money'] += income
-                user['stocks'][s_code] -= s_qty
-                if user['stocks'][s_code] <= 0: del user['stocks'][s_code]
-                save_user(uid, user)
-                st.success("已拋售")
-                st.rerun()
-                
-    if auto: time.sleep(0.8); st.rerun()
+            s_qty = st.number_input("賣出股數", 1, max(1, own), 1, key="s_qty")
+            income = current_price * s_qty
+            st.write(f"預估收入: ${income}")
+            if st.button("SELL"):
+                if own >= s_qty:
+                    user['money'] += income
+                    user['stocks'][selected_stock] -= s_qty
+                    if user['stocks'][selected_stock] <= 0: del user['stocks'][selected_stock]
+                    save_user(uid, user)
+                    st.success("已拋售")
+                    st.rerun()
+                else: st.error("持股不足")
+
+    with c1:
+        # 這裡呼叫新的圖表引擎
+        render_k_line(selected_stock)
+
+    if auto: time.sleep(1); st.rerun()
 
 def page_shop(uid, user):
     st.title("🛒 黑市")
@@ -190,7 +252,7 @@ def page_pvp(uid, user):
             send_mail(target, "System", "防禦成功", f"{uid} 攻擊被防火牆擋下了。")
             st.error("被對方防火牆擋下了！")
         else:
-            loot = random.randint(50, 200) # 搶的錢也變少一點，符合低價物價
+            loot = random.randint(50, 200)
             loot = min(loot, victim['money'])
             victim['money'] -= loot
             user['money'] += loot
@@ -248,7 +310,7 @@ def main():
     if "logged_in" not in st.session_state: st.session_state.logged_in = False
     
     if not st.session_state.logged_in:
-        st.title("CITY_OS // LOW_RES")
+        st.title("CITY_OS // PRO")
         c1, c2 = st.tabs(["Login", "Register"])
         with c1:
             u = st.text_input("ID"); p = st.text_input("PWD", type="password")
