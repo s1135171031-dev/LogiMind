@@ -5,13 +5,10 @@ import time
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
-from config import ITEMS, STOCKS_DATA, SVG_LIB
+from config import ITEMS, STOCKS_DATA, SVG_LIB, LEVEL_TITLES
 
-# 🔥 確保這裡引入了 apply_environmental_hazard
-from database import (init_db, get_user, save_user, create_user, 
-                      get_global_stock_state, save_global_stock_state, 
-                      rebuild_market, check_mission, send_mail, get_all_users,
-                      apply_environmental_hazard)
+# 🔥 這裡是最重要的修正，寫在同一行或分行但不加註解
+from database import init_db, get_user, save_user, create_user, get_global_stock_state, save_global_stock_state, rebuild_market, check_mission, send_mail, get_all_users, apply_environmental_hazard, add_exp
 
 st.set_page_config(page_title="CityOS Hazard", layout="wide", page_icon="☣️")
 st.markdown("""
@@ -20,7 +17,7 @@ st.markdown("""
     div.stButton > button { background-color: #000; border: 1px solid #00ff41; color: #00ff41; }
     div.stButton > button:hover { background-color: #00ff41; color: #000; }
     .js-plotly-plot .plotly .main-svg { background: rgba(0,0,0,0) !important; }
-    .stProgress > div > div > div > div { background-color: #ff3333; }
+    .stProgress > div > div > div > div { background-color: #ff3333; } /* 毒氣條紅色 */
 </style>
 """, unsafe_allow_html=True)
 
@@ -93,7 +90,13 @@ def page_stock(uid, user):
         with t1:
             qty = st.number_input("股數", 1, 1000, 10, key="bq"); cost = current_price * qty
             if st.button(f"買進 (-${cost})"): 
-                if user['money']>=cost: user['money']-=cost; user.setdefault('stocks',{})[selected_stock]=user['stocks'].get(selected_stock,0)+qty; check_mission(uid,user,"stock_buy"); save_user(uid,user); st.success("OK"); st.rerun()
+                if user['money']>=cost: 
+                    user['money']-=cost; user.setdefault('stocks',{})[selected_stock]=user['stocks'].get(selected_stock,0)+qty
+                    # 升級判定
+                    leveled, new_lv = add_exp(uid, 10)
+                    if leveled: st.balloons(); st.toast(f"權限提升！Level {new_lv}")
+                    
+                    save_user(uid,user); st.success("OK (+10 XP)"); st.rerun()
                 else: st.error("沒錢")
         with t2:
             own = user.get('stocks',{}).get(selected_stock,0); st.write(f"持有: {own}"); sqty = st.number_input("股數", 1, max(1,own), 1, key="sq")
@@ -103,7 +106,6 @@ def page_stock(uid, user):
     with c1: render_k_line(selected_stock)
     if auto: time.sleep(1); st.rerun()
 
-# 🔥 新版：邏輯電路設計 (取代舊的 page_lab)
 def page_lab(uid, user):
     st.title("🔌 邏輯電路設計 (Circuit Designer)")
     st.caption("CityOS 硬體實驗室：請使用邏輯閘設計電路。")
@@ -118,8 +120,6 @@ def page_lab(uid, user):
     st.markdown("---")
     st.subheader("2. 第一級處理 (Layer 1)")
     c1, c2 = st.columns(2)
-    
-    # 邏輯閘清單 (從 config.py 的 SVG_LIB 讀取)
     gate_options = list(SVG_LIB.keys())
 
     with c1:
@@ -132,7 +132,7 @@ def page_lab(uid, user):
         elif gate_L == "NAND": res_L = not (in_A and in_B)
         elif gate_L == "NOR": res_L = not (in_A or in_B)
         elif gate_L == "XNOR": res_L = in_A == in_B
-        elif gate_L == "NOT": res_L = not in_A # NOT只取第一個輸入
+        elif gate_L == "NOT": res_L = not in_A
         st.info(f"L 輸出: {int(res_L)}")
 
     with c2:
@@ -167,16 +167,19 @@ def page_lab(uid, user):
     with col_res:
         st.write("## 結果")
         if final_res:
-            st.success("HIGH (1)")
-            st.markdown("💡", unsafe_allow_html=True)
+            st.success("HIGH (1)"); st.markdown("💡", unsafe_allow_html=True)
         else:
-            st.error("LOW (0)")
-            st.markdown("⚫", unsafe_allow_html=True)
+            st.error("LOW (0)"); st.markdown("⚫", unsafe_allow_html=True)
 
     st.divider()
     if st.button("💾 上傳設計圖"):
-        st.toast("設計圖已上傳至雲端伺服器！")
-        check_mission(uid, user, "cli_input") # 當作完成一次技術操作
+        # 升級判定
+        leveled, new_lv = add_exp(uid, 50)
+        if leveled:
+            st.balloons()
+            st.success(f"⏫ 系統權限提升！等級 {new_lv}")
+        else:
+            st.toast("設計圖已上傳 (+50 XP)")
         save_user(uid, user)
 
 def page_shop(uid, user):
@@ -190,9 +193,12 @@ def page_shop(uid, user):
                     if user['money'] >= v['price']:
                         user['money'] -= v['price']
                         user.setdefault('inventory', {})[k] = user['inventory'].get(k, 0) + 1
-                        check_mission(uid, user, "shop_buy")
+                        
+                        # 消費給少許經驗
+                        add_exp(uid, 5)
+                        
                         save_user(uid, user)
-                        st.success("購買成功")
+                        st.success("購買成功 (+5 XP)")
                         st.rerun()
                     else: st.error("資金不足")
     with t2:
@@ -205,7 +211,6 @@ def page_shop(uid, user):
                 if user["inventory"]["Anti-Rad Pill"] <= 0: del user["inventory"]["Anti-Rad Pill"]
                 old_tox = user.get("toxicity", 0)
                 user["toxicity"] = max(0, old_tox - 30)
-                check_mission(uid, user, "use_item")
                 save_user(uid, user)
                 st.success(f"毒素清除！ ({old_tox}% -> {user['toxicity']}%)")
                 st.rerun()
@@ -251,7 +256,7 @@ def main():
 
     uid = st.session_state.uid; user = get_user(uid)
     
-    # ☣️ 毒氣模擬 (這裡呼叫 database 裡的函數)
+    # ☣️ 毒氣模擬
     if apply_environmental_hazard(uid, user):
         st.toast("⚠️ 警報：檢測到有害氣體吸入！", icon="☣️")
         
@@ -266,6 +271,20 @@ def main():
 
     with st.sidebar:
         st.title(f"{user['name']}")
+        
+        # 🆙 顯示等級系統
+        lv = user.get("level", 1)
+        title = LEVEL_TITLES.get(lv, "Unknown Entity")
+        st.caption(f"🆔 {title}")
+        st.write(f"Level: {lv}")
+        
+        # 經驗條
+        exp = user.get("exp", 0)
+        req = lv * 100
+        st.progress(min(1.0, exp / req) if req > 0 else 0)
+        st.caption(f"XP: {exp} / {req}")
+        
+        st.divider()
         st.write(f"💵 ${user['money']}")
         
         # 顯示中毒狀況
