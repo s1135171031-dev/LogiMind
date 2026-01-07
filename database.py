@@ -1,5 +1,5 @@
 # database.py
-# 用途: 資料處理 (含 Frank 帳號、職業系統、股市預載歷史)
+# 用途: 資料處理 (含 Frank 帳號、職業系統、狂暴股市歷史)
 
 import json
 import os
@@ -12,7 +12,7 @@ USER_DB_FILE = "cityos_users.json"
 STOCK_DB_FILE = "cityos_stocks.json"
 
 def init_db():
-    # 1. 初始化使用者資料庫
+    # 1. 初始化使用者資料庫 (保持不變)
     if not os.path.exists(USER_DB_FILE):
         users = {
             "admin": {
@@ -35,40 +35,49 @@ def init_db():
         with open(USER_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4, ensure_ascii=False)
             
-    # 2. 初始化全域股市 (🔥 這裡新增了預先生成歷史數據的邏輯)
+    # 2. 初始化全域股市 (🔥 改動：加入狂暴波動邏輯)
     if not os.path.exists(STOCK_DB_FILE):
-        print("正在生成歷史股市數據...")
+        print("正在生成充滿絕望的股市歷史...")
         
-        # 初始價格
         current_prices = {k: v["base"] for k, v in STOCKS_DATA.items()}
         history = []
         
-        # 🔥 預先模擬 30 次波動，讓圖表一開始就有資料
-        for i in range(30):
+        # 模擬 50 輪 (增加長度，讓曲線更曲折)
+        for i in range(50):
             row = {}
             for code, price in current_prices.items():
-                vol = STOCKS_DATA[code]["volatility"]
-                change = random.uniform(-vol, vol) # 這裡用簡單波動，不套用事件
-                new_price = int(price * (1 + change))
-                new_price = max(5, min(3000, new_price))
+                base_vol = STOCKS_DATA[code]["volatility"]
                 
-                current_prices[code] = new_price # 更新當前價格供下一輪使用
+                # 🔥 1. 基礎波動放大 3 倍：平靜是不被允許的
+                change = random.uniform(-base_vol * 3, base_vol * 3)
+                
+                # 🔥 2. 黑天鵝事件 (15% 機率發生劇烈崩盤或暴漲)
+                chaos_roll = random.random()
+                if chaos_roll < 0.15: 
+                    # 崩盤或暴漲 (-40% ~ +40%)
+                    change += random.choice([-0.4, 0.4])
+                
+                new_price = int(price * (1 + change))
+                # 確保價格不會歸零，也不會太誇張
+                new_price = max(10, min(5000, new_price))
+                
+                current_prices[code] = new_price
                 row[code] = new_price
             
-            # 偽造時間戳記 (從過去到現在)
-            past_time = datetime.now() - timedelta(seconds=(30-i)*2)
+            past_time = datetime.now() - timedelta(seconds=(50-i)*2)
             row["_time"] = past_time.strftime("%H:%M:%S")
             history.append(row)
 
         stock_state = {
             "last_update": time.time(),
-            "prices": current_prices, # 使用模擬後的最新價格
+            "prices": current_prices,
             "history": history
         }
         
         with open(STOCK_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(stock_state, f, indent=4)
 
+# --- 以下函數保持原樣 ---
 def get_all_users():
     try:
         with open(USER_DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
