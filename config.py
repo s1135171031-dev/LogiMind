@@ -10,8 +10,8 @@ ITEMS = {
 STOCKS_DATA = {
     "CYBR": {"name": "CyberCorp", "base": 1200, "volatility": 0.2},
     "NEO":  {"name": "Neo-Tokyo", "base": 5000, "volatility": 0.1},
-    "SLUM": {"name": "Slum Ind.", "base": 50, "volatility": 0.4}, # 低價股
+    "SLUM": {"name": "Slum Ind.", "base": 50, "volatility": 0.4},
     "AI":   {"name": "Skynet", "base": 3000, "volatility": 0.3},
-    "BOND": {"name": "City Bond", "base": 100, "volatility": 0.05}, # 就算是債券也要讓它跳
+    "BOND": {"name": "City Bond", "base": 100, "volatility": 0.05},
     "DOGE": {"name": "MemeCoin", "base": 10, "volatility": 0.8}
 }
