@@ -3,21 +3,23 @@ import streamlit as st
 import random
 import time
 import pandas as pd
+import base64
 import plotly.graph_objects as go
 from datetime import datetime
 from config import ITEMS, STOCKS_DATA, SVG_LIB, LEVEL_TITLES
 
-# 🔥 這裡是最重要的修正，寫在同一行，解決 SyntaxError
+# 單一長行引入，避免 SyntaxError
 from database import init_db, get_user, save_user, create_user, get_global_stock_state, save_global_stock_state, rebuild_market, check_mission, send_mail, get_all_users, apply_environmental_hazard, add_exp
 
-st.set_page_config(page_title="CityOS Hazard", layout="wide", page_icon="☣️")
+st.set_page_config(page_title="CityOS Edu-Core", layout="wide", page_icon="☣️")
 st.markdown("""
 <style>
     .stApp { background-color: #050505; color: #00ff41; font-family: monospace; }
     div.stButton > button { background-color: #000; border: 1px solid #00ff41; color: #00ff41; }
     div.stButton > button:hover { background-color: #00ff41; color: #000; }
     .js-plotly-plot .plotly .main-svg { background: rgba(0,0,0,0) !important; }
-    .stProgress > div > div > div > div { background-color: #ff3333; } /* 毒氣條紅色 */
+    .stProgress > div > div > div > div { background-color: #ff3333; }
+    code { color: #e6db74; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -62,7 +64,7 @@ def render_k_line(symbol):
     fig.update_layout(title=f"{symbol} K-Line", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'), xaxis_rangeslider_visible=False, margin=dict(l=0, r=0, t=30, b=0), height=350)
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 頁面功能區 ---
+# --- 功能模組 ---
 
 def page_dashboard(uid, user):
     st.title(f"🏙️ 儀表板: {user['name']}")
@@ -79,7 +81,7 @@ def page_dashboard(uid, user):
         st.line_chart(df, height=200)
 
 def page_stock(uid, user):
-    st.title("📉 專業交易所"); auto = st.toggle("⚡ 自動刷新", value=True); update_stock_market(); prices = st.session_state.stock_prices
+    st.title("📉 交易所"); auto = st.toggle("⚡ 自動刷新", value=True); update_stock_market(); prices = st.session_state.stock_prices
     cols = st.columns(len(STOCKS_DATA)); 
     for i, (k, v) in enumerate(prices.items()): cols[i].metric(k, f"${v}")
     c1, c2 = st.columns([2, 1])
@@ -92,12 +94,8 @@ def page_stock(uid, user):
             if st.button(f"買進 (-${cost})"): 
                 if user['money']>=cost: 
                     user['money']-=cost; user.setdefault('stocks',{})[selected_stock]=user['stocks'].get(selected_stock,0)+qty
-                    # 升級判定
-                    leveled, new_lv = add_exp(uid, 10)
-                    if leveled: st.balloons(); st.toast(f"權限提升！Level {new_lv}")
-                    
-                    save_user(uid,user); st.success("OK (+10 XP)"); st.rerun()
-                else: st.error("沒錢")
+                    save_user(uid,user); st.success("OK"); st.rerun()
+                else: st.error("資金不足")
         with t2:
             own = user.get('stocks',{}).get(selected_stock,0); st.write(f"持有: {own}"); sqty = st.number_input("股數", 1, max(1,own), 1, key="sq")
             income = current_price * sqty
@@ -107,143 +105,187 @@ def page_stock(uid, user):
     if auto: time.sleep(1); st.rerun()
 
 def page_lab(uid, user):
-    st.title("🔌 邏輯電路設計 (Circuit Designer)")
-    st.caption("CityOS 硬體實驗室：請使用邏輯閘設計電路。")
-
-    st.subheader("1. 輸入訊號 (Inputs)")
-    col_i1, col_i2, col_i3, col_i4 = st.columns(4)
-    with col_i1: in_A = st.toggle("A", value=True)
-    with col_i2: in_B = st.toggle("B", value=False)
-    with col_i3: in_C = st.toggle("C", value=True)
-    with col_i4: in_D = st.toggle("D", value=False)
-    
+    st.title("🔌 邏輯電路 (Logic Gates)")
+    st.caption("硬體教育：學習 AND/OR/NOT 邏輯閘運作原理。")
+    col_i1, col_i2 = st.columns(2)
+    with col_i1: in_A = st.toggle("Input A", True)
+    with col_i2: in_B = st.toggle("Input B", False)
     st.markdown("---")
-    st.subheader("2. 第一級處理 (Layer 1)")
-    c1, c2 = st.columns(2)
-    gate_options = list(SVG_LIB.keys())
+    gate = st.selectbox("選擇邏輯閘", list(SVG_LIB.keys()))
+    res = False
+    if gate == "AND": res = in_A and in_B
+    elif gate == "OR": res = in_A or in_B
+    elif gate == "XOR": res = in_A != in_B
+    elif gate == "NOT": res = not in_A
+    elif gate == "NAND": res = not (in_A and in_B)
+    elif gate == "NOR": res = not (in_A or in_B)
+    st.markdown(SVG_LIB[gate], unsafe_allow_html=True)
+    st.info(f"Output: {int(res)}")
+    if st.button("提交測試"): 
+        leveled, _ = add_exp(uid, 10); st.toast("測試成功 (+10 XP)")
+        if leveled: st.balloons()
 
-    with c1:
-        st.write("處理訊號 A & B")
-        gate_L = st.selectbox("左側邏輯閘", gate_options, key="gl")
-        res_L = False
-        if gate_L == "AND": res_L = in_A and in_B
-        elif gate_L == "OR": res_L = in_A or in_B
-        elif gate_L == "XOR": res_L = in_A != in_B
-        elif gate_L == "NAND": res_L = not (in_A and in_B)
-        elif gate_L == "NOR": res_L = not (in_A or in_B)
-        elif gate_L == "XNOR": res_L = in_A == in_B
-        elif gate_L == "NOT": res_L = not in_A
-        st.info(f"L 輸出: {int(res_L)}")
-
-    with c2:
-        st.write("處理訊號 C & D")
-        gate_R = st.selectbox("右側邏輯閘", gate_options, key="gr")
-        res_R = False
-        if gate_R == "AND": res_R = in_C and in_D
-        elif gate_R == "OR": res_R = in_C or in_D
-        elif gate_R == "XOR": res_R = in_C != in_D
-        elif gate_R == "NAND": res_R = not (in_C and in_D)
-        elif gate_R == "NOR": res_R = not (in_C or in_D)
-        elif gate_R == "XNOR": res_R = in_C == in_D
-        elif gate_R == "NOT": res_R = not in_C
-        st.info(f"R 輸出: {int(res_R)}")
-
-    st.markdown("⬇️")
-    st.subheader("3. 最終輸出 (Master Output)")
-    col_main, col_res = st.columns([2, 1])
+def page_crypto(uid, user):
+    st.title("🔐 密碼學實驗室")
+    st.caption("資訊安全教育：學習字元編碼與基礎加密。")
     
-    with col_main:
-        st.write("L 與 R 的最終運算")
-        gate_M = st.selectbox("核心邏輯閘", gate_options, key="gm")
-        final_res = False
-        if gate_M == "AND": final_res = res_L and res_R
-        elif gate_M == "OR": final_res = res_L or res_R
-        elif gate_M == "XOR": final_res = res_L != res_R
-        elif gate_M == "NAND": final_res = not (res_L and res_R)
-        elif gate_M == "NOR": final_res = not (res_L or res_R)
-        elif gate_M == "XNOR": final_res = res_L == res_R
-        elif gate_M == "NOT": final_res = not res_L
+    st.subheader("1. 凱撒密碼 (Caesar Cipher)")
+    if "caesar_ans" not in st.session_state:
+        words = ["CYBER", "HACKER", "PYTHON", "SECURE", "DATA"]
+        word = random.choice(words); shift = random.randint(1, 5)
+        st.session_state.caesar_target = word
+        st.session_state.caesar_q = "".join([chr(ord(c)+shift) for c in word])
+        st.session_state.caesar_shift = shift
+        st.session_state.caesar_ans = "WAITING"
 
-    with col_res:
-        st.write("## 結果")
-        if final_res:
-            st.success("HIGH (1)"); st.markdown("💡", unsafe_allow_html=True)
-        else:
-            st.error("LOW (0)"); st.markdown("⚫", unsafe_allow_html=True)
+    st.write(f"密文: **{st.session_state.caesar_q}** (偏移量: {st.session_state.caesar_shift})")
+    ans = st.text_input("解密結果 (大寫)", key="c_in")
+    if st.button("驗證解碼"):
+        if ans == st.session_state.caesar_target:
+            add_exp(uid, 20); del st.session_state["caesar_ans"]; st.success("✅ 破解成功！ (+20 XP)"); st.rerun()
+        else: st.error("❌ 錯誤")
 
-    st.divider()
-    if st.button("💾 上傳設計圖"):
-        # 升級判定
-        leveled, new_lv = add_exp(uid, 50)
-        if leveled:
-            st.balloons()
-            st.success(f"⏫ 系統權限提升！等級 {new_lv}")
+    st.markdown("---")
+    st.subheader("2. Base64 編碼器")
+    msg = st.text_input("輸入文字進行編碼:", "Hello CityOS")
+    if msg:
+        b64 = base64.b64encode(msg.encode()).decode()
+        st.code(b64)
+
+def page_binary(uid, user):
+    st.title("🔢 進制駭客")
+    st.caption("計算機結構：熟悉 0/1 與十六進位。")
+    
+    if "bin_target" not in st.session_state: st.session_state.bin_target = random.randint(1, 64)
+    target = st.session_state.bin_target
+    
+    mode = st.radio("模式", ["二進位 (Binary)", "十六進位 (Hex)"])
+    st.metric("目標數字 (十進位)", target)
+    
+    ans = st.text_input("輸入答案")
+    if st.button("提交"):
+        correct = bin(target)[2:] if "Binary" in mode else hex(target)[2:].upper()
+        if ans.lower() == correct.lower():
+            add_exp(uid, 15); st.session_state.bin_target = random.randint(1, 100); st.success("✅ 正確！ (+15 XP)"); st.rerun()
+        else: st.error(f"❌ 錯誤，正確答案是 {correct}")
+
+# 🐧 新增：Linux 終端機模擬
+def page_linux(uid, user):
+    st.title("🐧 Linux Terminal")
+    st.caption("作業系統教育：學習基礎 Shell 指令 (ls, cd, cat, pwd)。")
+
+    if "fs_state" not in st.session_state:
+        st.session_state.fs_state = {
+            "pwd": "/home/user",
+            "fs": {
+                "/home/user": ["notes.txt", "secret_folder"],
+                "/home/user/secret_folder": ["flag.txt"],
+                "/var/log": ["syslog"]
+            },
+            "files": {
+                "notes.txt": "Remember to buy milk.",
+                "flag.txt": "CTF_FLAG{L1NUX_M4ST3R}",
+                "syslog": "Error: Kernel panic."
+            }
+        }
+    
+    st.code(f"{uid}@cityos:{st.session_state.fs_state['pwd']}$", language="bash")
+    cmd = st.text_input("輸入指令", key="linux_cmd")
+    
+    if st.button("執行 (Run)"):
+        args = cmd.split()
+        if not args: return
+        base_cmd = args[0]
+        state = st.session_state.fs_state
+        pwd = state['pwd']
+        
+        if base_cmd == "ls":
+            files = state['fs'].get(pwd, [])
+            st.success("  ".join(files))
+        elif base_cmd == "pwd":
+            st.info(pwd)
+        elif base_cmd == "cd":
+            if len(args) < 2: st.error("Usage: cd <dir>"); return
+            target = args[1]
+            if target == "..":
+                new_pwd = "/".join(pwd.split("/")[:-1])
+                if new_pwd == "": new_pwd = "/"
+                state['pwd'] = new_pwd
+            else:
+                new_path = (pwd + "/" + target).replace("//", "/")
+                if new_path in state['fs']: state['pwd'] = new_path
+                else: st.error(f"cd: {target}: No such directory")
+        elif base_cmd == "cat":
+            if len(args) < 2: st.error("Usage: cat <file>"); return
+            fname = args[1]
+            # 簡化版：只在當前目錄找檔案
+            if fname in state['fs'].get(pwd, []):
+                content = state['files'].get(fname, "")
+                st.code(content)
+                if "CTF_FLAG" in content:
+                    st.balloons()
+                    add_exp(uid, 50)
+                    st.success("🎉 找到 Flag！ (+50 XP)")
+            else: st.error(f"cat: {fname}: No such file")
         else:
-            st.toast("設計圖已上傳 (+50 XP)")
-        save_user(uid, user)
+            st.warning("Command not found. Try: ls, cd, cat, pwd")
+
+# 🐍 新增：Python 除錯室
+def page_debug(uid, user):
+    st.title("🐍 Python Debugger")
+    st.caption("軟體工程：修復損壞的程式碼 (Syntax Error)。")
+    
+    challenges = [
+        {"q": "print('Hello World", "a": "print('Hello World')", "hint": "缺少右括號"},
+        {"q": "if x = 10:", "a": "if x == 10:", "hint": "比較運算子應該是雙等號"},
+        {"q": "def my_func()\n  print('Hi')", "a": "def my_func():", "hint": "函式定義缺少冒號 (只需寫第一行)"}
+    ]
+    
+    choice = st.radio("選擇題目", [0, 1, 2], format_func=lambda x: f"題目 {x+1}")
+    q = challenges[choice]
+    
+    st.code(q["q"], language="python")
+    st.info(f"提示: {q['hint']}")
+    
+    ans = st.text_input("修正後的程式碼 (單行)", key="debug_in")
+    if st.button("提交修正"):
+        # 簡單的比對邏輯 (去空白)
+        if ans.replace(" ", "") == q["a"].replace(" ", "") or ans.strip() == q["a"]:
+            st.success("✅ 修復成功！編譯通過。 (+20 XP)")
+            add_exp(uid, 20)
+        else:
+            st.error("❌ 依然報錯 (SyntaxError)")
 
 def page_shop(uid, user):
-    st.title("🛒 黑市 & 背包")
-    t1, t2 = st.tabs(["購買", "使用/查看"])
+    st.title("🛒 黑市"); t1, t2 = st.tabs(["買", "背包"])
     with t1:
         for k, v in ITEMS.items():
-            with st.expander(f"{k} (${v['price']})"):
-                st.write(v['desc'])
-                if st.button(f"購買 {k}"):
-                    if user['money'] >= v['price']:
-                        user['money'] -= v['price']
-                        user.setdefault('inventory', {})[k] = user['inventory'].get(k, 0) + 1
-                        
-                        # 消費給少許經驗
-                        add_exp(uid, 5)
-                        
-                        save_user(uid, user)
-                        st.success("購買成功 (+5 XP)")
-                        st.rerun()
-                    else: st.error("資金不足")
+            if st.button(f"買 {k} (${v['price']}) - {v['desc']}"):
+                if user['money'] >= v['price']:
+                    user['money'] -= v['price']; user.setdefault('inventory', {})[k] = user['inventory'].get(k, 0) + 1; save_user(uid, user); st.success(f"已購買 {k}"); st.rerun()
+                else: st.error("沒錢")
     with t2:
-        st.write(f"🎒 背包: {user.get('inventory', {})}")
+        st.write(user.get('inventory', {}))
         if user.get("inventory", {}).get("Anti-Rad Pill", 0) > 0:
-            st.divider()
-            st.write("💉 醫療用品")
-            if st.button("吞下 Anti-Rad Pill (解毒)"):
-                user["inventory"]["Anti-Rad Pill"] -= 1
-                if user["inventory"]["Anti-Rad Pill"] <= 0: del user["inventory"]["Anti-Rad Pill"]
-                old_tox = user.get("toxicity", 0)
-                user["toxicity"] = max(0, old_tox - 30)
-                save_user(uid, user)
-                st.success(f"毒素清除！ ({old_tox}% -> {user['toxicity']}%)")
-                st.rerun()
-
-def page_missions(uid, user):
-    st.title("🎯 任務板")
-    if user.get("pending_claims"):
-        for i, m in enumerate(user["pending_claims"]):
-            if st.button(f"領取 ${m['reward']} ({m['title']})", key=f"c_{i}"): user['money']+=m['reward']; user["pending_claims"].pop(i); save_user(uid,user); st.rerun()
-    st.subheader("進行中")
-    for m in user.get("active_missions", []): st.warning(f"🔸 {m['title']}: {m['desc']} (${m['reward']})")
+            if st.button("💊 服用輻射藥丸 (解毒)"):
+                user["inventory"]["Anti-Rad Pill"] -= 1; user["toxicity"] = max(0, user.get("toxicity",0)-30); save_user(uid, user); st.rerun()
 
 def page_pvp(uid, user):
-    st.title("⚔️ PVP")
-    if time.time()-user.get("last_hack",0)<30: st.info(f"冷卻中... {int(30-(time.time()-user['last_hack']))}s"); return
-    targets = [u for u in get_all_users() if u!=uid and u!="admin"]; 
-    if not targets: st.write("無目標"); return
-    target = st.selectbox("目標", targets); has_virus = user.get("inventory",{}).get("Trojan Virus",0)>0; st.write(f"病毒: {'✅' if has_virus else '❌'}")
-    if st.button("攻擊", disabled=not has_virus):
-        user["inventory"]["Trojan Virus"]-=1; victim=get_user(target)
-        if victim.get("inventory",{}).get("Firewall",0)>0: victim["inventory"]["Firewall"]-=1; send_mail(target,"Sys","防禦","擋下攻擊"); st.error("被擋下")
-        else: loot=min(random.randint(50,150), victim['money']); victim['money']-=loot; user['money']+=loot; send_mail(target,"Sys","警報",f"被搶 ${loot}"); st.success(f"搶奪 ${loot}")
-        user["last_hack"]=time.time(); save_user(target,victim); save_user(uid,user); st.rerun()
-
-def page_cli(uid, user):
-    st.title("💻 CLI"); cmd=st.text_input(f"{uid}@cityos:~$")
-    if cmd: check_mission(uid,user,"cli_input"); st.code("OK" if cmd in ["ls","bal","date"] else "Error")
+    st.title("⚔️ PVP"); targets = [u for u in get_all_users() if u!=uid and u!="admin"]
+    if not targets: st.write("無人可打"); return
+    t = st.selectbox("目標", targets)
+    if st.button("駭入攻擊 (需病毒)"):
+        if user.get("inventory",{}).get("Trojan Virus",0) > 0:
+            user["inventory"]["Trojan Virus"]-=1; vic = get_user(t); loot = 100
+            vic["money"] -= loot; user["money"] += loot; save_user(t, vic); save_user(uid, user)
+            st.success(f"攻擊成功！搶奪 ${loot}"); st.rerun()
+        else: st.error("缺少 Trojan Virus")
 
 # --- 主程式 ---
 def main():
     if "logged_in" not in st.session_state: st.session_state.logged_in = False
     if not st.session_state.logged_in:
-        st.title("CITY_OS // HAZARD"); c1,c2=st.tabs(["Log","Reg"]); 
+        st.title("CITY_OS // EDU_CORE"); c1,c2=st.tabs(["登入","註冊"]); 
         with c1: 
             u=st.text_input("ID"); p=st.text_input("PW",type="password")
             if st.button("LOGIN"): 
@@ -256,61 +298,34 @@ def main():
 
     uid = st.session_state.uid; user = get_user(uid)
     
-    # ☣️ 毒氣模擬
-    if apply_environmental_hazard(uid, user):
-        st.toast("⚠️ 警報：檢測到有害氣體吸入！", icon="☣️")
-        
-    # ☠️ 毒發懲罰
-    if user["toxicity"] >= 100:
-        st.error("☠️ 身體崩潰！緊急送醫急救... (-$200)")
-        user["money"] = max(0, user["money"] - 200)
-        user["toxicity"] = 50 
-        save_user(uid, user)
-        time.sleep(2)
-        st.rerun()
+    # 環境災害判定
+    if apply_environmental_hazard(uid, user): st.toast("⚠️ 警告：吸入有毒氣體！", icon="☣️")
+    if user.get("toxicity", 0) >= 100: st.error("☠️ 毒發身亡... 緊急重生 (-$200)"); user["money"]-=200; user["toxicity"]=50; save_user(uid,user); time.sleep(2); st.rerun()
 
     with st.sidebar:
-        st.title(f"{user['name']}")
+        st.title(f"👤 {user['name']}")
+        st.caption(f"🆔 {LEVEL_TITLES.get(user['level'], 'Unknown')}")
+        st.progress(user['exp'] / (user['level']*100)); st.write(f"Lv.{user['level']} (XP: {user['exp']})")
+        st.metric("Credits", f"${user['money']}")
+        st.metric("Toxicity", f"{user['toxicity']}%", delta_color="inverse")
         
-        # 🆙 顯示等級系統
-        lv = user.get("level", 1)
-        title = LEVEL_TITLES.get(lv, "Unknown Entity")
-        st.caption(f"🆔 {title}")
-        st.write(f"Level: {lv}")
-        
-        # 經驗條
-        exp = user.get("exp", 0)
-        req = lv * 100
-        st.progress(min(1.0, exp / req) if req > 0 else 0)
-        st.caption(f"XP: {exp} / {req}")
-        
-        st.divider()
-        st.write(f"💵 ${user['money']}")
-        
-        # 顯示中毒狀況
-        tox = user.get("toxicity", 0)
-        st.write(f"☣️ 中毒指數: {tox}%")
-        st.progress(tox / 100)
-        if tox > 80: st.caption("⚠️ 命在旦夕！")
-        
-        if user.get("inventory", {}).get("Gas Mask", 0) > 0:
-            st.success("😷 面具: 裝備中")
-        else:
-            st.warning("😶 無防護")
-
-        nav = st.radio("MENU", ["儀表板", "交易所", "任務", "黑市", "PVP", "CLI", "邏輯設計"])
-        st.divider()
-        if st.button("LOGOUT"): st.session_state.logged_in = False; st.rerun()
+        nav = st.radio("導航", [
+            "儀表板", "交易所", "黑市", "PVP", 
+            "--- 教育模組 ---",
+            "邏輯電路 (Logic)", "密碼學 (Crypto)", 
+            "進制駭客 (Binary)", "Linux 終端機", "Python 除錯室"
+        ])
+        if st.button("登出"): st.session_state.logged_in=False; st.rerun()
 
     if nav == "儀表板": page_dashboard(uid, user)
     elif nav == "交易所": page_stock(uid, user)
-    elif nav == "任務": page_missions(uid, user)
     elif nav == "黑市": page_shop(uid, user)
     elif nav == "PVP": page_pvp(uid, user)
-    elif nav == "CLI": page_cli(uid, user)
-    elif nav == "邏輯設計": page_lab(uid, user)
+    elif nav == "邏輯電路 (Logic)": page_lab(uid, user)
+    elif nav == "密碼學 (Crypto)": page_crypto(uid, user)
+    elif nav == "進制駭客 (Binary)": page_binary(uid, user)
+    elif nav == "Linux 終端機": page_linux(uid, user)
+    elif nav == "Python 除錯室": page_debug(uid, user)
 
 if __name__ == "__main__":
     main()
-
-
