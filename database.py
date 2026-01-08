@@ -9,48 +9,47 @@ STOCK_FILE = "stock_state.json"
 LOG_FILE = "city_logs.json"
 
 def init_db():
-    """初始化資料庫 (包含自動修復功能)"""
+    """初始化資料庫 (強制欄位檢查版)"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
-    # 定義標準表格結構
-    create_table_sql = '''CREATE TABLE IF NOT EXISTS users
-                          (id TEXT PRIMARY KEY, password TEXT, name TEXT, 
-                           level INTEGER, exp INTEGER, money INTEGER, 
-                           toxicity INTEGER, inventory TEXT, stocks TEXT)'''
+    # 1. 檢查現有的資料表結構
+    c.execute("PRAGMA table_info(users)")
+    columns = c.fetchall()
     
-    try:
-        c.execute(create_table_sql)
-        
-        # 測試查詢，確認欄位數量是否正確
-        c.execute("SELECT * FROM users LIMIT 1")
-        # 如果這一行沒報錯，代表表格存在。接著檢查欄位數
-        # 但為了保險，我們直接進入注入環節，如果注入失敗由 except 捕捉
-        
-        # --- ⚡ 上帝帳號注入 ---
-        c.execute("SELECT id FROM users WHERE id='root'")
-        if not c.fetchone():
-            print(">> 正在建立 God Mode 帳號...")
-            god_data = (
-                "frank", "x", "⚡ SYSTEM ADMIN", 100, 0, 999999999, 0, 
-                '{"Stim-Pack": 99, "Nutri-Paste": 99, "Cyber-Arm": 1, "Trojan Virus": 999, "Anti-Rad Pill": 99}', 
-                '{"NVID": 1000, "TSMC": 1000}'
-            )
-            c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", god_data)
-            print(">> ✅ root 帳號已建立")
+    # 如果資料表存在，且欄位數量不是 9 個 (代表是舊版資料庫)
+    if len(columns) > 0 and len(columns) != 9:
+        print(f">> ⚠️ 偵測到資料庫版本過舊 (欄位數: {len(columns)})，正在執行強制重置...")
+        c.execute("DROP TABLE IF EXISTS users")
+        conn.commit() # 立即提交刪除
+        columns = []  # 重置狀態
 
-    except sqlite3.OperationalError:
-        print(">> ⚠️ 偵測到資料庫結構版本不符，正在重置資料庫...")
-        c.execute("DROP TABLE IF EXISTS users") # 刪除舊表
-        c.execute(create_table_sql)             # 重建新表
-        # 重建後再次注入 root
+    # 2. 建立標準表格 (如果不存在)
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (id TEXT PRIMARY KEY, password TEXT, name TEXT, 
+                  level INTEGER, exp INTEGER, money INTEGER, 
+                  toxicity INTEGER, inventory TEXT, stocks TEXT)''')
+    
+    # 3. ⚡ 上帝帳號注入
+    # 先檢查 root 是否存在
+    c.execute("SELECT id FROM users WHERE id='root'")
+    if not c.fetchone():
+        print(">> 正在建立 God Mode 帳號...")
         god_data = (
-            "root", "admin", "⚡ SYSTEM ADMIN", 100, 0, 999999999, 0, 
+            "root",            # id
+            "admin",           # password
+            "⚡ SYSTEM ADMIN", # name
+            100,               # level
+            0,                 # exp
+            999999999,         # money
+            0,                 # toxicity
+            # inventory
             '{"Stim-Pack": 99, "Nutri-Paste": 99, "Cyber-Arm": 1, "Trojan Virus": 999, "Anti-Rad Pill": 99}', 
-            '{"NVID": 1000, "TSMC": 1000}'
+            # stocks
+            '{"NVID": 1000, "TSMC": 1000}' 
         )
         c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", god_data)
-        print(">> ✅ 資料庫重置完成，root 帳號已恢復")
+        print(">> ✅ root 帳號已建立")
 
     conn.commit()
     conn.close()
@@ -62,17 +61,21 @@ def get_user(user_id):
         c.execute("SELECT * FROM users WHERE id=?", (user_id,))
         row = c.fetchone()
     except:
-        return None # 如果讀取錯誤，回傳 None
+        return None 
     conn.close()
     
     if row:
-        return {
-            "id": row[0], "password": row[1], "name": row[2],
-            "level": row[3], "exp": row[4], "money": row[5],
-            "toxicity": row[6],
-            "inventory": json.loads(row[7]) if row[7] else {},
-            "stocks": json.loads(row[8]) if row[8] else {}
-        }
+        # 防止讀取到舊格式造成的 index out of range
+        try:
+            return {
+                "id": row[0], "password": row[1], "name": row[2],
+                "level": row[3], "exp": row[4], "money": row[5],
+                "toxicity": row[6],
+                "inventory": json.loads(row[7]) if row[7] else {},
+                "stocks": json.loads(row[8]) if row[8] else {}
+            }
+        except IndexError:
+            return None # 格式錯誤視為無使用者
     return None
 
 def create_user(user_id, password, name):
