@@ -1,6 +1,6 @@
 # config.py - System Configuration
 
-# --- 電子系道具 (Electronic Items) ---
+# 1. 電子系道具清單
 ITEMS = {
     "Logic Gate: AND": {"price": 100, "desc": "及閘 (AND Gate)：基礎邏輯單元，用於合成電路"},
     "Capacitor": {"price": 250, "desc": "電容 (Capacitor)：儲存電荷，濾除雜訊"},
@@ -10,16 +10,16 @@ ITEMS = {
     "Graphing Calc": {"price": 1200, "desc": "工程計算機 (Graphing Calc)：支援微積分符號運算"}
 }
 
-# --- 股市資料 (Stock Market) ---
+# 2. 股市資料 (科技股)
 STOCKS_DATA = {
-    "TSMC": {"base": 600},  # 台積電 (Semiconductor)
-    "NVID": {"base": 800},  # 輝達 (GPU / AI)
-    "INTC": {"base": 40},   # 英特爾 (CPU)
-    "AMD":  {"base": 120},  # 超微 (Processors)
-    "BTC":  {"base": 30000} # 比特幣 (Crypto)
+    "TSMC": {"base": 600},  # 台積電
+    "NVID": {"base": 800},  # 輝達
+    "INTC": {"base": 40},   # 英特爾
+    "AMD":  {"base": 120},  # 超微
+    "BTC":  {"base": 30000} # 比特幣
 }
 
-# --- 學術等級 (Academic Ranks) ---
+# 3. 等級稱號
 LEVEL_TITLES = {
     1: "大一菜鳥 (Freshman)",
     2: "大二邏輯設計師 (Sophomore)",
