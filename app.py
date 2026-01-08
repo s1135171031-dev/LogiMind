@@ -4,14 +4,15 @@ import time
 import pandas as pd
 import timeit
 import plotly.graph_objects as go
-import numpy as np # 用於 FFT 和 PID 計算
+import numpy as np
+import sympy as sp
 from datetime import datetime
 
 # --- 1. 載入設定與資料庫 ---
 try:
     from config import ITEMS, STOCKS_DATA, LEVEL_TITLES
 except ImportError:
-    st.error("❌ 系統錯誤: 找不到 config.py。請確認檔案存在。")
+    st.error("❌ 系統錯誤: 找不到 config.py")
     st.stop()
 
 from database import (
@@ -20,19 +21,19 @@ from database import (
     add_exp, add_log, get_logs
 )
 
-# --- 2. 樣式設定 (Cyberpunk / Hacker Style) ---
+# --- 2. 樣式設定 (Cyberpunk Style) ---
 st.set_page_config(page_title="CityOS: EE Core", layout="wide", page_icon="⚡")
 
 st.markdown("""
 <style>
-    /* 全域背景：深黑色 */
+    /* 全域背景：深黑 */
     .stApp { 
         background-color: #050505; 
         color: #00ff41; 
-        font-family: 'Consolas', 'Courier New', monospace; 
+        font-family: 'Consolas', 'Microsoft JhengHei', monospace; 
     }
     
-    /* 按鈕樣式：黑底綠框，懸浮發光 */
+    /* 按鈕：黑底綠框，懸浮發光 */
     div.stButton > button { 
         background-color: #000; 
         border: 1px solid #00ff41; 
@@ -60,13 +61,10 @@ st.markdown("""
         border: 1px solid #333; 
     }
     
-    /* 標題與文字顏色強制為螢光綠 */
+    /* 文字顏色強制螢光綠 */
     h1, h2, h3, p, span { color: #00ff41 !important; text-shadow: 0 0 5px #003300; }
     
-    /* 進度條 */
-    .stProgress > div > div > div > div { background-color: #00ff41; }
-    
-    /* Metric 卡片修正 */
+    /* Metric 卡片 */
     div[data-testid="stMetricValue"] { color: #00ff41 !important; }
     div[data-testid="stMetricLabel"] { color: #00cc33 !important; }
 </style>
@@ -76,7 +74,6 @@ init_db()
 
 # --- 3. 工具函式 ---
 def render_logic_gate_svg(gate_type, val_a, val_b, output):
-    # 產生不破圖的 SVG
     color = "#00ff41" if output else "#333"
     return f"""
     <svg width="200" height="100" viewBox="0 0 200 100">
@@ -112,53 +109,59 @@ def update_stock_market():
     st.session_state.stock_prices = global_state["prices"]
     st.session_state.stock_history = pd.DataFrame(global_state["history"])
 
-# --- 4. 核心功能頁面 ---
+# --- 4. 核心功能模組 ---
 
 # 🧠 A: 邏輯設計
 def page_logic_lab(uid, user):
-    st.title("🧠 邏輯設計 (Digital Logic)")
+    st.title("🧠 邏輯設計 (Logic Design)")
+    st.caption("課程：布林代數與邏輯閘 (Boolean Algebra)")
+    
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("元件測試 (Circuit Test)")
-        gate_type = st.selectbox("Gate Type", ["AND (及)", "OR (或)", "XOR (互斥或)", "NAND (反及)"])
-        input_a = st.toggle("Input A (1/0)", value=True)
-        input_b = st.toggle("Input B (1/0)", value=False)
+        st.subheader("電路模擬 (Circuit Sim)")
+        gate_type = st.selectbox("選擇元件 (Component)", ["AND (及閘)", "OR (或閘)", "XOR (互斥或)", "NAND (反及)"])
+        input_a = st.toggle("輸入 A (Input A)", value=True)
+        input_b = st.toggle("輸入 B (Input B)", value=False)
         a_val = 1 if input_a else 0
         b_val = 1 if input_b else 0
         
+        gate_key = gate_type.split()[0]
         if "AND" in gate_type: out = a_val & b_val
         elif "OR" in gate_type: out = a_val | b_val
         elif "XOR" in gate_type: out = a_val ^ b_val
         elif "NAND" in gate_type: out = int(not (a_val & b_val))
         
-        st.markdown(render_logic_gate_svg(gate_type.split()[0], a_val, b_val, out), unsafe_allow_html=True)
+        st.markdown(render_logic_gate_svg(gate_key, a_val, b_val, out), unsafe_allow_html=True)
 
     with col2:
         st.subheader("隨堂測驗 (Quiz)")
-        st.write(f"Q: 若 A=1, B=0, **{gate_type}** 輸出為何？")
-        ans = st.radio("Answer", ["0 (Low)", "1 (High)"], key="quiz")
-        if st.button("Submit"):
+        st.write(f"Q: 當 A={a_val}, B={b_val} 時，**{gate_key}** 的輸出為何？")
+        ans = st.radio("你的答案 (Answer)", ["0 (Low)", "1 (High)"], key="quiz")
+        if st.button("提交 (Submit)"):
             correct = str(out)
             if ans.startswith(correct):
-                st.success("Access Granted. 答案正確。")
+                st.success("Access Granted. 邏輯正確。")
                 add_exp(uid, 10)
-            else: st.error("Access Denied. 答案錯誤。")
+            else: st.error("Access Denied. 邏輯錯誤。")
 
 # ⚔️ B: 演算法
 def page_arena(uid, user):
     st.title("⚔️ 演算法競技場 (Algo Arena)")
-    st.caption("目標：降低時間複雜度 (Time Complexity)")
+    st.caption("課程：資料結構與複雜度 (Data Structures & Big O)")
     
     enemy_hp = st.session_state.get("enemy_hp", 100)
-    st.progress(enemy_hp / 100, text=f"BOSS HP: {enemy_hp}")
+    st.progress(enemy_hp / 100, text=f"BUG 怪獸血量 (HP): {enemy_hp}")
 
-    weapon = st.selectbox("選擇演算法", ["Bubble Sort (O(n^2))", "Python Sort (O(n log n))", "NumPy Sort (Optimized)"])
+    weapon = st.selectbox("選擇演算法武器 (Algorithm)", 
+        ["氣泡排序 (Bubble Sort) - O(n^2) 傷害低", 
+         "Python 內建排序 (Timsort) - O(n log n) 傷害高", 
+         "NumPy 極速排序 (Optimized) - 暴擊傷害"])
 
-    if st.button("Execute Code"):
+    if st.button("編譯並執行 (Compile & Run)"):
         data = list(range(5000)); random.shuffle(data)
         if "Bubble" in weapon:
-            setup = f"d = {data[:300]}" # 縮小數據避免卡死
-            code = "for i in range(len(d)): d.sort()" # 模擬慢速
+            setup = f"d = {data[:300]}" 
+            code = "for i in range(len(d)): d.sort()" 
             base_dmg = 10
         elif "Python" in weapon:
             setup = f"d = {data}"
@@ -170,7 +173,7 @@ def page_arena(uid, user):
             base_dmg = 80
 
         try:
-            with st.spinner("Compiling..."):
+            with st.spinner("CPU 運算中 (Processing)..."):
                 t = timeit.timeit(stmt=code, setup=setup, number=5)
             st.code(f"Execution Time: {t:.5f} sec", language="bash")
             
@@ -178,169 +181,75 @@ def page_arena(uid, user):
             enemy_hp = max(0, enemy_hp - final_dmg)
             st.session_state.enemy_hp = enemy_hp
             
-            st.success(f"Critical Hit! 造成 {final_dmg} 傷害")
+            st.success(f"命中！造成 {final_dmg} 點傷害 (基於運算速度)")
             if enemy_hp == 0:
-                st.balloons(); st.success("Target Eliminated!"); user['money'] += 500; add_exp(uid, 100); save_user(uid, user); st.session_state.enemy_hp = 100; time.sleep(2); st.rerun()
+                st.balloons()
+                st.success("Bug 修復完成 (Target Eliminated)！")
+                user['money'] += 500
+                add_exp(uid, 100)
+                save_user(uid, user)
+                st.session_state.enemy_hp = 100
+                time.sleep(2)
+                st.rerun()
         except Exception as e: st.error(f"Runtime Error: {e}")
 
 # 📡 C: 訊號處理
 def page_signals(uid, user):
-    st.title("📡 訊號攔截 (Signals)")
+    st.title("📡 訊號攔截 (Signal Interception)")
+    st.caption("課程：數位編碼 (Hex/Binary Encoding)")
+    
     if "signal_target" not in st.session_state:
-        target = random.choice(["FPGA", "CMOS", "UART", "LINUX"])
+        target = random.choice(["FPGA", "CMOS", "UART", "KERNEL", "BIOS"])
         st.session_state.signal_target = target
         st.session_state.signal_hex = target.encode().hex().upper()
         st.session_state.noise = np.random.rand(50)
 
     c1, c2 = st.columns([2, 1])
     with c1:
-        st.subheader("Oscilloscope (示波器)")
+        st.subheader("示波器畫面 (Oscilloscope)")
         fig = go.Figure(data=go.Scatter(y=st.session_state.noise, mode='lines', line=dict(color='#00ff41')))
-        fig.update_layout(height=200, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'), xaxis_visible=False)
+        fig.update_layout(height=200, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'), xaxis_visible=False, yaxis_visible=False)
         st.plotly_chart(fig, use_container_width=True)
-        st.code(f"Received: 0x{st.session_state.signal_hex}")
+        st.code(f"接收訊號 (Hex): 0x{st.session_state.signal_hex}")
     with c2:
-        ans = st.text_input("Decode to ASCII (UPPERCASE):")
-        if st.button("Transmit"):
+        ans = st.text_input("解碼為 ASCII (全大寫):")
+        if st.button("傳送 (Transmit)"):
             if ans == st.session_state.signal_target:
-                st.success("Decoded Successfully."); user['money'] += 300; add_exp(uid, 50); save_user(uid, user); del st.session_state['signal_target']; time.sleep(1); st.rerun()
-            else: st.error("CRC Error.")
+                st.success("解碼成功 (Decoded Successfully)！")
+                user['money'] += 300
+                add_exp(uid, 50)
+                save_user(uid, user)
+                del st.session_state['signal_target']
+                time.sleep(1)
+                st.rerun()
+            else: st.error("驗證失敗 (CRC Error)。")
 
-# 🏗️ D: 資料結構
+# 🏗️ D: 記憶體管理
 def page_memory(uid, user):
-    st.title("🏗️ 記憶體管理 (Memory Stack)")
+    st.title("🏗️ 記憶體堆疊 (Memory Stack)")
+    st.caption("課程：陣列與鏈結串列 (Array vs Linked List)")
+    
     if "mem_blocks" not in st.session_state: st.session_state.mem_blocks = []
     
     income = sum([b['value'] for b in st.session_state.mem_blocks])
-    st.metric("Memory Yield", f"${income}/cycle")
+    st.metric("記憶體收益 (Memory Yield)", f"${income}/cycle")
     
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("Alloc Array ($500)"):
-            if user['money'] >= 500: user['money'] -= 500; st.session_state.mem_blocks.append({"type": "Arr", "value": 50}); save_user(uid, user); st.rerun()
+        if st.button("配置陣列 Array ($500)"):
+            if user['money'] >= 500: 
+                user['money'] -= 500
+                st.session_state.mem_blocks.append({"type": "Arr", "value": 50})
+                save_user(uid, user); st.rerun()
     with c2:
-        if st.button("Alloc Node ($200)"):
-            if user['money'] >= 200: user['money'] -= 200; st.session_state.mem_blocks.append({"type": "Node", "value": 20}); save_user(uid, user); st.rerun()
+        if st.button("配置節點 Node ($200)"):
+            if user['money'] >= 200: 
+                user['money'] -= 200
+                st.session_state.mem_blocks.append({"type": "Node", "value": 20})
+                save_user(uid, user); st.rerun()
             
-    st.write("--- Heap Visualization ---")
+    st.write("--- Heap 視覺化 (Visualization) ---")
     cols = st.columns(10)
     for i, block in enumerate(st.session_state.mem_blocks[-20:]):
         color = "🟩" if block['type'] == "Arr" else "🟧"
-        cols[i%10].write(f"{color}")
-
-    if st.button("Garbage Collect (Harvest)"):
-        user['money'] += income; save_user(uid, user); st.success(f"Recovered ${income}")
-
-# 🎛️ E: 自動控制 (PID)
-def page_control(uid, user):
-    st.title("🎛️ PID 控制 (Control Systems)")
-    st.caption("調整 Kp, Ki, Kd 以穩定系統")
-    
-    c1, c2 = st.columns([1, 3])
-    with c1:
-        kp = st.slider("Kp (Proportional)", 0.0, 5.0, 1.0)
-        ki = st.slider("Ki (Integral)", 0.0, 2.0, 0.1)
-        kd = st.slider("Kd (Derivative)", 0.0, 5.0, 0.5)
-        target = st.slider("Set Point", 0, 100, 80)
-        run = st.button("Simulate")
-    
-    with c2:
-        if run:
-            history, curr, integral, prev_err = [], 0, 0, 0
-            for _ in range(50):
-                err = target - curr
-                integral += err
-                deriv = err - prev_err
-                out = (kp*err) + (ki*integral) + (kd*deriv)
-                curr += out * 0.1 # 慣性
-                history.append(curr)
-                prev_err = err
-            
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(y=[target]*50, name="Target", line=dict(dash="dash", color="#555")))
-            fig.add_trace(go.Scatter(y=history, name="Output", line=dict(color="#00ff41")))
-            fig.update_layout(title="Step Response", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'))
-            st.plotly_chart(fig, use_container_width=True)
-            if abs(history[-1] - target) < 2: st.success("System Stable!"); add_exp(uid, 30)
-            else: st.warning("Unstable!")
-
-# 🌊 F: 數位訊號處理 (DSP)
-def page_dsp(uid, user):
-    st.title("🌊 頻譜分析 (FFT)")
-    st.write("合成波形 -> 頻域分析")
-    
-    c1, c2 = st.columns(2)
-    f1 = c1.slider("Freq 1 (Hz)", 1, 50, 5); a1 = c1.slider("Amp 1", 1, 10, 5)
-    f2 = c2.slider("Freq 2 (Hz)", 1, 50, 20); a2 = c2.slider("Amp 2", 1, 10, 3)
-    
-    t = np.linspace(0, 1, 500)
-    y = a1 * np.sin(2*np.pi*f1*t) + a2 * np.sin(2*np.pi*f2*t)
-    
-    fig1 = go.Figure(data=go.Scatter(x=t, y=y, line=dict(color='#00ff41')))
-    fig1.update_layout(title="Time Domain", height=200, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'))
-    st.plotly_chart(fig1, use_container_width=True)
-    
-    if st.button("Compute FFT"):
-        fft_vals = np.fft.fft(y)
-        freqs = np.fft.fftfreq(len(t), 1/500)
-        mask = freqs > 0
-        fig2 = go.Figure(data=go.Bar(x=freqs[mask], y=np.abs(fft_vals)[mask], marker_color='#ff0055'))
-        fig2.update_layout(title="Frequency Domain", height=250, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'))
-        st.plotly_chart(fig2, use_container_width=True)
-        add_exp(uid, 50)
-
-# --- 主程式與導航 ---
-def page_dashboard(uid, user):
-    st.title(f"🖥️ SYSTEM STATUS: {user['name']}")
-    st.caption(f"ID: {uid} | {LEVEL_TITLES.get(min(user['level'], 5), 'Unknown')}")
-    update_stock_market()
-    
-    if not st.session_state.stock_history.empty:
-        df = st.session_state.stock_history
-        fig = go.Figure(data=go.Scatter(x=df['_time'], y=df['TSMC'], mode='lines+markers', line=dict(color='#00ff41')))
-        fig.update_layout(title="TSMC Index", height=250, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'))
-        st.plotly_chart(fig, use_container_width=True)
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("CREDITS", f"${user['money']:,}")
-    c2.metric("ASSETS", f"${sum(user.get('stocks',{}).values()):,}")
-    c3.metric("LEVEL", f"Lv.{user['level']}")
-
-def main():
-    if "logged_in" not in st.session_state: st.session_state.logged_in = False
-    
-    if not st.session_state.logged_in:
-        st.title("⚡ EE_DEPT // GATEWAY")
-        c1, c2 = st.columns([1,2])
-        with c1: st.markdown("<h1 style='font-size:100px'>⚡</h1>", unsafe_allow_html=True)
-        with c2:
-            u = st.text_input("USER ID (frank)")
-            p = st.text_input("PASSWORD (x)", type="password")
-            if st.button("CONNECT"):
-                user = get_user(u)
-                if user and user['password'] == p: st.session_state.logged_in = True; st.session_state.uid = u; st.rerun()
-                else: st.error("ACCESS DENIED")
-        return
-
-    uid = st.session_state.uid; user = get_user(uid)
-    if not user: st.session_state.logged_in = False; st.rerun()
-
-    with st.sidebar:
-        st.header("⚡ MODULES")
-        st.write(f"OP: {user['name']}")
-        nav = st.radio("SELECT:", 
-            ["📊 DASHBOARD", "🧠 LOGIC LAB", "⚔️ ALGO ARENA", "📡 SIGNALS", 
-             "🏗️ MEMORY", "🎛️ PID CONTROL", "🌊 FFT ANALYZER"])
-        st.divider()
-        if st.button("LOGOUT"): st.session_state.logged_in = False; st.rerun()
-
-    if "DASHBOARD" in nav: page_dashboard(uid, user)
-    elif "LOGIC" in nav: page_logic_lab(uid, user)
-    elif "ALGO" in nav: page_arena(uid, user)
-    elif "SIGNALS" in nav: page_signals(uid, user)
-    elif "MEMORY" in nav: page_memory(uid, user)
-    elif "PID" in nav: page_control(uid, user)
-    elif "FFT" in nav: page_dsp(uid, user)
-
-if __name__ == "__main__":
-    main()
+        cols
