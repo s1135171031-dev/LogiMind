@@ -1,6 +1,6 @@
 # config.py
 
-# 1. 物品清單 (名稱: {價格, 描述})
+# 1. 物品清單
 ITEMS = {
     "Stim-Pack": {"price": 150, "desc": "興奮劑：使用後畫面會劇烈震動。"},
     "Nutri-Paste": {"price": 100, "desc": "營養膏：食用後視線會迷幻扭曲。"},
@@ -11,11 +11,12 @@ ITEMS = {
 
 # 2. 股票代碼與基準價
 STOCKS_DATA = {
-    "NVID": {"base": 800},  # Nvidia 梗
-    "TSMC": {"base": 600},  # 台積電梗
-    "CYBR": {"base": 150},  # Cyberpunk
-    "ARAS": {"base": 2000}, # Arasaka
-    "DOGE": {"base": 5}     # 狗狗幣
+    "NVID": {"base": 800},
+    "TSMC": {"base": 600},
+    "CYBR": {"base": 150},
+    "ARAS": {"base": 2000},
+    "DOGE": {"base": 5},
+    "BTC":  {"base": 30000}
 }
 
 # 3. 等級稱號
@@ -25,13 +26,4 @@ LEVEL_TITLES = {
     3: "Net Runner (網路行者)",
     4: "Sys Admin (系統管理員)",
     5: "Techno Wizard (科技巫師)"
-}
-
-# 4. 邏輯閘 SVG 圖形 (簡單的視覺化)
-# 這裡用簡單的 SVG 字符串代表電路符號
-SVG_LIB = {
-    "AND": """<svg width="100" height="50"><path d="M10 10 H30 A20 20 0 0 1 30 40 H10 V10 Z" fill="none" stroke="#00ff41" stroke-width="2"/><line x1="0" y1="15" x2="10" y2="15" stroke="#00ff41"/><line x1="0" y1="35" x2="10" y2="35" stroke="#00ff41"/><line x1="50" y1="25" x2="60" y2="25" stroke="#00ff41"/></svg>""",
-    "OR": """<svg width="100" height="50"><path d="M10 10 Q30 10 40 25 Q30 40 10 40 Q20 25 10 10" fill="none" stroke="#00ff41" stroke-width="2"/><line x1="0" y1="15" x2="10" y2="15" stroke="#00ff41"/><line x1="0" y1="35" x2="10" y2="35" stroke="#00ff41"/><line x1="40" y1="25" x2="50" y2="25" stroke="#00ff41"/></svg>""",
-    "NOT": """<svg width="100" height="50"><path d="M10 10 L40 25 L10 40 V10 Z" fill="none" stroke="#00ff41" stroke-width="2"/><circle cx="45" cy="25" r="3" stroke="#00ff41" fill="none"/><line x1="0" y1="25" x2="10" y2="25" stroke="#00ff41"/><line x1="48" y1="25" x2="60" y2="25" stroke="#00ff41"/></svg>""",
-    "XOR": """<svg width="100" height="50"><path d="M15 10 Q35 10 45 25 Q35 40 15 40 Q25 25 15 10" fill="none" stroke="#00ff41" stroke-width="2"/><path d="M5 10 Q15 25 5 40" fill="none" stroke="#00ff41" stroke-width="2"/><line x1="0" y1="15" x2="10" y2="15" stroke="#00ff41"/><line x1="0" y1="35" x2="10" y2="35" stroke="#00ff41"/><line x1="45" y1="25" x2="55" y2="25" stroke="#00ff41"/></svg>"""
 }
