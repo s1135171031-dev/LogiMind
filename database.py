@@ -1,4 +1,3 @@
-# database.py
 import sqlite3
 import json
 import os
@@ -9,46 +8,61 @@ DB_FILE = "cityos.db"
 STOCK_FILE = "stock_state.json"
 LOG_FILE = "city_logs.json"
 
-# database.py (只修改這個函式，其他保留)
-
 def init_db():
-    """初始化資料庫並植入上帝帳號"""
+    """初始化資料庫 (包含自動修復功能)"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
-    # 1. 建立表格
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (id TEXT PRIMARY KEY, password TEXT, name TEXT, 
-                  level INTEGER, exp INTEGER, money INTEGER, 
-                  toxicity INTEGER, inventory TEXT, stocks TEXT)''')
+    # 定義標準表格結構
+    create_table_sql = '''CREATE TABLE IF NOT EXISTS users
+                          (id TEXT PRIMARY KEY, password TEXT, name TEXT, 
+                           level INTEGER, exp INTEGER, money INTEGER, 
+                           toxicity INTEGER, inventory TEXT, stocks TEXT)'''
     
-    # 2. ⚡ 後門植入：檢查是否存在 root 帳號，沒有則建立
-    c.execute("SELECT id FROM users WHERE id='root'")
-    if not c.fetchone():
-        print(">> ⚠️ 偵測到系統重置，正在注入管理員權限...")
-        # 格式: (id, password, name, level, exp, money, toxicity, inventory, stocks)
-        god_mode_data = (
-            "frank",            # ID
-            "x",           # 密碼
-            "⚡ SYSTEM ADMIN", # 顯示名稱
-            100,               # 等級
-            0,                 # 經驗
-            999999999,         # 金錢 (無限)
-            0,                 # 毒素
-            '{"Stim-Pack": 99, "Nutri-Paste": 99, "Cyber-Arm": 1, "Trojan Virus": 999, "Anti-Rad Pill": 99}', # 滿背包
-            '{"NVID": 1000, "TSMC": 1000}' # 初始股票
+    try:
+        c.execute(create_table_sql)
+        
+        # 測試查詢，確認欄位數量是否正確
+        c.execute("SELECT * FROM users LIMIT 1")
+        # 如果這一行沒報錯，代表表格存在。接著檢查欄位數
+        # 但為了保險，我們直接進入注入環節，如果注入失敗由 except 捕捉
+        
+        # --- ⚡ 上帝帳號注入 ---
+        c.execute("SELECT id FROM users WHERE id='root'")
+        if not c.fetchone():
+            print(">> 正在建立 God Mode 帳號...")
+            god_data = (
+                "frank", "x", "⚡ SYSTEM ADMIN", 100, 0, 999999999, 0, 
+                '{"Stim-Pack": 99, "Nutri-Paste": 99, "Cyber-Arm": 1, "Trojan Virus": 999, "Anti-Rad Pill": 99}', 
+                '{"NVID": 1000, "TSMC": 1000}'
+            )
+            c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", god_data)
+            print(">> ✅ root 帳號已建立")
+
+    except sqlite3.OperationalError:
+        print(">> ⚠️ 偵測到資料庫結構版本不符，正在重置資料庫...")
+        c.execute("DROP TABLE IF EXISTS users") # 刪除舊表
+        c.execute(create_table_sql)             # 重建新表
+        # 重建後再次注入 root
+        god_data = (
+            "root", "admin", "⚡ SYSTEM ADMIN", 100, 0, 999999999, 0, 
+            '{"Stim-Pack": 99, "Nutri-Paste": 99, "Cyber-Arm": 1, "Trojan Virus": 999, "Anti-Rad Pill": 99}', 
+            '{"NVID": 1000, "TSMC": 1000}'
         )
-        c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", god_mode_data)
-        print(">> ✅ 上帝帳號 'root' 已恢復。")
+        c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", god_data)
+        print(">> ✅ 資料庫重置完成，root 帳號已恢復")
 
     conn.commit()
     conn.close()
+
 def get_user(user_id):
-    """讀取使用者資料"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE id=?", (user_id,))
-    row = c.fetchone()
+    try:
+        c.execute("SELECT * FROM users WHERE id=?", (user_id,))
+        row = c.fetchone()
+    except:
+        return None # 如果讀取錯誤，回傳 None
     conn.close()
     
     if row:
@@ -62,7 +76,6 @@ def get_user(user_id):
     return None
 
 def create_user(user_id, password, name):
-    """建立新使用者"""
     if get_user(user_id): return False
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -73,7 +86,6 @@ def create_user(user_id, password, name):
     return True
 
 def save_user(user_id, data):
-    """儲存使用者狀態"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''UPDATE users SET 
@@ -86,11 +98,12 @@ def save_user(user_id, data):
     conn.close()
 
 def get_all_users():
-    """取得所有使用者ID (用於PVP)"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT id FROM users")
-    users = [row[0] for row in c.fetchall()]
+    try:
+        c.execute("SELECT id FROM users")
+        users = [row[0] for row in c.fetchall()]
+    except: users = []
     conn.close()
     return users
 
@@ -105,7 +118,7 @@ def get_global_stock_state():
 def save_global_stock_state(state):
     with open(STOCK_FILE, "w") as f: json.dump(state, f)
 
-# --- 廣播系統 (New) ---
+# --- 廣播系統 ---
 def add_log(message):
     logs = get_logs()
     time_str = datetime.now().strftime("%H:%M")
@@ -124,9 +137,8 @@ def get_logs():
 
 # --- 輔助功能 ---
 def apply_environmental_hazard(uid, user):
-    """隨機環境傷害"""
     import random
-    if random.random() < 0.1: # 10% 機率
+    if random.random() < 0.1: 
         dmg = random.randint(1, 5)
         user['toxicity'] = min(100, user.get('toxicity', 0) + dmg)
         save_user(uid, user)
@@ -134,7 +146,6 @@ def apply_environmental_hazard(uid, user):
     return False
 
 def add_exp(uid, amount):
-    """增加經驗值與升級"""
     user = get_user(uid)
     if user:
         user['exp'] += amount
