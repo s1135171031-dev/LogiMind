@@ -2,36 +2,20 @@
 import sqlite3
 import json
 import time
-from datetime import datetime
 
 DB_FILE = "cityos_core.db"
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # 使用者資料表
-    c.execute('''CREATE TABLE IF NOT EXISTS users 
-                 (id TEXT PRIMARY KEY, data TEXT)''')
-    # 全域股市與系統狀態
-    c.execute('''CREATE TABLE IF NOT EXISTS system_state 
-                 (key TEXT PRIMARY KEY, value TEXT)''')
-    # 系統日誌
-    c.execute('''CREATE TABLE IF NOT EXISTS logs 
-                 (timestamp REAL, message TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, data TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS system_state (key TEXT PRIMARY KEY, value TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS logs (timestamp REAL, message TEXT)''')
     conn.commit()
     conn.close()
     
-    # 初始化預設使用者 (如果不存在)
     if not get_user("frank"):
-        default_user = {
-            "name": "Frank",
-            "password": "x",
-            "level": 1,
-            "exp": 0,
-            "money": 1000,
-            "stocks": {},
-            "items": []
-        }
+        default_user = {"name": "Frank", "password": "x", "level": 1, "exp": 0, "money": 1000, "stocks": {}}
         save_user("frank", default_user)
 
 def get_user(user_id):
@@ -45,8 +29,7 @@ def get_user(user_id):
 def save_user(user_id, data):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO users (id, data) VALUES (?, ?)", 
-              (user_id, json.dumps(data)))
+    c.execute("INSERT OR REPLACE INTO users (id, data) VALUES (?, ?)", (user_id, json.dumps(data)))
     conn.commit()
     conn.close()
 
@@ -56,16 +39,12 @@ def get_global_stock_state():
     c.execute("SELECT value FROM system_state WHERE key='stock_market'")
     row = c.fetchone()
     conn.close()
-    if row:
-        return json.loads(row[0])
-    else:
-        return {"prices": {}, "history": [], "last_update": 0}
+    return json.loads(row[0]) if row else {"prices": {}, "history": [], "last_update": 0}
 
 def save_global_stock_state(state):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO system_state (key, value) VALUES (?, ?)", 
-              ('stock_market', json.dumps(state)))
+    c.execute("INSERT OR REPLACE INTO system_state (key, value) VALUES (?, ?)", ('stock_market', json.dumps(state)))
     conn.commit()
     conn.close()
 
@@ -73,11 +52,8 @@ def add_exp(user_id, amount):
     u = get_user(user_id)
     if u:
         u['exp'] += amount
-        # 簡易升級邏輯：每 100 exp 升一級
         new_level = 1 + (u['exp'] // 100)
-        if new_level > u['level']:
-            u['level'] = new_level
-            add_log(f"LEVEL UP! {u['name']} reached Level {new_level}")
+        if new_level > u['level']: u['level'] = new_level
         save_user(user_id, u)
 
 def add_log(message):
