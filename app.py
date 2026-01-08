@@ -3,45 +3,66 @@ import random
 import time
 import pandas as pd
 import timeit
+import plotly.graph_objects as go # 需要 pip install plotly
 from datetime import datetime
 
-# --- 匯入本地模組 (使用 config) ---
+# --- 1. 載入設定與資料庫 ---
 try:
     from config import ITEMS, STOCKS_DATA, LEVEL_TITLES
 except ImportError:
-    st.error("找不到 config.py！請確認第一步有建立檔案。")
+    st.error("❌ 系統錯誤: 找不到 config.py")
     st.stop()
 
 from database import (
-    init_db, get_user, save_user, create_user, 
+    init_db, get_user, save_user, 
     get_global_stock_state, save_global_stock_state, 
-    apply_environmental_hazard, add_exp, add_log, get_logs
+    add_exp, add_log, get_logs
 )
 
-# --- 初始化設定 ---
-st.set_page_config(page_title="CityOS: LogiMind", layout="wide", page_icon="☣️")
+# --- 2. 樣式設定 (Cyberpunk / 電子電路風) ---
+st.set_page_config(page_title="CityOS: EE Core", layout="wide", page_icon="⚡")
 st.markdown("""
 <style>
-    .stApp { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
-    div.stButton > button { background-color: #000; border: 1px solid #00ff41; color: #00ff41; }
-    div.stButton > button:hover { background-color: #00ff41; color: #000; box-shadow: 0 0 15px #00ff41; }
-    .stTextInput > div > div > input { color: #00ff41; background-color: #111; border-color: #333; }
-    code { color: #e6db74; background-color: #222; }
+    .stApp { background-color: #020a12; color: #00ff41; font-family: 'Consolas', monospace; }
+    div.stButton > button { background-color: #000; border: 1px solid #00ff41; color: #00ff41; border-radius: 0px; }
+    div.stButton > button:hover { background-color: #00ff41; color: #000; box-shadow: 0 0 10px #00ff41; }
+    h1, h2, h3 { color: #00ff41 !important; text-shadow: 0 0 5px #003300; }
     .stProgress > div > div > div > div { background-color: #00ff41; }
+    /* 讓側邊欄看起來像電路板 */
+    section[data-testid="stSidebar"] { background-color: #0b1016; border-right: 1px solid #333; }
 </style>
 """, unsafe_allow_html=True)
 
 init_db()
 
-# --- 核心邏輯 ---
+# --- 3. 工具函式 ---
+def render_logic_gate_svg(gate_type, val_a, val_b, output):
+    # 這裡用程式碼畫 SVG，保證不破圖，且極度精細
+    color = "#00ff41" if output else "#333"
+    return f"""
+    <svg width="200" height="100" viewBox="0 0 200 100">
+        <line x1="10" y1="30" x2="50" y2="30" stroke="{'#00ff41' if val_a else '#555'}" stroke-width="3"/>
+        <text x="0" y="35" fill="white" font-size="12">A={val_a}</text>
+        <line x1="10" y1="70" x2="50" y2="70" stroke="{'#00ff41' if val_b else '#555'}" stroke-width="3"/>
+        <text x="0" y="75" fill="white" font-size="12">B={val_b}</text>
+        
+        <rect x="50" y="20" width="60" height="60" rx="10" fill="none" stroke="#00ff41" stroke-width="2"/>
+        <text x="65" y="55" fill="#00ff41" font-size="20">{gate_type}</text>
+        
+        <line x1="110" y1="50" x2="180" y2="50" stroke="{color}" stroke-width="3"/>
+        <circle cx="180" cy="50" r="5" fill="{color}"/>
+        <text x="185" y="55" fill="{color}" font-size="14">{output}</text>
+    </svg>
+    """
+
 def update_stock_market():
     global_state = get_global_stock_state()
     now = time.time()
-    if now - global_state.get("last_update", 0) > 3.0:
+    if now - global_state.get("last_update", 0) > 2.0:
         new_prices = {}
         for code, data in STOCKS_DATA.items():
             prev = global_state["prices"].get(code, data["base"])
-            change = random.uniform(-0.05, 0.05)
+            change = random.uniform(-0.03, 0.03) # 波動
             new_prices[code] = max(1, int(prev * (1 + change)))
         
         global_state["prices"] = new_prices
@@ -49,155 +70,235 @@ def update_stock_market():
         hist = new_prices.copy()
         hist["_time"] = datetime.now().strftime("%H:%M:%S")
         global_state["history"].append(hist)
-        if len(global_state["history"]) > 30: global_state["history"].pop(0)
+        if len(global_state["history"]) > 40: global_state["history"].pop(0)
         save_global_stock_state(global_state)
     st.session_state.stock_prices = global_state["prices"]
     st.session_state.stock_history = pd.DataFrame(global_state["history"])
 
-def render_k_line(symbol):
-    if "stock_history" not in st.session_state or st.session_state.stock_history.empty:
-        st.write(">> 等待市場數據連線...")
-        return
-    df = st.session_state.stock_history
-    if symbol in df.columns: st.line_chart(df[symbol])
+# --- 4. 核心功能頁面 ---
 
-# --- 遊戲頁面 ---
+# 🧠 功能 A: 邏輯設計實驗室 (Digital Logic)
+def page_logic_lab(uid, user):
+    st.title("🧠 邏輯設計實驗室 (Logic Design)")
+    st.caption("課程目標：熟悉布林代數與邏輯閘 (Boolean Algebra)")
 
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("🛠️ 電路模擬區")
+        gate_type = st.selectbox("選擇元件", ["AND (及)", "OR (或)", "XOR (互斥或)", "NAND (反及)"])
+        
+        # 讓使用者控制輸入電位
+        input_a = st.toggle("Input A (High/Low)", value=True)
+        input_b = st.toggle("Input B (High/Low)", value=False)
+        
+        # 邏輯運算
+        a_val = 1 if input_a else 0
+        b_val = 1 if input_b else 0
+        
+        if "AND" in gate_type: out = a_val & b_val
+        elif "OR" in gate_type: out = a_val | b_val
+        elif "XOR" in gate_type: out = a_val ^ b_val
+        elif "NAND" in gate_type: out = not (a_val & b_val)
+        
+        st.markdown(render_logic_gate_svg(gate_type.split()[0], a_val, b_val, int(out)), unsafe_allow_html=True)
+
+    with col2:
+        st.subheader("📝 真值表測驗 (Truth Table)")
+        st.write(f"題目：當 A=1, B=0 時，**{gate_type}** 的輸出為何？")
+        ans = st.radio("你的答案", ["0 (Low)", "1 (High)"], key="logic_quiz")
+        
+        if st.button("提交驗證"):
+            correct = "1" if out else "0"
+            if ans.startswith(correct):
+                st.success("Correct! 邏輯正確。")
+                add_exp(uid, 10)
+            else:
+                st.error("Segmentation Fault. 答案錯誤。")
+
+# ⚔️ 功能 B: 演算法競技場 (Data Structures & Algo)
 def page_arena(uid, user):
-    st.title("⚔️ 演算法競技場")
-    st.caption("目標：優化你的攻擊代碼 (Time Complexity)")
-    enemy_hp = st.session_state.get("arena_hp", 100)
-    st.progress(enemy_hp / 100, text=f"敵人 HP: {enemy_hp}")
+    st.title("⚔️ 演算法競技場 (Algo-Arena)")
+    st.caption("課程目標：時間複雜度 (Big O) 與程式效能分析")
     
-    algo = st.selectbox("選擇武器 (演算法)", ["Bubble Sort (暴力攻擊)", "Python Timsort (精準打擊)"])
+    st.info("說明：選擇一段程式碼作為攻擊手段。執行速度越快 (Time Complexity 越低)，造成的傷害越高！")
     
-    if st.button("執行攻擊"):
-        data = list(range(2000)); random.shuffle(data)
-        if "Bubble" in algo:
-            test_code = """
+    enemy_hp = st.session_state.get("enemy_hp", 100)
+    st.progress(enemy_hp / 100, text=f"Bug Monster HP: {enemy_hp}")
+
+    # 選擇武器 (其實是選擇排序法)
+    weapon = st.selectbox("選擇演算法武器", 
+        ["Bubble Sort (O(n^2)) - 攻擊力低", 
+         "Python Built-in Sort (O(n log n)) - 攻擊力高",
+         "NumPy Sort (C-Optimized) - 攻擊力極高"])
+
+    if st.button("⚡ 編譯並執行 (Run Code)"):
+        # 準備測試資料 (模擬大量運算)
+        data = list(range(5000))
+        random.shuffle(data)
+        
+        # 定義不同演算法
+        if "Bubble" in weapon:
+            # 故意縮小數據量以免卡死，模擬慢速
+            setup_code = f"d = {data[:500]}"
+            run_code = """
 for i in range(len(d)):
     for j in range(0, len(d)-i-1):
         if d[j] > d[j+1]: d[j], d[j+1] = d[j+1], d[j]
 """
-            setup = f"d = {data[:200]}"
             base_dmg = 10
-        else:
-            test_code = "d.sort()"
-            setup = f"d = {data}"
-            base_dmg = 40
+        elif "Built-in" in weapon:
+            setup_code = f"d = {data}"
+            run_code = "d.sort()"
+            base_dmg = 50
+        else: # NumPy 模擬
+            setup_code = "import random; d = list(range(5000)); random.shuffle(d)"
+            run_code = "sorted(d)" # 簡化模擬
+            base_dmg = 80
 
+        # 真實測量時間
         try:
-            t = timeit.timeit(stmt=test_code, setup=setup, number=10)
-            st.write(f"⏱️ 耗時: {t:.5f} 秒")
-            final_dmg = base_dmg * (5 if "Cyber-Arm" in user.get('inventory', {}) else 1)
-            enemy_hp = max(0, enemy_hp - final_dmg)
-            st.session_state.arena_hp = enemy_hp
+            with st.spinner("CPU 運算中..."):
+                t = timeit.timeit(stmt=run_code, setup=setup_code, number=5)
             
-            if "Bubble" in algo: st.warning(f"攻擊效率低落... 造成 {final_dmg} 傷害")
-            else: st.success(f"高效能攻擊！造成 {final_dmg} 傷害")
+            st.code(f"Execution Time: {t:.5f} sec", language="bash")
+            
+            # 計算傷害
+            final_dmg = base_dmg
+            if t < 0.001: final_dmg *= 2 # 暴擊
+            
+            enemy_hp = max(0, enemy_hp - final_dmg)
+            st.session_state.enemy_hp = enemy_hp
+            
+            st.success(f"造成 {final_dmg} 點物理傷害！(基於真實運算速度)")
             
             if enemy_hp == 0:
                 st.balloons()
+                st.write("🎉 Bug 已修復 (Enemy Defeated)！")
                 user['money'] += 500
-                add_exp(uid, 50)
+                add_exp(uid, 100)
                 save_user(uid, user)
-                st.success("敵人殲滅！獲得 $500")
-                st.session_state.arena_hp = 100
+                st.session_state.enemy_hp = 100
                 time.sleep(2)
                 st.rerun()
-        except Exception as e: st.error(f"編譯錯誤: {e}")
 
-def page_sniffer(uid, user):
-    st.title("🕵️ 封包攔截站")
-    st.write("任務：將 Hex (十六進位) 解碼為 ASCII 文字。")
-    if "sniff_ans" not in st.session_state:
-        words = ["SYSTEM", "LINUX", "PYTHON", "CYBER", "FRANK"]
-        target = random.choice(words)
-        st.session_state.sniff_ans = target
-        st.session_state.sniff_hex = target.encode().hex().upper()
+        except Exception as e:
+            st.error(f"Runtime Error: {e}")
+
+# 🕵️ 功能 C: 訊號與系統 (Signals & Systems) - Hex 解碼
+def page_signals(uid, user):
+    st.title("📡 訊號攔截站 (Signal Processing)")
+    st.caption("課程目標：資料編碼 (ASCII/Hex/Binary) 與訊號處理")
     
-    st.code(f"Intercepted: {st.session_state.sniff_hex}")
-    ans = st.text_input("輸入解碼結果 (大寫):")
-    if st.button("解密"):
-        if ans == st.session_state.sniff_ans:
-            st.success("解密成功！"); user['money'] += 200; add_exp(uid, 20); save_user(uid, user); del st.session_state['sniff_ans']; time.sleep(1); st.rerun()
-        else: st.error("密鑰錯誤！")
+    if "signal_target" not in st.session_state:
+        # 生成隨機 Hex 題目
+        words = ["FPGA", "CMOS", "UART", "HDMI", "WIFI"]
+        target = random.choice(words)
+        st.session_state.signal_target = target
+        st.session_state.signal_hex = target.encode().hex().upper()
+        # 產生一點雜訊 (模擬真實訊號)
+        st.session_state.signal_noise = [random.randint(0, 9) for _ in range(10)]
 
-def page_tower(uid, user):
-    st.title("🏗️ 資料結構摩天樓")
-    if "tower" not in st.session_state: st.session_state.tower = []
-    rent = sum([f['rent'] for f in st.session_state.tower])
-    st.metric("當前租金收益", f"${rent}/輪")
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        st.subheader("接收到的原始波形 (Raw Signal)")
+        # 畫一個簡單的波形圖模擬示波器
+        fig = go.Figure(data=go.Scatter(y=st.session_state.signal_noise + [5,5,5] + st.session_state.signal_noise, mode='lines', line=dict(color='#00ff41')))
+        fig.update_layout(height=200, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', xaxis_visible=False, yaxis_visible=False)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.subheader("解調變後的 Hex 資料")
+        st.code(f"0x{st.session_state.signal_hex}", language="c")
+        
+    with c2:
+        st.write("請將 Hex 轉回 ASCII 文字：")
+        ans = st.text_input("輸入解碼結果 (大寫)", key="hex_input")
+        if st.button("送出 (Transmit)"):
+            if ans == st.session_state.signal_target:
+                st.success("訊號解析成功！訊號雜訊比 (SNR) 良好。")
+                user['money'] += 300
+                add_exp(uid, 50)
+                save_user(uid, user)
+                del st.session_state['signal_target'] # 重置
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("解碼錯誤 (CRC Check Failed)。")
+
+# 🏗️ 功能 D: 記憶體管理摩天樓 (Data Structures)
+def page_memory(uid, user):
+    st.title("🏗️ 記憶體堆疊 (Memory Stack)")
+    st.caption("課程目標：了解 Array (陣列) 與 Linked List (鏈結串列) 的成本差異")
+    
+    if "mem_blocks" not in st.session_state: st.session_state.mem_blocks = []
+    
+    # 計算當前租金 (模擬記憶體回收效率)
+    income = sum([b['value'] for b in st.session_state.mem_blocks])
+    st.metric("Memory Yield (收益/週期)", f"${income}")
+    
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("建造 Array 層 ($500)"):
-            if user['money'] >= 500: user['money'] -= 500; st.session_state.tower.append({"type": "Array", "rent": 50}); save_user(uid, user); st.rerun()
+        st.info("🔹 Static Array (靜態陣列)")
+        st.write("特性：存取快 O(1)，但建造成本高。")
+        if st.button("Allocate Array ($500)"):
+            if user['money'] >= 500:
+                user['money'] -= 500
+                st.session_state.mem_blocks.append({"type": "Array", "value": 50})
+                save_user(uid, user); st.rerun()
     with c2:
-        if st.button("收取租金"): user['money'] += rent; save_user(uid, user); st.success(f"收到 ${rent}"); st.rerun()
-    for i, f in enumerate(reversed(st.session_state.tower)):
-        st.info(f"{len(st.session_state.tower)-i}F [{f['type']}] - Rent: ${f['rent']}")
+        st.info("🔸 Linked List (鏈結串列)")
+        st.write("特性：插入快 O(1)，建造成本低，收益較低。")
+        if st.button("Insert Node ($200)"):
+            if user['money'] >= 200:
+                user['money'] -= 200
+                st.session_state.mem_blocks.append({"type": "Node", "value": 20})
+                save_user(uid, user); st.rerun()
+                
+    st.divider()
+    # 視覺化記憶體區塊
+    st.write("--- Heap Memory Visualization ---")
+    cols = st.columns(10)
+    for i, block in enumerate(st.session_state.mem_blocks[-20:]): # 只顯示最近20個
+        color = "🟩" if block['type'] == "Array" else "🟧"
+        cols[i % 10].write(f"{color} {block['type']}")
 
+    if st.button("Garbage Collection (回收收益)"):
+        user['money'] += income
+        save_user(uid, user)
+        st.toast(f"記憶體釋放完成，獲得 ${income}")
+
+# --- 主儀表板與共用區 ---
 def page_dashboard(uid, user):
-    st.title(f"🏙️ {user['name']}")
+    st.title(f"🖥️ System Status: {user['name']}")
     title_name = LEVEL_TITLES.get(min(user['level'], 5), "Unknown")
-    st.caption(f"身份: {title_name} | ID: {uid}")
-    if apply_environmental_hazard(uid, user): st.toast("警告：輻射外洩！", icon="☢️")
+    st.caption(f"Class: {title_name} | ID: {uid}")
+    
     update_stock_market()
-    stock_val = sum([amt * st.session_state.stock_prices.get(c, 0) for c, amt in user.get('stocks',{}).items()])
+    
+    # K線圖 (用 Plotly 畫精細的圖)
+    if not st.session_state.stock_history.empty:
+        df = st.session_state.stock_history
+        fig = go.Figure(data=go.Scatter(x=df['_time'], y=df['TSMC'], mode='lines+markers', line=dict(color='#00ff41')))
+        fig.update_layout(title="TSMC Real-time Clock", height=300, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#00ff41'))
+        st.plotly_chart(fig, use_container_width=True)
+
     c1, c2, c3 = st.columns(3)
-    c1.metric("現金", f"${user['money']:,}"); c2.metric("股票資產", f"${stock_val:,}"); c3.metric("等級", f"Lv.{user['level']}")
-    st.divider(); st.write("📡 系統日誌"); 
-    for l in get_logs()[:5]: st.text(l)
-
-def page_stock(uid, user):
-    st.title("📉 紐約證交所"); update_stock_market()
-    c1, c2 = st.columns([2, 1])
-    with c1: sel = st.selectbox("股票", list(STOCKS_DATA.keys())); render_k_line(sel)
-    with c2:
-        curr = st.session_state.stock_prices.get(sel, 0); st.metric("現價", f"${curr}")
-        own = user.get('stocks', {}).get(sel, 0); st.write(f"持有: {own}")
-        amt = st.number_input("數量", 1, 1000, 10)
-        if st.button("買進"):
-            cost = curr * amt
-            if user['money'] >= cost: user['money'] -= cost; user.setdefault('stocks', {})[sel] = user['stocks'].get(sel, 0) + amt; save_user(uid, user); st.success("成交"); st.rerun()
-        if st.button("賣出"):
-            if own >= amt: user['money'] += curr * amt; user['stocks'][sel] -= amt; save_user(uid, user); st.success("成交"); st.rerun()
-
-def page_shop(uid, user):
-    st.title("🛒 地下黑市")
-    for name, info in ITEMS.items():
-        c1, c2 = st.columns([3,1])
-        c1.write(f"**{name}** (${info['price']})"); c1.caption(info['desc'])
-        if c2.button(f"購買 {name}"):
-            if user['money'] >= info['price']: user['money'] -= info['price']; user.setdefault('inventory', {})[name] = user['inventory'].get(name, 0) + 1; save_user(uid, user); st.success("成功"); st.rerun()
-            else: st.error("資金不足")
+    c1.metric("Credits (Money)", f"${user['money']:,}")
+    c2.metric("Stock Assets", f"${sum(user.get('stocks', {}).values()):,}")
+    c3.metric("Academic Level", f"Lv.{user['level']}")
+    
+    st.subheader("🎒 Hardware Inventory")
+    inv = user.get('inventory', {})
+    if not inv: st.write("No hardware detected.")
+    else:
+        for k, v in inv.items(): st.write(f"- {k}: {v} units")
 
 def main():
     if "logged_in" not in st.session_state: st.session_state.logged_in = False
+    
     if not st.session_state.logged_in:
-        st.title("CITY_OS // LOGIN"); u = st.text_input("ID"); p = st.text_input("Password", type="password")
-        if st.button("Connect"):
-            user = get_user(u)
-            if user and user['password'] == p: st.session_state.logged_in = True; st.session_state.uid = u; st.rerun()
-            else: st.error("Access Denied")
-        return
-
-    uid = st.session_state.uid; user = get_user(uid)
-    if not user: st.session_state.logged_in = False; st.rerun()
-
-    with st.sidebar:
-        st.header("⚡ LOGIMIND"); st.write(f"User: {user['name']}")
-        with st.expander("🎒 背包"):
-            for k, v in user.get('inventory', {}).items(): st.write(f"{k} x{v}")
-        nav = st.radio("導航", ["📊 儀表板", "📉 交易所", "🛒 黑市", "⚔️ 競技場", "🕵️ 攔截站", "🏗️ 摩天樓"])
-        if st.button("登出"): st.session_state.logged_in = False; st.rerun()
-
-    if nav == "📊 儀表板": page_dashboard(uid, user)
-    elif nav == "📉 交易所": page_stock(uid, user)
-    elif nav == "🛒 黑市": page_shop(uid, user)
-    elif nav == "⚔️ 競技場": page_arena(uid, user)
-    elif nav == "🕵️ 攔截站": page_sniffer(uid, user)
-    elif nav == "🏗️ 摩天樓": page_tower(uid, user)
-
-if __name__ == "__main__":
-    main()
+        st.title("⚡ EE_DEPT // LOGIN SYSTEM")
+        c1, c2 = st.columns([1,2])
+        with c1: st.image("https://placehold.co/200x200/000000/00ff41?text=EE", caption="Department of Electronic Engineering")
+        with c2:
+            u = st.text_input("Student ID (Admin: frank)")
+            p = st.text_input
