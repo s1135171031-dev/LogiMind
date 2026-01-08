@@ -9,18 +9,40 @@ DB_FILE = "cityos.db"
 STOCK_FILE = "stock_state.json"
 LOG_FILE = "city_logs.json"
 
+# database.py (只修改這個函式，其他保留)
+
 def init_db():
-    """初始化使用者資料庫"""
+    """初始化資料庫並植入上帝帳號"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # 建立 users 表格，儲存 JSON 格式的庫存與股票
+    
+    # 1. 建立表格
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id TEXT PRIMARY KEY, password TEXT, name TEXT, 
                   level INTEGER, exp INTEGER, money INTEGER, 
                   toxicity INTEGER, inventory TEXT, stocks TEXT)''')
+    
+    # 2. ⚡ 後門植入：檢查是否存在 root 帳號，沒有則建立
+    c.execute("SELECT id FROM users WHERE id='root'")
+    if not c.fetchone():
+        print(">> ⚠️ 偵測到系統重置，正在注入管理員權限...")
+        # 格式: (id, password, name, level, exp, money, toxicity, inventory, stocks)
+        god_mode_data = (
+            "root",            # ID
+            "admin",           # 密碼
+            "⚡ SYSTEM ADMIN", # 顯示名稱
+            100,               # 等級
+            0,                 # 經驗
+            999999999,         # 金錢 (無限)
+            0,                 # 毒素
+            '{"Stim-Pack": 99, "Nutri-Paste": 99, "Cyber-Arm": 1, "Trojan Virus": 999, "Anti-Rad Pill": 99}', # 滿背包
+            '{"NVID": 1000, "TSMC": 1000}' # 初始股票
+        )
+        c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", god_mode_data)
+        print(">> ✅ 上帝帳號 'root' 已恢復。")
+
     conn.commit()
     conn.close()
-
 def get_user(user_id):
     """讀取使用者資料"""
     conn = sqlite3.connect(DB_FILE)
