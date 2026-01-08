@@ -46,8 +46,7 @@ def init_db():
             # inventory
             '{"Stim-Pack": 99, "Nutri-Paste": 99, "Cyber-Arm": 1, "Trojan Virus": 999, "Anti-Rad Pill": 99}', 
             # stocks
-            '{"NVID": 1000, "TSMC": 1000}' 
-        )
+            '{"NVID": 1000, "TSMC": 1000}')
         c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", god_data)
         print(">> ✅ root 帳號已建立")
 
