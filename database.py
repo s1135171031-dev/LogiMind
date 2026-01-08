@@ -13,7 +13,7 @@ def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
-    # 檢查是否為舊版資料庫 (若欄位不足則重建)
+    # 檢查是否為舊版資料庫
     try:
         c.execute("PRAGMA table_info(users)")
         cols = c.fetchall()
@@ -80,11 +80,12 @@ def save_user(uid, data):
     conn.commit()
     conn.close()
 
-# --- 3. 檔案存取 (這裡就是原本報錯的地方，現在修好了) ---
+# --- 3. 檔案存取 (已修正語法錯誤) ---
 def get_global_stock_state():
     if not os.path.exists(STOCK_FILE):
         return {"prices": {}, "history": [], "last_update": 0}
     try:
+        # 修正重點：這裡分行寫，Python 就不會報錯了
         with open(STOCK_FILE, "r") as f:
             return json.load(f)
     except:
@@ -106,4 +107,31 @@ def get_logs():
 def add_log(msg):
     logs = get_logs()
     logs.insert(0, f"[{datetime.now().strftime('%H:%M')}] {msg}")
-    if len(logs) > 30: logs = logs[:30
+    if len(logs) > 30: logs = logs[:30]
+    try:
+        with open(LOG_FILE, "w", encoding="utf-8") as f:
+            json.dump(logs, f, ensure_ascii=False)
+    except: pass
+
+# --- 4. 遊戲邏輯 ---
+def apply_environmental_hazard(uid, user):
+    import random
+    if random.random() < 0.05:
+        user['toxicity'] = min(100, user.get('toxicity', 0) + 2)
+        save_user(uid, user)
+        return True
+    return False
+
+def add_exp(uid, amount):
+    user = get_user(uid)
+    if user:
+        user['exp'] += amount
+        req = user['level'] * 100
+        if user['exp'] >= req:
+            user['exp'] -= req
+            user['level'] += 1
+            add_log(f"🆙 {user['name']} 升級到了 Lv.{user['level']}！")
+            save_user(uid, user)
+            return True 
+        save_user(uid, user)
+    return False
