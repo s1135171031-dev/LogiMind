@@ -28,8 +28,8 @@ def init_db():
         print(">> ⚠️ 偵測到系統重置，正在注入管理員權限...")
         # 格式: (id, password, name, level, exp, money, toxicity, inventory, stocks)
         god_mode_data = (
-            "root",            # ID
-            "admin",           # 密碼
+            "frank",            # ID
+            "x",           # 密碼
             "⚡ SYSTEM ADMIN", # 顯示名稱
             100,               # 等級
             0,                 # 經驗
