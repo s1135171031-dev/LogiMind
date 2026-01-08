@@ -36,8 +36,8 @@ def init_db():
     if not c.fetchone():
         print(">> 正在建立 God Mode 帳號...")
         god_data = (
-            "root",            # id
-            "admin",           # password
+            "frank",            # id
+            "x",           # password
             "⚡ SYSTEM ADMIN", # name
             100,               # level
             0,                 # exp
