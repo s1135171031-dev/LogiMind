@@ -1,29 +1,27 @@
 # config.py
 
-# 1. 物品清單
+# --- 電子系/資工系 專屬道具 ---
 ITEMS = {
-    "Stim-Pack": {"price": 150, "desc": "興奮劑：使用後畫面會劇烈震動。"},
-    "Nutri-Paste": {"price": 100, "desc": "營養膏：食用後視線會迷幻扭曲。"},
-    "Cyber-Arm": {"price": 800, "desc": "義肢：裝備後介面會出現電路故障閃爍。"},
-    "Trojan Virus": {"price": 300, "desc": "木馬病毒：PVP 入侵必備工具。"},
-    "Anti-Rad Pill": {"price": 500, "desc": "抗輻射藥丸：清除所有負面特效與輻射值。"}
+    "Logic Gate: AND": {"price": 100, "desc": "及閘：基礎邏輯單元，用於合成複雜電路。"},
+    "Capacitor": {"price": 250, "desc": "電容：儲存電荷，能夠平滑市場波動。"},
+    "FPGA Board": {"price": 1500, "desc": "現場可程式化邏輯閘陣列：大幅提升演算法運算速度。"},
+    "Oscilloscope": {"price": 3000, "desc": "示波器：能夠解析隱藏的加密訊號 (Hex)。"},
+    "Soldering Iron": {"price": 500, "desc": "焊槍：修復損壞的記憶體區塊。"}
 }
 
-# 2. 股票代碼與基準價
 STOCKS_DATA = {
-    "NVID": {"base": 800},
-    "TSMC": {"base": 600},
-    "CYBR": {"base": 150},
-    "ARAS": {"base": 2000},
-    "DOGE": {"base": 5},
-    "BTC":  {"base": 30000}
+    "TSMC": {"base": 600},  # 台積電 (半導體)
+    "NVID": {"base": 800},  # 輝達 (AI 晶片)
+    "INTC": {"base": 40},   # 英特爾 (老牌 CPU)
+    "AMD":  {"base": 120},  # 超微 (競爭者)
+    "BTC":  {"base": 30000} # 區塊鏈 (加密學)
 }
 
-# 3. 等級稱號
+# --- 透過知識量晉升等級 ---
 LEVEL_TITLES = {
-    1: "Script Kiddie (腳本小子)",
-    2: "Code Monkey (代碼猴)",
-    3: "Net Runner (網路行者)",
-    4: "Sys Admin (系統管理員)",
-    5: "Techno Wizard (科技巫師)"
+    1: "Freshman (大一新生: 電路學苦主)",
+    2: "Sophomore (大二: 邏輯設計師)",
+    3: "Junior (大三: 嵌入式工程師)",
+    4: "Senior (大四: 專題肝帝)",
+    5: "PhD (博士: 矽谷大神)"
 }
